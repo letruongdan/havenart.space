@@ -1,0 +1,54 @@
+{
+  "taskId": "W05",
+  "status": "SUBMITTED",
+  "baseSha": "2040771f0ec862b06961bdb6bff7ce864ed287a3",
+  "headSha": "96e68d63bd7a0582e235165ec414f92300c50e9c",
+  "contractVersion": "havenart-contracts-1.1",
+  "changedFiles": [
+    "src/config/contacts.ts",
+    "src/config/site.ts",
+    "src/lib/contact.ts",
+    "tests/unit/contact.test.ts"
+  ],
+  "acceptanceEvidence": [
+    {
+      "criterion": "W05-AC1: Null hợp lệ cho preview; production cần ba URL thật hoặc thay đổi phạm vi ghi rõ.",
+      "evidence": "src/config/contacts.ts khởi tạo honest null cho 3 kênh (zalo, messenger, whatsapp); getContactUrl trả null an toàn cho preview; validateReleaseContacts chặn production release và trả rõ danh sách kênh còn thiếu."
+    },
+    {
+      "criterion": "W05-AC2: Từ chối scheme/userinfo/hostname giả; exact channel allowlist có review.",
+      "evidence": "isValidChannelUrl trong src/lib/contact.ts bắt buộc https:, từ chối user credentials, kiểm tra hostname theo ALLOWED_CHANNEL_HOSTS chính thức (zalo.me, m.me, messenger.com, facebook.com, wa.me, whatsapp.com, api.whatsapp.com) và yêu cầu có path định danh người nhận."
+    },
+    {
+      "criterion": "W05-AC3: Không invented phone/account/URL, không gửi message khi test.",
+      "evidence": "Không có số điện thoại hay tài khoản giả trong production config; test chỉ dùng fixture cô lập trong tests/fixtures/contacts.ts; hoàn toàn là logic thuần, không network call hay gửi message."
+    }
+  ],
+  "commandsAndActualResults": [
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "output": "4 test files passed (34 tests passed total, 12 in contact.test.ts)"
+    },
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors"
+    },
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "output": "eslint . passed with 0 errors and 0 warnings"
+    },
+    {
+      "command": "node docs/agents/validate-plan.mjs",
+      "exitCode": 0,
+      "output": "status: PASS, 0 errors"
+    }
+  ],
+  "integrationObligations": [],
+  "unverifiedItems": [],
+  "openRisks": [],
+  "assetRecords": [],
+  "reportPath": "docs/agents/reports/W05-report.json"
+}
