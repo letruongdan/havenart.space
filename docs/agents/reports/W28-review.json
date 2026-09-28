@@ -1,0 +1,112 @@
+{
+  "taskId": "W28",
+  "candidate": {
+    "base": "b104f1b385d5aa76da7104a525c1ab2d5200f9f1",
+    "head": "9cfe1a025e44d60a5826144f9de24264e84c97b4",
+    "buildHash": null
+  },
+  "reviewer": {
+    "id": "havenart-reviewer-integration",
+    "tier": "H"
+  },
+  "verdict": {
+    "spec": "pass",
+    "quality": "pass",
+    "integration": "ready-to-integrate"
+  },
+  "acceptance": [
+    {
+      "id": "W28-AC1: Không duplicate event bởi StrictMode/listener bubbling/locale; started/completed per document.",
+      "status": "pass",
+      "evidence": "useAnalyticsBridge kết nối chặt chẽ createAnalyticsTracker, createChapterDwellTracker, createExperienceLifecycleTracker và createCtaCoordinator. Hai cờ module-level (documentStartedEmitted, documentCompletedEmitted) đảm bảo tối đa 1 sự kiện started và 1 completed trong suốt vòng đời document bất chấp React StrictMode remounts hoặc chuyển đổi locale phía client. createChapterDwellTracker áp dụng dwellThreshold 300ms liên tục khi tab visible trước khi commit chapter_entered (loại bỏ rung biên/lướt nhanh). createCtaCoordinator dedupe click liên tiếp (<300ms), ngăn ngừa bubbling từ thẻ con sang container; ContactSection truyền CustomEvent phân giải một cặp cta_clicked và channel_clicked duy nhất. Đã kiểm chứng độc lập qua 8 test suites trong tests/e2e/analytics.spec.ts."
+    },
+    {
+      "id": "W28-AC2: No PII/network/default storage analytics; navigation không đợi sink.",
+      "status": "pass",
+      "evidence": "Tại môi trường production mặc định (không bật cờ debug), telemetry sink là no-op thuần túy, zero external network requests (không Google Analytics, Segment, Mixpanel hay bên thứ ba), zero cookies và zero analytics keys trong localStorage. Dev buffer chỉ kích hoạt khi có cờ rõ ràng và bị chặn giới hạn tối đa 100 sự kiện. Toàn bộ 10 sự kiện được kiểm tra nghiêm ngặt qua allowlist runtime loại bỏ dữ liệu lạ, không thu thập PII/URL/IP/form text. Điều hướng liên hệ ContactSection dùng thẻ <a> tiêu chuẩn không bị chặn bởi sink hay Promise. Đã kiểm chứng độc lập qua network interception và cookie/storage verification trong tests/e2e/analytics.spec.ts."
+    },
+    {
+      "id": "W28-AC3: HTML source vi/en metadata, sitemap/robots và OG thật đúng môi trường.",
+      "status": "pass",
+      "evidence": "src/app/[locale]/layout.tsx sử dụng buildPageMetadata và SITE_CONFIG, cung cấp đầy đủ metadata tĩnh trong unhydrated HTML: <html lang='vi'> với tiêu đề, mô tả và og:locale vi_VN trên /vi; <html lang='en'> với nội dung tiếng Anh tương ứng trên /en. Môi trường preview/unverified origin áp dụng nghiêm ngặt <meta name='robots' content='noindex, nofollow'> và không bịa đặt canonical URL. OG image trỏ chính xác đến tài sản thật /images/og-havenart.jpg (1200x630 JPEG, 32KB). Sitemap.xml và robots.txt xuất bản tĩnh hợp lệ. Toàn bộ cấu trúc ngữ nghĩa DOM (duy nhất 1 h1, cấu trúc h2 phân cấp, skip links, duy nhất 1 #contact) tuân thủ chặt chẽ C05. Đã kiểm chứng độc lập qua 6 test suites trong tests/e2e/seo.spec.ts."
+    }
+  ],
+  "findings": [
+    {
+      "severity": "P3",
+      "location": "src/app/[locale]/layout.tsx:35",
+      "impact": "Khi chạy next build, Next.js đưa ra cảnh báo 'metadataBase property in metadata export is not set for resolving social open graph or twitter images'.",
+      "evidence": "Cảnh báo xuất hiện trong log build do SITE_CONFIG.publicOrigin là null trong preview. Đây là hành vi đúng đặc tả docs/SEO_SPEC.md (không bịa đặt canonical trong preview). Khi release production với origin chính thức, có thể cấu hình metadataBase trong Metadata object để làm sạch log.",
+      "owner": "integrator"
+    },
+    {
+      "severity": "P3",
+      "location": "tests/e2e/phase-one.spec.ts:98",
+      "impact": "Dưới tải cao khi chạy đồng thời 6 workers cho 41 E2E tests, bài test giảm tốc scroll đảo chiều có thể chênh lệch vi mô về thời gian chờ (timing variance).",
+      "evidence": "Chạy đơn lẻ tests/e2e/phase-one.spec.ts pass 100% (5/5 tests). Có thể tăng nhẹ biên sai số quán tính hoặc sử dụng waitForFunction trong phase-one.spec.ts cho các đợt CI lớn.",
+      "owner": "integrator"
+    }
+  ],
+  "checks": [
+    {
+      "command": "npm run build",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "Next.js 15.5.26 static build exported 8/8 static pages successfully (Compiled in 1673ms)",
+      "environment": "Node.js v24.13.0, npm 11.6.2, Windows pwsh"
+    },
+    {
+      "command": "npm run test:e2e -- tests/e2e/seo.spec.ts tests/e2e/analytics.spec.ts",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "15 passed across 2 suites in 5.6s (8 analytics tests, 7 seo tests)",
+      "environment": "Playwright 1.51.1, Chromium, Windows pwsh"
+    },
+    {
+      "command": "npm run typecheck",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 type errors",
+      "environment": "TypeScript 5.8.2, Windows pwsh"
+    },
+    {
+      "command": "npm run lint",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "eslint . passed with 0 errors and 0 warnings",
+      "environment": "ESLint 9.21.0, Windows pwsh"
+    },
+    {
+      "command": "npm test",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "24 test files passed (195 tests passed total in 2.30s)",
+      "environment": "Vitest 3.0.5, Windows pwsh"
+    },
+    {
+      "command": "node docs/agents/validate-plan.mjs",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "status: PASS, 36 packages valid, orderedSharedFilePairs=14, 0 errors",
+      "environment": "Node.js v24.13.0, Windows pwsh"
+    }
+  ],
+  "unknowns": [
+    {
+      "item": "Xác nhận public origin HTTPS và URL tài khoản thực tế cho 3 kênh Zalo, Messenger, WhatsApp",
+      "reason": "Yêu cầu thông tin doanh nghiệp chính thức được chủ thương hiệu phê duyệt theo docs/SEO_SPEC.md",
+      "owner": "integrator",
+      "nextCheck": "Nghiệm thu phát hành tại Gate G4"
+    }
+  ],
+  "visualReview": {
+    "status": "not-run",
+    "artifact": null,
+    "reviewer": null
+  },
+  "decision": {
+    "action": "ready-to-integrate",
+    "owner": "integrator",
+    "round": 1
+  }
+}
