@@ -1,0 +1,66 @@
+{
+  "taskId": "W23",
+  "status": "SUBMITTED",
+  "baseSha": "a579d91ad1dc30c04f981dc67bbd2243a41ba579",
+  "headSha": "9951292c40d74c2999459f21759a512190df3375",
+  "contractVersion": "havenart-contracts-1.1",
+  "changedFiles": [
+    "src/lib/seo/metadata.ts",
+    "src/app/sitemap.ts",
+    "src/app/robots.ts",
+    "tests/unit/seo.test.ts"
+  ],
+  "acceptanceEvidence": [
+    {
+      "criterion": "W23-AC1: Preview noindex và origin null không invented canonical; production origin verified.",
+      "evidence": "buildPageMetadata thiết lập robots={index: false, follow: false} và bỏ qua canonical khi ở preview hoặc khi publicOrigin là null/không hợp lệ. Chỉ khi ở production với origin HTTPS được xác thực mới xuất bản robots={index: true, follow: true} và canonical tuyệt đối. sitemap.ts trả về mảng rỗng [] và robots.ts chặn cào dữ liệu khi origin chưa được xác thực."
+    },
+    {
+      "criterion": "W23-AC2: VI/EN canonical/hreflang consistent trailing slash, chưa tạo fake schema.",
+      "evidence": "Quy tắc không trailing slash nhất quán trên toàn bộ URL canonical và hreflang (/vi, /en, x-default trỏ về /vi). Hoãn việc tạo schema.org (Organization, ProfessionalService, review giả, số điện thoại bịa đặt) theo đúng quy định tại docs/SEO_SPEC.md."
+    },
+    {
+      "criterion": "W23-AC3: OG chỉ reference file thật sau W25; missing asset thành release issue không silently pass.",
+      "evidence": "OpenGraph image không tự động suy đoán hoặc trỏ tới các file chưa tồn tại; chỉ gắn thuộc tính images khi cờ ogImageVerified=true. Đảm bảo static export qua next build biên dịch tĩnh thành công cả robots.txt và sitemap.xml với force-static."
+    }
+  ],
+  "commandsAndActualResults": [
+    {
+      "command": "npm run test -- tests/unit/seo.test.ts",
+      "exitCode": 0,
+      "output": "1 test file passed (7 tests passed total)"
+    },
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors"
+    },
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "output": "eslint . passed with 0 errors and 0 warnings"
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "output": "12 test files passed (111 tests passed total)"
+    },
+    {
+      "command": "npm run build",
+      "exitCode": 0,
+      "output": "Next.js static export complete (8/8 static pages, including /robots.txt and /sitemap.xml)"
+    },
+    {
+      "command": "npm run test:e2e -- tests/e2e/scroll-journey.spec.ts tests/e2e/static-story.spec.ts",
+      "exitCode": 0,
+      "output": "13 passed (6.0s) across Chromium workers"
+    }
+  ],
+  "integrationObligations": [
+    "W28: route metadata wire và OG thật; W29: origin/contact release gate."
+  ],
+  "unverifiedItems": [],
+  "openRisks": [],
+  "assetRecords": [],
+  "reportPath": "docs/agents/reports/W23-report.json"
+}
