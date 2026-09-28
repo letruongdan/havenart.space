@@ -1,0 +1,83 @@
+{
+  "taskId": "W07",
+  "candidate": {
+    "base": "8caf3a53e87cf72feafe51cc0bfed5b0207066b9",
+    "head": "c4e7e8160c49b30ff35ae9148532eabee154b3ff",
+    "buildHash": null
+  },
+  "reviewer": {
+    "id": "antigravity-reviewer-h",
+    "tier": "H"
+  },
+  "verdict": {
+    "spec": "pass",
+    "quality": "pass",
+    "integration": "blocked-not-evaluated"
+  },
+  "acceptance": [
+    {
+      "id": "W07-AC1: Một ý mỗi cảnh, header gọn, dấu Việt rõ, ≤2 font family.",
+      "status": "pass",
+      "evidence": "tokens.css định nghĩa nghiêm ngặt duy nhất 2 font family (--font-family-serif và --font-family-sans); BrandHeader.tsx có chiều cao cố định h-14/h-16 thanh mảnh; StoryOverlay.tsx render tập trung 1 ý niệm trung tâm cho mỗi cảnh với title, story, intention trích xuất từ copy.chapters[activeChapterId]; font và typography xử lý hiển thị chuẩn mực dấu tiếng Việt."
+    },
+    {
+      "id": "W07-AC2: Keyboard focus rõ, CTA anchor thật, mobile chạm được; không UI đè kiến trúc.",
+      "status": "pass",
+      "evidence": "Tất cả interactive elements (brand link, language switcher, quick CTA, story CTA) đều có focus:ring-2 focus:ring-stone-900 rõ nét chuẩn WCAG 2.2 AA; CTA trỏ trực tiếp đến anchor thật href=\"#contact\"; touch targets đạt chuẩn tối thiểu 44px (min-h-[44px], min-w-[44px]); StoryOverlay được neo ở góc trái dưới màn hình với container pointer-events-none, giữ không gian trung tâm cho kiến trúc 3D không bị che khuất."
+    },
+    {
+      "id": "W07-AC3: Overlay chỉ nhận rendered chapter, không tự đọc window.scrollY hay tạo store.",
+      "status": "pass",
+      "evidence": "StoryOverlay.tsx là pure presentation component, chỉ nhận activeChapterId và copy qua props (StoryOverlayProps); hoàn toàn không gọi window.scrollY, không lắng nghe sự kiện scroll hay window resize, và không khởi tạo/import bất kỳ store hay state container nào."
+    }
+  ],
+  "findings": [],
+  "checks": [
+    {
+      "command": "npm run typecheck",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors",
+      "environment": "TypeScript 5.7.3, Windows pwsh"
+    },
+    {
+      "command": "npm run lint",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "eslint . passed with 0 errors and 0 warnings",
+      "environment": "ESLint 9.20.1, Windows pwsh"
+    },
+    {
+      "command": "npm test",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "4 test files passed (34 tests passed total)",
+      "environment": "Vitest 3.0.5, Windows pwsh"
+    },
+    {
+      "command": "npm run build",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "Next.js static export build passed, generated 6 static pages",
+      "environment": "Next.js 15.5.26, Windows pwsh node v22"
+    },
+    {
+      "command": "node docs/agents/validate-plan.mjs",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "status: PASS, 36 packages valid, orderedSharedFilePairs=14, 0 errors",
+      "environment": "Node.js v22, Windows pwsh"
+    }
+  ],
+  "unknowns": [],
+  "visualReview": {
+    "status": "not-run",
+    "artifact": null,
+    "reviewer": null
+  },
+  "decision": {
+    "action": "ready-to-integrate",
+    "owner": "integrator",
+    "round": 1
+  }
+}
