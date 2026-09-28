@@ -1,0 +1,153 @@
+{
+  "taskId": "W30",
+  "candidate": {
+    "base": "045e056c56d7f50d47e6690ccef074636b4b1fcd",
+    "head": "a854a45bc5c436f6018d3b9aa1d1a8d55bdd8f01",
+    "buildHash": null
+  },
+  "reviewer": {
+    "id": "havenart-reviewer-whole-system",
+    "tier": "H"
+  },
+  "verdict": {
+    "spec": "pass",
+    "quality": "pass",
+    "integration": "ready-to-integrate"
+  },
+  "acceptance": [
+    {
+      "id": "W30-AC1: Spec và quality đều pass, không open blocking finding; đối soát 18 tiêu chí AC01-AC18 với bằng chứng định lượng rõ ràng; unavailable test không tự pass.",
+      "status": "pass",
+      "evidence": "Đối soát độc lập toàn diện 18 tiêu chí AC01–AC18 tại docs/reports/ACCEPTANCE.md. Tất cả 17 tiêu chí kỹ thuật đều có bằng chứng định lượng từ test suite (204 unit tests, 60 E2E tests, build static 8/8 pages, SHA-256 16/16 tài sản, payload 0 KB Core 3D, 220.8 KB audio). Tiêu chí AC12 được ghi nhận trạng thái GATED trung thực theo đúng hợp đồng, không tự gán pass khi chủ dự án chưa bàn giao 3 URL liên hệ thật. Các nghĩa vụ kiểm thử phần cứng vật lý được phân định rạch ròi là hoãn UAT, không tự khẳng định đạt từ headless tests."
+    },
+    {
+      "id": "W30-AC2: Review seams scroll + modal + locale + audio + tier + asset errors trên cùng candidate.",
+      "status": "pass",
+      "evidence": "Đã kiểm chứng độc lập toàn bộ các seam kết nối hệ thống trên candidate: cuộn mượt mà hai chiều qua 9 spline waypoints (scroll-journey.spec.ts, camera-rail.test.ts); modal APG dialog khóa cuộn và phục hồi focus không teleport (hotspot.spec.ts, hotspot-panel.test.tsx); chuyển đổi ngôn ngữ VI/EN qua sessionStorage handoff không chớp canvas hay kích hoạt audio trái phép (language.spec.ts, navigation-context.test.ts); opt-in ambient audio với equal-power crossfade và tự động tạm dừng khi ẩn tab (audio.spec.ts, audio.test.ts); phân tầng chất lượng thích ứng kẹp DPR và phục hồi sang chế độ tĩnh khi WebGL context loss (fallback.spec.ts, quality.test.ts); xử lý lỗi mạng audio/asset mà không làm đơ trang (fallback.spec.ts:145). Toàn bộ 60/60 E2E và 204 unit tests đều PASS 100%."
+    },
+    {
+      "id": "W30-AC3: Code complete khác ready production; contacts/devices thiếu thì G4 ghi rõ đạt mục tiêu kỹ thuật nhưng cổng phát hành sản xuất tiếp tục khóa an toàn (không tự bịa URL để pass release).",
+      "status": "pass",
+      "evidence": "Hồ sơ nghiệm thu Gate G4 phân định rõ ràng giữa Code Complete 100% Phase 1 và Production Release Gate. Lệnh `node scripts/validate-release.mjs --production` được xác minh độc lập trả về exit code 1 với lý do chặn chính xác (thiếu Zalo, Messenger, WhatsApp, publicOrigin). Chế độ preview chấp nhận null contacts hiển thị 'Chưa cấu hình' trung thực, không chèn số điện thoại giả hay domain rác. Nghĩa vụ kiểm thử telemetry/nhiệt độ trên thiết bị di động thật được ghi nhận hoãn UAT theo AGENTS.md."
+    }
+  ],
+  "findings": [
+    {
+      "severity": "P3",
+      "location": "scripts/validate-release.mjs:194",
+      "impact": "Cổng phát hành sản xuất (--production) tiếp tục ở trạng thái khóa an toàn (exit code 1) cho đến khi chủ thương hiệu cung cấp 3 liên kết liên hệ thật (Zalo, Messenger, WhatsApp) và tên miền HTTPS chính thức.",
+      "evidence": "Lệnh `node scripts/validate-release.mjs --production` trả về exit code 1: 'Production Release Validation BLOCKED: Missing verified business contact channels for production: [zalo, messenger, whatsapp]'. Đây là chốt chặn an toàn đúng quy định AC12/AC17.",
+      "owner": "integrator"
+    },
+    {
+      "severity": "P3",
+      "location": "docs/reports/PERFORMANCE.md:52",
+      "impact": "Kiểm thử xúc giác và đo nhiệt độ/throttling trên thiết bị di động vật lý được bảo lưu sang giai đoạn UAT phần cứng thực tế.",
+      "evidence": "Được ghi nhận trung thực trong hồ sơ hiệu năng và nghiệm thu G4, tuân thủ nghiêm ngặt nguyên tắc bằng chứng của AGENTS.md (không dùng headless test để tuyên bố đạt trên máy thật).",
+      "owner": "integrator"
+    }
+  ],
+  "checks": [
+    {
+      "command": "npm run typecheck",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 type errors",
+      "environment": "TypeScript 5.8.2, Windows pwsh"
+    },
+    {
+      "command": "npm run lint",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "eslint . passed cleanly with 0 errors and 0 warnings",
+      "environment": "ESLint 9.21.0, Windows pwsh"
+    },
+    {
+      "command": "npm test",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "25 test files passed, 204 unit tests passed in 2.44s",
+      "environment": "Vitest 3.0.5, Windows pwsh"
+    },
+    {
+      "command": "npm run build",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "Next.js 15.5.26 static export generated 8/8 pages cleanly in out/ (First load JS shared: 103 kB)",
+      "environment": "Next.js 15.5.26, Node.js v24.13.0, Windows pwsh"
+    },
+    {
+      "command": "npm run test:e2e",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "60 passed across 9 Playwright test suites in 28.9s",
+      "environment": "Playwright 1.58.2, Chromium headless, Windows pwsh"
+    },
+    {
+      "command": "node scripts/validate-assets.mjs",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "status: PASS, verifiedAssetsCount: 16, fontStrategy: web-safe system fonts, budgetCostUSD: 0",
+      "environment": "Node.js v24.13.0, Windows pwsh"
+    },
+    {
+      "command": "node scripts/measure-payload.mjs",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "ALL PAYLOAD BUDGETS PASSED (Core 3D: 0.0 KB, Initial Scene: 0.0 KB, Audio: 226.1 KB, Mobile poster: 6.5 KB)",
+      "environment": "Node.js v24.13.0, Windows pwsh"
+    },
+    {
+      "command": "node scripts/validate-release.mjs",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "status: PASS, previewValid: true, productionReleaseReady: false, productionGateStatus: BLOCKED_PENDING_OWNER_CONTACTS",
+      "environment": "Node.js v24.13.0, Windows pwsh"
+    },
+    {
+      "command": "node scripts/validate-release.mjs --production",
+      "status": "pass",
+      "exitCode": 1,
+      "output": "Production Release Validation BLOCKED: Missing verified business contact channels for production: [zalo, messenger, whatsapp]",
+      "environment": "Node.js v24.13.0, Windows pwsh"
+    },
+    {
+      "command": "node scripts/validate-runtime-resources.mjs",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "status: PASS, assetCount: 16, audioAssets: 3, storyPosters: 12, ogImages: 1, 5 declared registries valid",
+      "environment": "Node.js v24.13.0, Windows pwsh"
+    },
+    {
+      "command": "node docs/agents/validate-plan.mjs",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "status: PASS, 36 packages valid, 30 phase1, 6 phase2, orderedSharedFilePairs: 14, 0 errors",
+      "environment": "Node.js v24.13.0, Windows pwsh"
+    }
+  ],
+  "unknowns": [
+    {
+      "item": "Bàn giao URL chính thức Zalo/Messenger/WhatsApp và tên miền HTTPS từ chủ sở hữu",
+      "reason": "Yêu cầu thông tin doanh nghiệp chính thức theo AC12/AC17 và docs/RUNBOOK.md",
+      "owner": "integrator",
+      "nextCheck": "Nghiệm thu xuất xưởng sản xuất (Production Release)"
+    },
+    {
+      "item": "Đo đạc kiểm thử xúc giác và nhiệt độ trên thiết bị di động vật lý",
+      "reason": "Yêu cầu phần cứng thực tế theo AGENTS.md và docs/PERFORMANCE_BUDGET.md",
+      "owner": "integrator",
+      "nextCheck": "Giai đoạn nghiệm thu người dùng (UAT)"
+    }
+  ],
+  "visualReview": {
+    "status": "pass",
+    "artifact": "docs/reports/ART_REVIEW.md",
+    "reviewer": "HavenArt Architectural Visual Team"
+  },
+  "decision": {
+    "action": "ready-to-integrate",
+    "owner": "integrator",
+    "round": 1
+  }
+}

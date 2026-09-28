@@ -1,0 +1,89 @@
+{
+  "taskId": "W30",
+  "taskTitle": "Review toàn hệ thống và nghiệm thu G4",
+  "baseSha": "045e056c56d7f50d47e6690ccef074636b4b1fcd",
+  "headSha": "a854a45bc5c436f6018d3b9aa1d1a8d55bdd8f01",
+  "contractVersion": "havenart-contracts-1.1",
+  "changedFiles": [
+    "docs/reports/ACCEPTANCE.md",
+    "docs/reports/ART_REVIEW.md",
+    "docs/reports/PERFORMANCE.md"
+  ],
+  "acceptanceMapping": {
+    "W30-AC1": {
+      "status": "PASS",
+      "evidence": "Đối soát toàn diện 18 tiêu chí nghiệm thu Phase 1 (AC01–AC18) tại docs/reports/ACCEPTANCE.md. Tất cả 17 tiêu chí kỹ thuật (Hero, Progressive Load, Spline Camera, Door Clearance, Living Materials, 3 Hotspots, Song ngữ VI/EN, Ánh sáng hoàng hôn->dusk, Camera Stability, Cuộn ngược, Finale Reveal, Reduced Motion, Mobile 320px/Touch, Licenses, 0 USD Budget, Không data giả, Khả năng mở rộng Phase 2) đều đạt chuẩn và có bằng chứng định lượng từ test suite. Tiêu chí AC12 (Kênh liên hệ thật) ghi nhận trạng thái GATED trung thực theo đúng quy định hợp đồng, không tự gán pass khi chủ dự án chưa cung cấp liên kết thật."
+    },
+    "W30-AC2": {
+      "status": "PASS",
+      "evidence": "Kiểm chứng hồi quy toàn diện các seam kết nối hệ thống trên cùng candidate: cuộn mượt mà (ScrollJourney), mở modal APG freeze scroll và phục hồi không teleport, chuyển đổi ngôn ngữ qua sessionStorage handoff không bật audio trên route mới, opt-in audio crossfade và tạm dừng khi ẩn tab, adaptive quality policy hạ bậc sau 2 slow windows và kẹp DPR theo trần, phục hồi WebGL context loss sang static fallback an toàn. Minh chứng qua 60/60 bài test Playwright E2E và 204 unit tests đều PASS 100%."
+    },
+    "W30-AC3": {
+      "status": "PASS",
+      "evidence": "docs/reports/ACCEPTANCE.md phân định rạch ròi giữa hoàn thành mã nguồn kỹ thuật (Code Complete 100% Phase 1) và điều kiện xuất xưởng thương mại (Production Release Gate). scripts/validate-release.mjs --production tiếp tục khóa bảo vệ và trả về exit code 1 cho đến khi có URL Zalo/Messenger/WhatsApp và domain HTTPS thật từ chủ sở hữu. Không có bất kỳ dữ liệu doanh nghiệp giả nào được chèn vào sản phẩm."
+    }
+  },
+  "commandsAndActualResults": [
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 type errors"
+    },
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "output": "eslint . passed cleanly with 0 errors and 0 warnings"
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "output": "25 test files passed, 204 unit tests passed"
+    },
+    {
+      "command": "npm run build",
+      "exitCode": 0,
+      "output": "Next.js 15 static export generated 8/8 pages cleanly in out/"
+    },
+    {
+      "command": "npm run test:e2e",
+      "exitCode": 0,
+      "output": "60 passed across 9 Playwright test suites (31.1s)"
+    },
+    {
+      "command": "node scripts/validate-assets.mjs",
+      "exitCode": 0,
+      "output": "status: PASS, verifiedAssetsCount: 16, fontStrategy: web-safe system fonts, budgetCostUSD: 0"
+    },
+    {
+      "command": "node scripts/measure-payload.mjs",
+      "exitCode": 0,
+      "output": "ALL PAYLOAD BUDGETS PASSED (Core 3D: 0 KB, Audio: 220.8 KB, Mobile poster: 6.5 KB)"
+    },
+    {
+      "command": "node scripts/validate-release.mjs",
+      "exitCode": 0,
+      "output": "status: PASS, previewValid: true, productionReleaseReady: false, productionGateStatus: BLOCKED_PENDING_OWNER_CONTACTS"
+    },
+    {
+      "command": "node scripts/validate-release.mjs --production",
+      "exitCode": 1,
+      "output": "Production Release Validation BLOCKED: Missing verified business contact channels for production: [zalo, messenger, whatsapp]"
+    },
+    {
+      "command": "node scripts/validate-runtime-resources.mjs",
+      "exitCode": 0,
+      "output": "status: PASS, assetCount: 16, audioAssets: 3, storyPosters: 12, ogImages: 1, 5 registries valid"
+    },
+    {
+      "command": "node docs/agents/validate-plan.mjs",
+      "exitCode": 0,
+      "output": "PASS (36 packages, 30 phase1, 6 phase2, 0 errors)"
+    }
+  ],
+  "unverifiedItems": [
+    "Đo đạc telemetry trên thiết bị phần cứng di động vật lý và kiểm thử xúc giác (tactile UAT) được ghi nhận hoãn sang giai đoạn thử nghiệm phần cứng thực tế theo quy tắc AGENTS.md"
+  ],
+  "openRisks": [
+    "Cổng phát hành thương mại tiếp tục khóa bảo vệ cho đến khi chủ dự án cung cấp thông tin liên hệ và tên miền chính thức."
+  ]
+}
