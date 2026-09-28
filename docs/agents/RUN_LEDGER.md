@@ -100,13 +100,13 @@
 | W13 | Tích hợp nền và camera — G1 | integrated | `3d9bbba` | `c7f3543` | SPEC: PASS, QUALITY: PASS | `c7f3543` | 7 files, round 1 pass, Gate G1 composition root |
 | W14 | Ngoại thất và entrance chi tiết | ready | `c7f3543` | — | — | — | W13 integrated |
 | W15 | Living và vật liệu điểm nhấn | ready | `c7f3543` | — | — | — | W13 integrated |
-| W16 | Predicate hiển thị hotspot | ready | `3beaaba` | — | — | — | W02 integrated |
+| W16 | Predicate hiển thị hotspot | integrated | `fa16cc0` | `e620d26` | SPEC: PASS, QUALITY: PASS | `e620d26` | 2 files, round 1 pass, pure predicate |
+| W17 | Hotspot DOM, projection và modal | ready | `e620d26` | — | — | — | W03, W12, W13, W16 integrated |
 | W18 | Lighting track và môi trường | ready | `c7f3543` | — | — | — | W02, W13 integrated |
 | W19 | Garden detail và finale component | ready | `c7f3543` | — | — | — | W03, W13 integrated |
 | W22 | Event abstraction và dedupe thuần | ready | `3beaaba` | — | — | — | W02 integrated |
 | W23 | Modal liên hệ và sao chép/fallback thuần | ready | `c7d7d35` | — | — | — | W03, W05, W06 integrated |
 | W24 | Locale restoration và history lifecycle | ready | `c7f3543` | — | — | — | W03, W12, W13 integrated |
-| W17 | Hotspot DOM, projection và modal | planned | — | — | — | — | Chờ W16 integrated |
 | W20.. | Các gói tiếp theo | planned | — | — | — | — | Chờ dependencies theo DAG |
 | W31–W36 | Các phòng Phase 2 | planned | — | — | — | — | Khóa dispatch |
 
@@ -128,6 +128,8 @@
 - **2026-09-28 [RULING-12]:** Tích hợp thành công gói W11 tại integration SHA `684d0b7c4f0b7605edacf136c95874afbcbcb21d` sau khi đạt 100% SPEC & QUALITY PASS ngay ở Round 1 (họ review: spec-and-quality). Triển khai ExperienceGate kết hợp selectMode bảo đảm prefers-reduced-motion và userStatic có độ ưu tiên cao nhất, hoàn toàn không nạp module Three/R3F trên server hay khi ở chế độ tĩnh; ZoneBoundary phân tách lỗi decorative (dùng proxy) và lỗi core (chuyển sang static); SceneCanvas lắng nghe webglcontextlost và kích hoạt fallback tĩnh tức thì; kiểm soát late-load cuộn xa (> 300px) giữ vững bản đọc tĩnh tránh pop-in; bảo tồn 100% cây DOM ngữ nghĩa và CTA trong mọi tình huống. Nghĩa vụ kiểm chứng network proof / noWebGL trên thiết bị thật được ghi nhận chuyển tới Gate G1 (W13).
 - **2026-09-28 [RULING-13]:** Tích hợp thành công gói W12 tại integration SHA `3975ef7d44342804ae31378a1dc7f0823f6df0e6` sau khi đạt 100% SPEC & QUALITY PASS ngay ở Round 1 (họ review: runtime). Triển khai createStoryRuntime với snapshot bất biến, tách bạch rawScrollProgress và renderedStoryProgress; tính toán vận tốc tối đa theo spatial rail derivative và giới hạn động học (3.0 m/s indoor, 5.0 m/s outdoor, 0.5236 rad/s angular speed); kẹp cứng dt (maxDtSeconds = 0.1s) và xử lý visibilitychange triệt tiêu dt jump khi chuyển tab; hỗ trợ FreezeToken cho modal dialog và phục hồi mượt mà; ScrollRuntime dọn dẹp rAF sạch sẽ; useExperienceStore đảm bảo chỉ chứa discrete state, không gây re-render toàn cây mỗi frame. Với toàn bộ 7 gói tiền đề (W06, W07, W08, W09, W10, W11, W12) đã hoàn tất tích hợp, gói cột mốc Gate G1 (W13 — Tích hợp nền và camera) chính thức được mở khóa và chuyển sang trạng thái `ready`.
 - **2026-09-28 [RULING-14]:** Tích hợp thành công gói W13 (Gate G1 — Tích hợp nền và camera) tại integration SHA `c7f3543384e9ac287ef5e55b819f13c37cb7e394` sau khi đạt 100% SPEC & QUALITY PASS. Triển khai ExperienceHost kết nối providers và runtime; SceneCanvas tích hợp CameraController lấy mẫu sampleRail(renderedStoryProgress) liên tục trên từng khung hình rAF mượt mà không teleport; CSS/DOM slots phân tầng chuẩn (.canvas-viewport z-0, .experience-content-layer z-10); duy trì duy nhất một id="contact" trên toàn route; toàn bộ 13 bài test Playwright E2E đều PASS trên Chromium (hành trình cuộn xuôi/ngược/Home/End không cắt cảnh, fallback prefers-reduced-motion không tải renderer canvas, chuyển chế độ tĩnh bằng nút bấm, validateStory definition-only pass). Mốc Gate G1 đã chính thức hoàn thành, mở khóa 5 gói phụ thuộc: W14, W15, W18, W19, W24 sang trạng thái `ready`.
+- **2026-09-28 [RULING-15]:** Tích hợp thành công gói W16 (Predicate hiển thị hotspot) tại integration SHA `e620d261409ab2d610d1bcc93f478f4e2dcb8fc8` sau khi đạt 100% SPEC & QUALITY PASS (họ review: pure-logic). Triển khai hàm thuần isHotspotVisible xác thực toàn diện các điều kiện không gian, khoảng cách, dải kích hoạt nội bộ, frustum và che khuất; 9 unit test bao phủ toàn bộ các trường hợp biên và dữ liệu bất thường; không phụ thuộc DOM/store/scroll. Với W16 đã integrated cùng W03, W12, W13 hoàn tất từ trước, gói W17 (Hotspot DOM, projection và modal) chính thức đủ điều kiện chuyển sang trạng thái `ready`.
+
 
 
 
