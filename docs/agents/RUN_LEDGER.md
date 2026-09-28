@@ -85,8 +85,8 @@
 
 | Gói | Mô tả tóm tắt | Trạng thái | Base SHA | Head SHA | Review Verdict | Integration SHA | Ghi chú |
 |---|---|---|---|---|---|---|---|
-| W01 | Nền tảng & kiểm tra tái lập | ready | `8b92818` | — | — | — | Chuẩn bị dispatch |
-| W02 | Khóa hợp đồng dữ liệu & fixtures | planned | — | — | — | — | Chờ W01 |
+| W01 | Nền tảng & kiểm tra tái lập | integrated | `44ca27b` | `d59539a` | SPEC: PASS, QUALITY: PASS | `d59539a` | 14 files, round 2 pass |
+| W02 | Khóa hợp đồng dữ liệu & fixtures | ready | `d59539a` | — | — | — | W01 integrated, sẵn sàng dispatch |
 | W03–W30 | Các gói Phase 1 tiếp theo | planned | — | — | — | — | Chờ theo DAG |
 | W31–W36 | Các phòng Phase 2 | planned | — | — | — | — | Khóa dispatch |
 
@@ -95,3 +95,5 @@
 ## 4. Nhật ký phán quyết (Rulings) & Quyết định Integrator
 
 - **2026-09-28 [RULING-01]:** Khởi tạo Git repository tại root với baseline commit `8b9281831f7b2409e9401e87ccab22d17f2847aa` bảo tồn nguyên vẹn toàn bộ 71 file tài liệu ban đầu. Tạo nhánh `integration` làm nhánh tích hợp duy nhất. Khởi tạo `RUN_LEDGER.md` ghi nhận preflight hoàn tất.
+- **2026-09-28 [RULING-02]:** Tích hợp thành công gói W01 tại integration SHA `d59539aad4111a44a6be72cc20f9aeaab2bfcfc9`. Đã trải qua 2 round review độc lập bởi agent Tier H; Round 1 phát hiện P1 (ESLint 9 Flat Config quét out/ và .next/), Round 2 xác nhận đã fix triệt để. Toàn bộ 4 kiểm tra (typecheck, lint, build, static server smoke) đều PASS. Chuyển W02 sang `ready`.
+
