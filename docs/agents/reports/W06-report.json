@@ -1,0 +1,65 @@
+{
+  "taskId": "W06",
+  "status": "SUBMITTED",
+  "baseSha": "3d6814471988255e8aeab4d6a878e2004d206c07",
+  "headSha": "c7d7d354ca1573906105998de89a04a8ae130dbe",
+  "contractVersion": "havenart-contracts-1.1",
+  "changedFiles": [
+    "src/app/[locale]/layout.tsx",
+    "src/app/[locale]/page.tsx",
+    "src/components/story/StorySections.tsx",
+    "src/components/ui/ContactSection.tsx",
+    "tests/e2e/static-story.spec.ts"
+  ],
+  "acceptanceEvidence": [
+    {
+      "criterion": "W06-AC1: lang đúng trong HTML chưa hydrate; unknown locale HTTP404 trên static host.",
+      "evidence": "src/app/[locale]/layout.tsx xuất html lang={locale} với generateStaticParams cho 'vi' và 'en' (dynamicParams = false). Static export sinh out/vi/index.html và out/en/index.html. Playwright test kiểm tra trực tiếp raw HTML chưa hydrate chứa đúng lang=\"vi\" và lang=\"en\". Các locale không hỗ trợ (/fr, /de, /unknown-locale) trả HTTP 404 trên static host."
+    },
+    {
+      "criterion": "W06-AC2: Tắt JS vẫn đủ sáu story/dịch vụ/ba details/CTA; contact null không href giả.",
+      "evidence": "Playwright E2E test với javaScriptEnabled: false xác nhận: 6 story chapters (#exterior, #approach, #entrance, #living, #garden, #finale) hiển thị đầy đủ tiêu đề và nội dung; phần dịch vụ kiến trúc #services hiển thị rõ; 3 phần tử native details (#detail-travertine-wall, #detail-sliding-glass, #detail-garden-tree) gắn kèm DOM; các liên kết CTA trỏ tới #contact; các kênh contact null render trạng thái 'Chưa cấu hình' / 'Not configured' với aria-disabled=\"true\", hoàn toàn không có href='#' hoặc href giả."
+    },
+    {
+      "criterion": "W06-AC3: Một h1 và heading order đúng; ContactSection là nơi duy nhất render id contact.",
+      "evidence": "Tài liệu chỉ có duy nhất 1 thẻ h1 ở phần hero header; thứ tự headings h1 -> h2 -> h3 tuân thủ nghiêm ngặt không nhảy bậc; phần tử #contact là duy nhất trên toàn trang do ContactSection render; chương finale không tạo contact section thứ hai; hỗ trợ skip links tới #main-content và #contact đạt chuẩn accessibility WCAG 2.2 AA."
+    }
+  ],
+  "commandsAndActualResults": [
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "output": "4 test files passed (34 tests passed total)"
+    },
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors"
+    },
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "output": "eslint . passed with 0 errors and 0 warnings"
+    },
+    {
+      "command": "npm run build",
+      "exitCode": 0,
+      "output": "Next.js static export build passed, generated 6 static pages including out/vi and out/en"
+    },
+    {
+      "command": "npm run test:e2e -- tests/e2e/static-story.spec.ts",
+      "exitCode": 0,
+      "output": "7 passed in Chromium against static server (3.9s)"
+    },
+    {
+      "command": "node docs/agents/validate-plan.mjs",
+      "exitCode": 0,
+      "output": "status: PASS, 36 packages valid, orderedSharedFilePairs=14, 0 errors"
+    }
+  ],
+  "integrationObligations": [],
+  "unverifiedItems": [],
+  "openRisks": [],
+  "assetRecords": [],
+  "reportPath": "docs/agents/reports/W06-report.json"
+}

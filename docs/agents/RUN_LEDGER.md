@@ -90,13 +90,14 @@
 | W03 | Nội dung VI/EN và dictionary loader | integrated | `ab671f8` | `f06a674` | SPEC: PASS, QUALITY: PASS | `f06a674` | 6 files, round 1 pass |
 | W04 | Chapter sampler và validator thuần | integrated | `193432f` | `ed86fce` | SPEC: PASS, QUALITY: PASS | `ed86fce` | 3 files, round 1 pass |
 | W05 | Contact config và URL validation | integrated | `2040771` | `96e68d6` | SPEC: PASS, QUALITY: PASS | `96e68d6` | 4 files, round 1 pass |
-| W06 | Trang HTML locale và bố cục semantic | ready | `96e68d6` | — | — | — | W03, W04, W05 integrated |
+| W06 | Trang HTML locale và bố cục semantic | integrated | `3d68144` | `c7d7d35` | SPEC: PASS, QUALITY: PASS | `c7d7d35` | 5 files, round 1 pass |
+| W07 | Design tokens và brand shell | ready | `f06a674` | — | — | — | W03 integrated |
 | W08 | Spline rail, quaternion và clearance | ready | `3beaaba` | — | — | — | W02 integrated |
 | W09 | Asset registry và zone streaming | ready | `3beaaba` | — | — | — | W02 integrated |
 | W10 | Villa shell và proxy có đường thông | ready | `3beaaba` | — | — | — | W02 integrated |
 | W16 | Predicate hiển thị hotspot | ready | `3beaaba` | — | — | — | W02 integrated |
 | W22 | Event abstraction và dedupe thuần | ready | `3beaaba` | — | — | — | W02 integrated |
-| W07 | Design tokens và brand shell | ready | `f06a674` | — | — | — | W03 integrated |
+| W23 | Modal liên hệ và sao chép/fallback thuần | ready | `c7d7d35` | — | — | — | W03, W05, W06 integrated |
 | W11, W12, W13.. | Các gói tiếp theo | planned | — | — | — | — | Chờ dependencies theo DAG |
 | W31–W36 | Các phòng Phase 2 | planned | — | — | — | — | Khóa dispatch |
 
@@ -110,6 +111,7 @@
 - **2026-09-28 [RULING-04]:** Tích hợp thành công gói W03 tại integration SHA `f06a674ad3078394a6904723c9ff37a433e07abb` sau khi đạt 100% SPEC & QUALITY PASS ngay ở Round 1. Toàn bộ từ điển VI/EN, parseLocale, getDictionary và 10 unit tests đã hoạt động chính xác. Mở thêm gói W07 (chỉ phụ thuộc W03) sang trạng thái ready.
 - **2026-09-28 [RULING-05]:** Tích hợp thành công gói W04 tại integration SHA `ed86fce0e53ed916bc8543dc4a023cd92bf4ba0f` sau khi đạt 100% SPEC & QUALITY PASS ngay ở Round 1. sampleChapter đơn định và validateStory kiểm tra đầy đủ 100% cấu trúc story configuration.
 - **2026-09-28 [RULING-06]:** Tích hợp thành công gói W05 tại integration SHA `96e68d63bd7a0582e235165ec414f92300c50e9c` sau khi đạt 100% SPEC & QUALITY PASS ngay ở Round 1. Cấu hình contacts null trung thực, xác thực URL nghiêm ngặt chống spoofing và gating production release hoàn chỉnh. Với W03, W04, W05 đều đã integrated, gói W06 (Semantic HTML Page & Layout) đủ điều kiện chuyển sang `ready`.
+- **2026-09-28 [RULING-07]:** Tích hợp thành công gói W06 tại integration SHA `c7d7d354ca1573906105998de89a04a8ae130dbe` sau khi đạt 100% SPEC & QUALITY PASS ngay ở Round 1. Toàn bộ 7 kiểm tra E2E bằng Playwright trên Chromium đối với static server đã PASS (lang thuộc tính unhydrated, HTTP 404 cho unknown locales, no-JS resilience 6 chapters + services + 3 details + CTA, heading hierarchy strictly h1->h2->h3, và single unique #contact). Với W03, W05, W06 đều đã integrated, gói W23 (Modal liên hệ và sao chép/fallback thuần) đủ điều kiện chuyển sang `ready`.
 
 
 
