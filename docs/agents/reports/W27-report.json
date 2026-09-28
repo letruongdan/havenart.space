@@ -1,0 +1,63 @@
+{
+  "taskId": "W27",
+  "taskTitle": "Fault matrix, mobile và accessibility — Gate G3",
+  "baseSha": "ec9d10ecedbd684586f46556594e23af2589d21b",
+  "headSha": "4b4ade9779f5e1b3ee5077cb98eb35fd27321d37",
+  "contractVersion": "havenart-contracts-1.1",
+  "changedFiles": [
+    "tests/e2e/accessibility.spec.ts",
+    "tests/e2e/fallback.spec.ts",
+    "tests/e2e/mobile.spec.ts",
+    "tests/fixtures/browser-faults.ts"
+  ],
+  "acceptanceMapping": {
+    "W27-AC1": {
+      "status": "PASS",
+      "evidence": "prefers-reduced-motion from the start mounts zero canvas and serves full static content (6 chapters, services, 3 details/summary elements, and contact section). Verified in no-JS and reduced-motion contexts by tests in tests/e2e/fallback.spec.ts."
+    },
+    "W27-AC2": {
+      "status": "PASS",
+      "evidence": "Mid-session static toggle cleanly preserves reading state. WebGL context loss (both during normal viewing and while modal dialog is open) transitions safely to static mode without crash. Audio network failures recover gracefully. 320px reflow test passes with zero horizontal overflow (scrollWidth - innerWidth <= 1px). Touch targets on mobile meet >= 44x44 CSS px for brand link, language switcher, audio toggle, and contact CTA. APG modal dialog adheres to focus trap, Escape closure, backdrop click, and focus restoration to trigger button. Verified by 19 tests across tests/e2e/fallback.spec.ts, tests/e2e/mobile.spec.ts, and tests/e2e/accessibility.spec.ts."
+    },
+    "W27-AC3": {
+      "status": "PASS",
+      "evidence": "Strictly adhered to writeFiles set (only test files and fixture modified; zero app modifications made from test task). Tests reflect actual implementation behavior with strict assertions. All tests pass against the static production build."
+    }
+  },
+  "commandsAndActualResults": [
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors"
+    },
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "output": "eslint . passed cleanly with 0 errors and 0 warnings"
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "output": "24 test files passed, 195 tests passed"
+    },
+    {
+      "command": "npm run build",
+      "exitCode": 0,
+      "output": "Compiled successfully, generated static pages 8/8 cleanly"
+    },
+    {
+      "command": "npm run test:e2e -- tests/e2e/fallback.spec.ts tests/e2e/mobile.spec.ts tests/e2e/accessibility.spec.ts",
+      "exitCode": 0,
+      "output": "19 passed (10.3s)"
+    },
+    {
+      "command": "node docs/agents/validate-plan.mjs",
+      "exitCode": 0,
+      "output": "PASS (36 packages, 30 phase1, 6 phase2, 0 errors)"
+    }
+  ],
+  "unverifiedItems": [
+    "Physical hardware VoiceOver/NVDA audio readout and physical touch screen tactile QA (covered via automated ARIA/APG/keyboard tests; physical device testing deferred to post-integration verification per AGENTS.md)"
+  ],
+  "openRisks": []
+}
