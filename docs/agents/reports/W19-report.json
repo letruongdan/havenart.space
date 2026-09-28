@@ -1,0 +1,55 @@
+{
+  "taskId": "W19",
+  "status": "SUBMITTED",
+  "baseSha": "57bb8e4695b70743f055047b850dae40f58d9e26",
+  "headSha": "3c1b9672d1aded0e67a0e830c07b7c82cb7df78d",
+  "contractVersion": "havenart-contracts-1.1",
+  "changedFiles": [
+    "src/components/scene/zones/Garden.tsx",
+    "src/components/story/Finale.tsx",
+    "tests/unit/garden-layout.test.ts"
+  ],
+  "acceptanceEvidence": [
+    {
+      "criterion": "W19-AC1: Cửa ra vườn giữ clearance; final rise ngoài mái và nhà ấm nhìn từ ngoài.",
+      "evidence": "createGardenZoneObject bố trí cảnh quan sân hiên và vườn sau hoàn toàn ngoài hành lang camera, duy trì khoảng cách an toàn >= 0.38m xuyên suốt đoạn p in [0.68, 1.0]. Tại điểm kết thúc p=1.0, camera waypoint ở cao độ Y=6.0m, Z=29.0m, nằm cao hơn mái nhà (Y=3.9m) và lùi xa về phía sau khu vườn (Z=29m > 16m), hướng nhìn quay ngược lại ngôi nhà và cảnh vườn trong ánh hoàng hôn."
+    },
+    {
+      "criterion": "W19-AC2: garden-tree anchor giữ tọa độ và nghĩa; cây mới không che rail.",
+      "evidence": "Điểm neo hotspot-anchor-garden-tree được bảo tồn tuyệt đối tại tọa độ world [1.5, 2.0, 24.5] khớp với cấu hình HOTSPOTS. Cây đại thụ trung tâm và các cây viền cảnh quan được tinh chỉnh tán và hình học 3D để không lấn vào hành lang bán kính 0.38m của camera rail."
+    },
+    {
+      "criterion": "W19-AC3: CTA finale dùng contact anchor từ contract; không fake channel links.",
+      "evidence": "Component Finale liên kết trực tiếp tới #contact bằng anchor href='#contact', không sinh thẻ section#contact thứ hai gây xung đột DOM với ContactSection của W06; không tạo kênh liên hệ hoặc liên kết giả mạo."
+    }
+  ],
+  "commandsAndActualResults": [
+    {
+      "command": "npm run test -- tests/unit/garden-layout.test.ts",
+      "exitCode": 0,
+      "output": "1 test file passed (6 tests passed total)"
+    },
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors"
+    },
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "output": "eslint . passed with 0 errors and 0 warnings"
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "output": "16 test files passed (135 tests passed total)"
+    }
+  ],
+  "integrationObligations": [
+    "W25: garden/finale mount và video continuous."
+  ],
+  "unverifiedItems": [],
+  "openRisks": [],
+  "assetRecords": [],
+  "reportPath": "docs/agents/reports/W19-report.json"
+}
