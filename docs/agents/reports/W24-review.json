@@ -1,0 +1,97 @@
+{
+  "taskId": "W24",
+  "candidate": {
+    "base": "6adcce56ae0f140f557f4e82dae6362a6c3a9f30",
+    "head": "dc860541c63d7272f545e86ec42c87fe202ae974",
+    "buildHash": null
+  },
+  "reviewer": {
+    "id": "havenart-reviewer-locale-lifecycle",
+    "tier": "H"
+  },
+  "verdict": {
+    "spec": "pass",
+    "quality": "pass",
+    "integration": "ready-to-integrate"
+  },
+  "acceptance": [
+    {
+      "id": "W24-AC1: Giữ chapter/local progress, #contact và mode; restore trước reveal canvas.",
+      "status": "pass",
+      "evidence": "saveLocaleHandoff và consumeLocaleHandoff bảo toàn trọn vẹn snapshot chuyển ngữ (chapterId, localProgress clamp trong [0,1], mode, targetAnchor '#contact' hoặc '#{chapterId}') dưới khóa chuẩn 'havenart:locale-handoff:v1'; tuân thủ nghiêm ngặt ngữ nghĩa consume-once bằng cách xóa ngay khỏi sessionStorage khi đọc; LanguageSwitcher render thẻ <a> chuẩn HTML trỏ tới /en#{chapter} hoặc /vi#{chapter} bảo đảm định tuyến chính xác khi JavaScript bị vô hiệu hóa; nghĩa vụ khôi phục DOM/canvas trước khi lộ canvas được đăng ký rõ ràng cho W25."
+    },
+    {
+      "id": "W24-AC2: Snapshot stale/wrong schema/unknown chapter bỏ an toàn; no PII; storage unavailable vẫn navigation dùng được.",
+      "status": "pass",
+      "evidence": "consumeLocaleHandoff kiểm tra chặt chẽ TTL (hủy snapshot vượt quá 5 phút hoặc timestamp tương lai), schemaVersion === 1, targetLocale khớp route mục tiêu, chapterId thuộc ALLOWED_CHAPTER_IDS, mode thuộc ALLOWED_MODES; isAllowedAnchor triệt tiêu triệt để URL tùy ý hoặc tấn công injection (chỉ chấp nhận #contact, #detail-* và chapter IDs); payload hoàn toàn không chứa PII (chỉ gồm chapter, progress, mode, anchor, timestamp); mọi thao tác storage được bọc trong try/catch bắt an toàn SecurityError, QuotaExceededError, không làm gián đoạn chuyển trang."
+    },
+    {
+      "id": "W24-AC3: Đóng modal để đổi locale hủy scroll restore cũ; không bật audio ở route mới; hard navigation/back-forward covered.",
+      "status": "pass",
+      "evidence": "LanguageSwitcher gọi onBeforeSwitch trước khi chuyển locale, đóng modal chi tiết theo ngữ nghĩa 'navigate' hủy bỏ scroll restore cũ; event.stopPropagation() ngăn ngừa click propagation tới backdrop khi modal mở; route mới khởi tạo hoàn toàn sạch, bảo đảm nguyên tắc opt-in không phát âm thanh tự động; saveHistoryState và getHistoryState quản lý history.state theo namespace riêng biệt 'havenart' không ghi đè router keys hiện có, hỗ trợ đầy đủ Back/Forward và hard navigation."
+    }
+  ],
+  "findings": [],
+  "checks": [
+    {
+      "command": "npm run test -- tests/unit/navigation-context.test.ts tests/unit/language-switcher.test.tsx",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "2 test files passed (11 tests passed total)",
+      "environment": "Node.js v24.13.0, Vitest 3.0.5, Windows pwsh"
+    },
+    {
+      "command": "npm run typecheck",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors",
+      "environment": "TypeScript 5.8.2, Windows pwsh"
+    },
+    {
+      "command": "npm run lint",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "eslint . passed with 0 errors and 0 warnings",
+      "environment": "ESLint 9.21.0, Windows pwsh"
+    },
+    {
+      "command": "npm test",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "22 test files passed (185 tests passed total)",
+      "environment": "Node.js v24.13.0, Vitest 3.0.5, Windows pwsh"
+    },
+    {
+      "command": "node docs/agents/validate-plan.mjs",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "status: PASS, 36 packages valid, orderedSharedFilePairs=14, 0 errors",
+      "environment": "Node.js v24.13.0, Windows pwsh"
+    },
+    {
+      "command": "npm run build",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "Compiled successfully, 8/8 static pages exported cleanly",
+      "environment": "Next.js 15.5.26 SSG, Windows pwsh"
+    }
+  ],
+  "unknowns": [
+    {
+      "item": "W25: actual route/history/modal restoration sau mounting.",
+      "reason": "W24 hoàn thành adapter handoff, history namespace và LanguageSwitcher component. Nghĩa vụ khôi phục thực tế DOM canvas và mount adapter tại root layout thuộc về downstream W25.",
+      "owner": "integrator / W25",
+      "nextCheck": "W25 integration review"
+    }
+  ],
+  "visualReview": {
+    "status": "not-run",
+    "artifact": null,
+    "reviewer": null
+  },
+  "decision": {
+    "action": "ready-to-integrate",
+    "owner": "integrator",
+    "round": 1
+  }
+}

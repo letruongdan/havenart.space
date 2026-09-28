@@ -1,0 +1,60 @@
+{
+  "taskId": "W24",
+  "status": "SUBMITTED",
+  "baseSha": "6adcce56ae0f140f557f4e82dae6362a6c3a9f30",
+  "headSha": "dc860541c63d7272f545e86ec42c87fe202ae974",
+  "contractVersion": "havenart-contracts-1.1",
+  "changedFiles": [
+    "src/components/ui/LanguageSwitcher.tsx",
+    "src/lib/i18n/navigationContext.ts",
+    "tests/unit/language-switcher.test.tsx",
+    "tests/unit/navigation-context.test.ts"
+  ],
+  "acceptanceEvidence": [
+    {
+      "criterion": "W24-AC1: Giữ chapter/local progress, #contact và mode; restore trước reveal canvas.",
+      "evidence": "saveLocaleHandoff và consumeLocaleHandoff lưu giữ nguyên vẹn snapshot ngữ cảnh chuyển trang (chapterId, localProgress, mode, targetAnchor '#contact') dưới khóa 'havenart:locale-handoff:v1'; cơ chế consume-once xóa ngay mục khỏi storage sau lần đọc đầu tiên; LanguageSwitcher xây dựng liên kết trực tiếp tới URL /en#chapter hoặc /vi#chapter bảo đảm hiển thị và điều hướng chính xác ngay cả khi tắt JavaScript."
+    },
+    {
+      "criterion": "W24-AC2: Snapshot stale/wrong schema/unknown chapter bỏ an toàn; no PII; storage unavailable vẫn navigation dùng được.",
+      "evidence": "consumeLocaleHandoff kiểm duyệt chặt chẽ TTL (hủy bỏ sau 5 phút), kiểm tra schemaVersion === 1, đối chiếu targetLocale và danh sách chương cho phép (ALLOWED_CHAPTER_IDS); targetAnchor chỉ chấp nhận danh sách an toàn (#contact, #chapter, #detail-*) và triệt tiêu các URL tùy ý hoặc mã độc; không lưu trữ bất kỳ thông tin cá nhân (PII) nào; trong trường hợp sessionStorage bị chặn hoặc ném lỗi hạn mức (QuotaExceededError), các hàm bắt lỗi an toàn và LanguageSwitcher vẫn hoạt động bình thường qua thẻ liên kết gốc."
+    },
+    {
+      "criterion": "W24-AC3: Đóng modal để đổi locale hủy scroll restore cũ; không bật audio ở route mới; hard navigation/back-forward covered.",
+      "evidence": "Khi người dùng chuyển ngôn ngữ trong lúc modal chi tiết đang mở, LanguageSwitcher kích hoạt onBeforeSwitch để đóng modal theo ngữ nghĩa 'navigate', hủy bỏ hoàn toàn việc phục hồi scroll cũ; âm thanh tuyệt đối không tự động phát ở route mới theo đúng nguyên tắc opt-in; saveHistoryState và getHistoryState quản lý lịch sử trình duyệt theo namespace 'havenart' trong history.state mà không ghi đè các khóa của Next.js router, hỗ trợ đầy đủ Back/Forward."
+    }
+  ],
+  "commandsAndActualResults": [
+    {
+      "command": "npm run test -- tests/unit/navigation-context.test.ts tests/unit/language-switcher.test.tsx",
+      "exitCode": 0,
+      "output": "2 test files passed (11 tests passed total)"
+    },
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors"
+    },
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "output": "eslint . passed with 0 errors and 0 warnings"
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "output": "22 test files passed (185 tests passed total)"
+    },
+    {
+      "command": "npm run build",
+      "exitCode": 0,
+      "output": "Compiled successfully, 8/8 static pages exported cleanly"
+    }
+  ],
+  "integrationObligations": [
+    "W25: actual route/history/modal restoration sau mounting."
+  ],
+  "unverifiedItems": [],
+  "openRisks": [],
+  "reportPath": "docs/agents/reports/W24-report.json"
+}
