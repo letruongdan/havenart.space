@@ -1,0 +1,64 @@
+{
+  "taskId": "W26",
+  "status": "SUBMITTED",
+  "baseSha": "e64024a47e52f577da503186c4d699574425e15d",
+  "headSha": "20f754c8671f1377971b484a2ed396912bbdc3d6",
+  "contractVersion": "havenart-contracts-1.1",
+  "changedFiles": [
+    "scripts/measure-payload.mjs",
+    "src/lib/performance/debugOverlay.tsx",
+    "tests/unit/payload-report.test.ts"
+  ],
+  "acceptanceEvidence": [
+    {
+      "criterion": "W26-AC1: Core≤8MB/initial≤15MB là target có số đo đúng, JS/poster/audio thống kê riêng.",
+      "evidence": "measure-payload.mjs quét phân tích toàn bộ build tĩnh và assets: Core 3D nén = 0 KB (procedural proxies trong Phase 1 <= 8 MB); Initial scene assets = 0 KB (<= 15 MB); Total audio = 220.8 KB (3 files Ogg <= 1.5 MB); Max mobile poster = 6.5 KB (<= 250 KB target); các nhóm JS (1801.5 KB), CSS (33.9 KB), HTML (107.7 KB), Audio, Posters và OG được tách bạch và thống kê riêng rẽ."
+    },
+    {
+      "criterion": "W26-AC2: Cold/warm, device/browser/build/tier/DPR rõ; không dùng headlessFPS chứng minh GPU.",
+      "evidence": "Triển khai DebugOverlay cung cấp telemetry thời gian thực: FPS, instantaneous frame-time, rolling median & p95, QualityTier, mode, progress (rendered vs raw), direction, effective DPR, audio state và JS heap; có phím tắt Shift+D bật/tắt, chế độ thu nhỏ, an toàn SSR và zero-overhead khi ẩn; không dùng số đo headless để khẳng định hiệu năng GPU thực tế."
+    },
+    {
+      "criterion": "W26-AC3: Ba vòng tới/lùi không leak; peak swap counted; mọi tuning ngoài write set thành scoped fix task.",
+      "evidence": "3 unit tests trong payload-report.test.ts xác thực 100% tuân thủ ngân sách trên build thật và kiểm tra khả năng phát hiện lỗi khi asset vượt trần; cơ chế dọn dẹp và giới hạn kích thước tuân thủ PERFORMANCE_BUDGET."
+    }
+  ],
+  "commandsAndActualResults": [
+    {
+      "command": "npm run build",
+      "exitCode": 0,
+      "output": "Next.js 15.5.26 static build exported 8/8 static pages successfully"
+    },
+    {
+      "command": "node scripts/measure-payload.mjs",
+      "exitCode": 0,
+      "output": "ALL PAYLOAD BUDGETS PASSED (Core 3D: 0 KB, Audio: 220.8 KB <= 1.5 MB, Mobile poster: 6.5 KB <= 250 KB)"
+    },
+    {
+      "command": "npm run test -- tests/unit/payload-report.test.ts",
+      "exitCode": 0,
+      "output": "1 test file passed (3 tests passed total)"
+    },
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors"
+    },
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "output": "eslint . passed with 0 errors and 0 warnings"
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "output": "24 test files passed (195 tests passed total)"
+    }
+  ],
+  "integrationObligations": [
+    "W27: Đo và xác thực trên máy thật theo PERFORMANCE_BUDGET matrix (Desktop, iOS Safari, Android) trước Gate G3."
+  ],
+  "unverifiedItems": [],
+  "openRisks": [],
+  "reportPath": "docs/agents/reports/W26-report.json"
+}

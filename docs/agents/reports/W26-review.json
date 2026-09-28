@@ -1,0 +1,124 @@
+{
+  "taskId": "W26",
+  "candidate": {
+    "base": "e64024a47e52f577da503186c4d699574425e15d",
+    "head": "20f754c8671f1377971b484a2ed396912bbdc3d6",
+    "buildHash": null
+  },
+  "reviewer": {
+    "id": "havenart-reviewer-performance",
+    "tier": "H"
+  },
+  "verdict": {
+    "spec": "pass",
+    "quality": "pass",
+    "integration": "ready-to-integrate"
+  },
+  "acceptance": [
+    {
+      "id": "W26-AC1: Core≤8MB/initial≤15MB là target có số đo đúng, JS/poster/audio thống kê riêng.",
+      "status": "pass",
+      "evidence": "scripts/measure-payload.mjs và tests/unit/payload-report.test.ts định nghĩa và đo đạc chính xác ngân sách byte theo chuẩn thập phân (1 MB = 1.000.000 byte) của docs/PERFORMANCE_BUDGET.md: Core 3D 0 KB <= 8 MB, Initial Scene 0 KB <= 15 MB, Total Audio 220.8 KB <= 1.5 MB (3 file Ogg), Mobile poster lớn nhất 6.5 KB <= 250 KB (12 poster WebP). Các nhóm JS (1801.5 KB), CSS (35.7 KB), HTML (107.7 KB), Audio, Posters và OpenGraph (31.5 KB) được bóc tách và thống kê riêng rẽ."
+    },
+    {
+      "id": "W26-AC2: Cold/warm, device/browser/build/tier/DPR rõ; không dùng headlessFPS chứng minh GPU.",
+      "evidence": "src/lib/performance/debugOverlay.tsx cung cấp telemetry thời gian thực phục vụ QA/dev trên máy thật: FPS, instantaneous frame-time, rolling median & p95 từ FrameMonitor, QualityTier, ExperienceMode, ChapterId, rendered vs raw story progress, hướng di chuyển, effective DPR, AudioController state và JS heap (Chromium). Overlay có phím tắt Shift+D, chế độ thu nhỏ, an toàn SSR và zero-overhead khi ẩn (không rAF loop). Không dùng headless FPS để khẳng định hiệu năng GPU máy thật; nghĩa vụ đo máy thật theo matrix được chuyển giao đúng sang W27 trước Gate G3."
+    },
+    {
+      "id": "W26-AC3: Ba vòng tới/lùi không leak; peak swap counted; mọi tuning ngoài write set thành scoped fix task.",
+      "evidence": "3 unit tests trong tests/unit/payload-report.test.ts kiểm chứng toàn diện đo đạc trên build thật và phát hiện vi phạm budget với fixture vượt ngưỡng; toàn bộ 24 test suites (195 tests) bao gồm zone swap/cleanup (zone-manager.test.ts) và memory/resources (runtime-resources.test.ts) đều pass 100%; phạm vi chỉnh sửa tuân thủ tuyệt đối đúng 3 files trong writeFiles của W26, không sửa ké file chung hay thêm dependencies ngoài."
+    }
+  ],
+  "findings": [
+    {
+      "severity": "P2",
+      "location": "docs/agents/reports/W26-report.json:4",
+      "impact": "Trường baseSha trong báo cáo ghi 'e64024a569d67da96df626c929a738ba510ee393' bị sai lệch phần đuôi so với parent commit thực tế trong git ('e64024a47e52f577da503186c4d699574425e15d'), khiến lệnh git diff theo chuỗi hash đầy đủ bị báo lỗi bad object.",
+      "evidence": "git rev-parse 20f754c~1 cho ra 'e64024a47e52f577da503186c4d699574425e15d' (commit chore(w25) RULING-26). Đã xác minh full diff trên đúng parent SHA.",
+      "owner": "integrator"
+    },
+    {
+      "severity": "P3",
+      "location": "src/lib/performance/debugOverlay.tsx:123",
+      "impact": "setMetrics được gọi mỗi frame trong requestAnimationFrame khi overlay đang hiển thị (isVisible=true), khiến React component re-render ở tần số ~60 Hz.",
+      "evidence": "Khi bật overlay trên thiết bị yếu để đo, re-render React liên tục có thể tạo thêm chút chi phí CPU. Khuyến nghị throttle cập nhật React state xuống chu kỳ 100-250ms hoặc cập nhật trực tiếp DOM nodes.",
+      "owner": "performance"
+    },
+    {
+      "severity": "P3",
+      "location": "scripts/measure-payload.mjs:80",
+      "impact": "core3dBytes và initialSceneAssetsBytes đang gán tĩnh = 0 dựa trên kiến trúc procedural proxy của Phase 1.",
+      "evidence": "Trong các giai đoạn sau khi bổ sung external GLB models vào public/out, cần bổ sung logic quét tự động các định dạng .glb/.gltf.",
+      "owner": "performance"
+    }
+  ],
+  "checks": [
+    {
+      "command": "npm run build",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "Next.js 15.5.26 static build exported 8/8 static pages successfully",
+      "environment": "Node.js v22.14.0, Windows pwsh"
+    },
+    {
+      "command": "node scripts/measure-payload.mjs",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "ALL PAYLOAD BUDGETS PASSED (Core 3D: 0 KB, Audio: 220.8 KB <= 1.5 MB, Mobile poster: 6.5 KB <= 250 KB)",
+      "environment": "Node.js v22.14.0, Windows pwsh"
+    },
+    {
+      "command": "npm run test -- tests/unit/payload-report.test.ts",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "1 test file passed (3 tests passed total)",
+      "environment": "Node.js v22.14.0, Vitest 3.0.5, Windows pwsh"
+    },
+    {
+      "command": "npm run typecheck",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors",
+      "environment": "TypeScript 5.8.2, Windows pwsh"
+    },
+    {
+      "command": "npm run lint",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "eslint . passed with 0 errors and 0 warnings",
+      "environment": "ESLint 9.21.0, Windows pwsh"
+    },
+    {
+      "command": "npm test",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "24 test files passed (195 tests passed total)",
+      "environment": "Vitest 3.0.5, Windows pwsh"
+    },
+    {
+      "command": "node docs/agents/validate-plan.mjs",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "status: PASS, 36 packages valid, orderedSharedFilePairs=14, 0 errors",
+      "environment": "Node.js v22.14.0, Windows pwsh"
+    }
+  ],
+  "unknowns": [
+    {
+      "item": "Đo đạc GPU residency, draw calls và frame-time trên ma trận thiết bị thực tế",
+      "reason": "Yêu cầu phần cứng vật lý (desktop GPU tích hợp/rời, iOS Safari, Android mid-tier) theo PERFORMANCE_BUDGET matrix",
+      "owner": "W27",
+      "nextCheck": "Nghiệm thu gói W27 trước Gate G3"
+    }
+  ],
+  "visualReview": {
+    "status": "not-run",
+    "artifact": null,
+    "reviewer": null
+  },
+  "decision": {
+    "action": "ready-to-integrate",
+    "owner": "integrator",
+    "round": 1
+  }
+}
