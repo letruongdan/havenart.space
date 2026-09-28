@@ -1,0 +1,1984 @@
+{
+  "schemaVersion": 1,
+  "updated": "2026-09-28",
+  "status": "planning-only",
+  "common": {
+    "contractVersion": "havenart-contracts-1.1",
+    "status": "planned",
+    "commonRead": [
+      "AGENTS.md",
+      "docs/agents/CONTRACTS.md",
+      "docs/agents/ORCHESTRATION.md",
+      "docs/agents/REVIEW_RUBRIC.md"
+    ],
+    "handoffRequired": [
+      "taskId",
+      "baseSha",
+      "headSha",
+      "contractVersion",
+      "changedFiles",
+      "acceptanceEvidence",
+      "commandsAndActualResults",
+      "unverifiedItems",
+      "openRisks",
+      "reportPath"
+    ],
+    "completeWhen": "Local spec/quality and integration checks on recorded SHA allow integrated; every deferred integration obligation must pass before accepted. Implementer DONE is submission only."
+  },
+  "protectedPaths": [
+    "package.json",
+    "package-lock.json",
+    ".node-version",
+    "tsconfig.json",
+    "next.config.ts",
+    "eslint.config.mjs",
+    "postcss.config.mjs",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "src/types/",
+    "src/app/",
+    "src/config/",
+    "src/stores/",
+    "src/components/story/ExperienceHost.tsx",
+    "ASSET_LICENSES.md"
+  ],
+  "schedulingRules": {
+    "dependencies": "all integrated or accepted on integration branch",
+    "sharedCheckoutMaxWriters": 1,
+    "isolatedMaxWorkers": 2,
+    "reviewSeats": 1,
+    "integratorSeats": 1,
+    "totalSeats": 4,
+    "requiresAcceptedContract": true,
+    "mergeConcurrency": 1
+  },
+  "packages": [
+    {
+      "id": "W01",
+      "title": "Nền tảng và môi trường kiểm tra tái lập",
+      "phase": 1,
+      "legacyTasks": [
+        "T01"
+      ],
+      "dependsOn": [],
+      "implementerTier": "H",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "package.json",
+        "package-lock.json",
+        ".node-version",
+        "tsconfig.json",
+        "next.config.ts",
+        "eslint.config.mjs",
+        "postcss.config.mjs",
+        "vitest.config.ts",
+        "playwright.config.ts",
+        ".gitignore",
+        "src/app/(entry)/layout.tsx",
+        "src/app/(entry)/page.tsx",
+        "src/styles/globals.css",
+        "tests/helpers/serve-static.mjs"
+      ],
+      "readFiles": [
+        "docs/TECH_DECISIONS.md"
+      ],
+      "consumes": "Workspace hiện chỉ có tài liệu; chưa Git/code. Duy nhất task này khởi tạo baseline/toolchain khi bước triển khai được yêu cầu.",
+      "produces": "npm scripts dev/build/lint/typecheck/test/test:e2e; static export; Playwright build-before-test và Node static test server phục vụ out/ với HOST=127.0.0.1, port riêng trong packet.",
+      "acceptance": [
+        "Khóa exact versions/peer compatibility và runtime; không scaffold đè docs hiện có.",
+        "Có HTML điểm vào /; không root layout src/app/layout.tsx xung đột root locale.",
+        "E2E build-before-test và static server pinned, không test dev server; origin localhost không giả domain thật."
+      ],
+      "verification": [
+        "npm run typecheck",
+        "npm run lint",
+        "npm run build",
+        "Browser smoke của out/index.html và HTTP 404 thật"
+      ],
+      "guardrails": "Không agent khác cài dependency/chỉnh lockfile; baseline Git phải ghi SHA trước dispatch.",
+      "effortHours": [
+        6,
+        10
+      ],
+      "reviewFamily": "spec-and-quality",
+      "packet": "docs/agents/tasks/W01.md",
+      "localAcceptance": [
+        "Khóa exact versions/peer compatibility và runtime; không scaffold đè docs hiện có.",
+        "Có HTML điểm vào /; không root layout src/app/layout.tsx xung đột root locale.",
+        "E2E build-before-test và static server pinned, không test dev server; origin localhost không giả domain thật."
+      ],
+      "integrationChecks": [],
+      "dispatchable": true
+    },
+    {
+      "id": "W02",
+      "title": "Khóa hợp đồng dữ liệu và fixtures dùng chung",
+      "phase": 1,
+      "legacyTasks": [
+        "T02",
+        "T04",
+        "T05"
+      ],
+      "dependsOn": [
+        "W01"
+      ],
+      "implementerTier": "H",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/types/story.ts",
+        "src/types/scene.ts",
+        "src/types/runtime.ts",
+        "src/types/telemetry.ts",
+        "src/config/story.ts",
+        "src/config/hotspots.ts",
+        "tests/fixtures/story.ts",
+        "tests/fixtures/contacts.ts",
+        "tests/fixtures/assets.ts",
+        "docs/agents/CONTRACTS.md"
+      ],
+      "readFiles": [
+        "docs/superpowers/specs/2026-09-27-havenart-design.md",
+        "docs/STORY_CHAPTER_SPEC.md"
+      ],
+      "consumes": "Schema trong spec và CONTRACTS; chưa cần asset thật hoặc renderer.",
+      "produces": "C01–C10: types, props, module APIs, stable IDs, ranges, registry interfaces; fixture valid/invalid có nhãn test.",
+      "acceptance": [
+        "Types chung không import WebGL runtime; modules chỉ import type khi cần.",
+        "Các preset references và dictionary keys được định nghĩa trước consumer; validate fixture qua registry truyền vào, không import module chưa có.",
+        "Story IDs/ranges, hotspot local ranges và DOM IDs duy nhất đúng spec; không có contact giả trong production config."
+      ],
+      "verification": [
+        "npm run typecheck",
+        "Review bảng provider/consumer trong CONTRACTS và compile fixture"
+      ],
+      "guardrails": "Gate G0 kỹ thuật; thay interface sau điểm này phải có change request và consumer impact list.",
+      "effortHours": [
+        6,
+        10
+      ],
+      "reviewFamily": "spec-and-quality",
+      "packet": "docs/agents/tasks/W02.md",
+      "localAcceptance": [
+        "Types chung không import WebGL runtime; modules chỉ import type khi cần.",
+        "Các preset references và dictionary keys được định nghĩa trước consumer; validate fixture qua registry truyền vào, không import module chưa có.",
+        "Story IDs/ranges, hotspot local ranges và DOM IDs duy nhất đúng spec; không có contact giả trong production config."
+      ],
+      "integrationChecks": [],
+      "dispatchable": true
+    },
+    {
+      "id": "W03",
+      "title": "Nội dung VI/EN và dictionary loader",
+      "phase": 1,
+      "legacyTasks": [
+        "T02"
+      ],
+      "dependsOn": [
+        "W02"
+      ],
+      "implementerTier": "M",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/content/vi/messages.ts",
+        "src/content/en/messages.ts",
+        "src/lib/i18n/locale.ts",
+        "src/lib/i18n/dictionary.ts",
+        "tests/unit/locale.test.ts",
+        "tests/unit/dictionary.test.ts"
+      ],
+      "readFiles": [
+        "docs/I18N_SPEC.md",
+        "docs/UX_STORYBOARD.md",
+        "docs/PROJECT_VISION.md"
+      ],
+      "consumes": "C01 Locale; C02 dictionary shape và key map từ W02.",
+      "produces": "parseLocale, getDictionary; sáu chương, ba chi tiết, dịch vụ, CTA, controls/errors/a11y/metadata đủ hai ngôn ngữ.",
+      "acceptance": [
+        "VI/EN key parity và biến nội suy khớp; invalid locale trả null.",
+        "Copy theo brief, không thêm claim hoặc thông tin liên hệ; không raw HTML.",
+        "Đủ glyph/chuỗi cho static và cinematic; không nội dung độc quyền canvas."
+      ],
+      "verification": [
+        "npm run test -- tests/unit/locale.test.ts tests/unit/dictionary.test.ts",
+        "Review VI/EN bằng người đọc tốt cả hai ngôn ngữ"
+      ],
+      "guardrails": "Không chỉnh route, token hoặc story IDs để khớp nội dung; báo thiếu key cho contract owner.",
+      "effortHours": [
+        4,
+        8
+      ],
+      "reviewFamily": "spec-and-quality",
+      "packet": "docs/agents/tasks/W03.md",
+      "localAcceptance": [
+        "VI/EN key parity và biến nội suy khớp; invalid locale trả null.",
+        "Copy theo brief, không thêm claim hoặc thông tin liên hệ; không raw HTML.",
+        "Đủ glyph/chuỗi cho static và cinematic; không nội dung độc quyền canvas."
+      ],
+      "integrationChecks": [],
+      "dispatchable": true
+    },
+    {
+      "id": "W04",
+      "title": "Chapter sampler và validator thuần",
+      "phase": 1,
+      "legacyTasks": [
+        "T05"
+      ],
+      "dependsOn": [
+        "W02"
+      ],
+      "implementerTier": "M",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/lib/story/sampleChapter.ts",
+        "src/lib/story/validateStory.ts",
+        "tests/unit/story.test.ts"
+      ],
+      "readFiles": [
+        "docs/STORY_CHAPTER_SPEC.md"
+      ],
+      "consumes": "C01 StoryChapter, C03 StoryValidationInput và fixtures W02.",
+      "produces": "sampleChapter(chapters,p), validateStory(input):string[]; không cần renderer/preset implementation.",
+      "acceptance": [
+        "Biên 0/.15/.27/.39/.68/.87/1 đúng half-open; clamp finite ngoài range.",
+        "Từ chối duplicate/gap/overlap/NaN và reference thiếu trong registry được truyền vào.",
+        "Query tiến/lùi cùng p cho cùng chapter; lỗi cấu hình không bị nuốt."
+      ],
+      "verification": [
+        "npm run test -- tests/unit/story.test.ts",
+        "npm run typecheck"
+      ],
+      "guardrails": "Không sửa config để test xanh, không hardcode số phòng vào thuật toán.",
+      "effortHours": [
+        3,
+        5
+      ],
+      "reviewFamily": "spec-and-quality",
+      "packet": "docs/agents/tasks/W04.md",
+      "localAcceptance": [
+        "Biên 0/.15/.27/.39/.68/.87/1 đúng half-open; clamp finite ngoài range.",
+        "Từ chối duplicate/gap/overlap/NaN và reference thiếu trong registry được truyền vào.",
+        "Query tiến/lùi cùng p cho cùng chapter; lỗi cấu hình không bị nuốt."
+      ],
+      "integrationChecks": [],
+      "dispatchable": true
+    },
+    {
+      "id": "W05",
+      "title": "Contact config và URL validation",
+      "phase": 1,
+      "legacyTasks": [
+        "T04"
+      ],
+      "dependsOn": [
+        "W02"
+      ],
+      "implementerTier": "M",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/config/contacts.ts",
+        "src/config/site.ts",
+        "src/lib/contact.ts",
+        "tests/unit/contact.test.ts"
+      ],
+      "readFiles": [
+        "docs/SEO_SPEC.md",
+        "docs/PROJECT_VISION.md"
+      ],
+      "consumes": "C01 ContactConfig/ContactChannel; các fixture URL chỉ dùng trong test.",
+      "produces": "getContactUrl(config,channel):string|null; validateReleaseContacts(config):string[]; site origin nullable.",
+      "acceptance": [
+        "Null hợp lệ cho preview; production cần ba URL thật hoặc thay đổi phạm vi ghi rõ.",
+        "Từ chối scheme/userinfo/hostname giả; exact channel allowlist có review.",
+        "Không invented phone/account/URL, không gửi message khi test."
+      ],
+      "verification": [
+        "npm run test -- tests/unit/contact.test.ts",
+        "npm run typecheck"
+      ],
+      "guardrails": "Không làm form/backend hoặc mua dịch vụ; không chỉnh route/contact UI.",
+      "effortHours": [
+        3,
+        5
+      ],
+      "reviewFamily": "spec-and-quality",
+      "packet": "docs/agents/tasks/W05.md",
+      "localAcceptance": [
+        "Null hợp lệ cho preview; production cần ba URL thật hoặc thay đổi phạm vi ghi rõ.",
+        "Từ chối scheme/userinfo/hostname giả; exact channel allowlist có review.",
+        "Không invented phone/account/URL, không gửi message khi test."
+      ],
+      "integrationChecks": [],
+      "dispatchable": true
+    },
+    {
+      "id": "W06",
+      "title": "Trang HTML locale và bố cục semantic",
+      "phase": 1,
+      "legacyTasks": [
+        "T02",
+        "T04"
+      ],
+      "dependsOn": [
+        "W03",
+        "W04",
+        "W05"
+      ],
+      "implementerTier": "M",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/app/[locale]/layout.tsx",
+        "src/app/[locale]/page.tsx",
+        "src/components/story/StorySections.tsx",
+        "src/components/ui/ContactSection.tsx",
+        "tests/e2e/static-story.spec.ts"
+      ],
+      "readFiles": [
+        "docs/I18N_SPEC.md",
+        "docs/ACCESSIBILITY_SPEC.md",
+        "docs/USER_JOURNEY.md"
+      ],
+      "consumes": "C02 dictionary; C03 chapters; C04 contacts; root entry W01.",
+      "produces": "Static /vi /en HTML, duy nhất #contact, sections/room stories/details qua C02/C05 DOM IDs.",
+      "acceptance": [
+        "lang đúng trong HTML chưa hydrate; unknown locale HTTP404 trên static host.",
+        "Tắt JS vẫn đủ sáu story/dịch vụ/ba details/CTA; contact null không href giả.",
+        "Một h1 và heading order đúng; ContactSection là nơi duy nhất render id contact."
+      ],
+      "verification": [
+        "npm run build",
+        "npm run test:e2e -- tests/e2e/static-story.spec.ts"
+      ],
+      "guardrails": "Owner route ban đầu; các worker về sau không tự mount vào page, gửi cho integrator.",
+      "effortHours": [
+        5,
+        8
+      ],
+      "reviewFamily": "spec-and-quality",
+      "packet": "docs/agents/tasks/W06.md",
+      "localAcceptance": [
+        "lang đúng trong HTML chưa hydrate; unknown locale HTTP404 trên static host.",
+        "Tắt JS vẫn đủ sáu story/dịch vụ/ba details/CTA; contact null không href giả.",
+        "Một h1 và heading order đúng; ContactSection là nơi duy nhất render id contact."
+      ],
+      "integrationChecks": [],
+      "dispatchable": true
+    },
+    {
+      "id": "W07",
+      "title": "Design tokens và brand shell",
+      "phase": 1,
+      "legacyTasks": [
+        "T03"
+      ],
+      "dependsOn": [
+        "W03"
+      ],
+      "implementerTier": "M",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/styles/tokens.css",
+        "src/components/ui/BrandHeader.tsx",
+        "src/components/story/StoryOverlay.tsx"
+      ],
+      "readFiles": [
+        "docs/UX_STORYBOARD.md",
+        "docs/ACCESSIBILITY_SPEC.md"
+      ],
+      "consumes": "C02 copy; C05 ShellProps; không tự lấy global progress.",
+      "produces": "Header/overlay nhận props; token được tự host/font licensed khi có.",
+      "acceptance": [
+        "Một ý mỗi cảnh, header gọn, dấu Việt rõ, ≤2 font family.",
+        "Keyboard focus rõ, CTA anchor thật, mobile chạm được; không UI đè kiến trúc.",
+        "Overlay chỉ nhận rendered chapter, không tự đọc window.scrollY hay tạo store."
+      ],
+      "verification": [
+        "npm run typecheck",
+        "Kiểm component props/DOM semantics; visual tích hợp deferred tới W13"
+      ],
+      "guardrails": "Không sửa dictionary, globals.css hoặc route; yêu cầu integrator nối token.",
+      "effortHours": [
+        4,
+        7
+      ],
+      "reviewFamily": "spec-and-quality",
+      "packet": "docs/agents/tasks/W07.md",
+      "localAcceptance": [
+        "Một ý mỗi cảnh, header gọn, dấu Việt rõ, ≤2 font family.",
+        "Keyboard focus rõ, CTA anchor thật, mobile chạm được; không UI đè kiến trúc.",
+        "Overlay chỉ nhận rendered chapter, không tự đọc window.scrollY hay tạo store."
+      ],
+      "integrationChecks": [
+        "W13: brand shell đã mount; desktop/mobile/zoom screenshots."
+      ],
+      "dispatchable": true
+    },
+    {
+      "id": "W08",
+      "title": "Spline rail, quaternion và clearance",
+      "phase": 1,
+      "legacyTasks": [
+        "T07"
+      ],
+      "dependsOn": [
+        "W02"
+      ],
+      "implementerTier": "H",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/config/camera.ts",
+        "src/lib/three/cameraRail.ts",
+        "src/lib/three/railClearance.ts",
+        "tests/unit/camera-rail.test.ts"
+      ],
+      "readFiles": [
+        "docs/CAMERA_SCROLL_SPEC.md",
+        "docs/SCENE_ARCHITECTURE.md"
+      ],
+      "consumes": "C01 CameraPose/Vec3; C06 rail/world connector contract; fixtures W02.",
+      "produces": "sampleRail(p):CameraPose; rail derivative/clearance report theo C06.",
+      "acceptance": [
+        "Arc-length/speed mapping liên tục; forward/reverse deterministic; quaternion không flip/roll.",
+        "42mm seed trong khoảng 35–55mm equivalent, không nhầm FOV degrees.",
+        "Sweep qua cửa thật bao near-plane; reject lookAt trùng vị trí; shell thật được xác nhận W13."
+      ],
+      "verification": [
+        "npm run test -- tests/unit/camera-rail.test.ts",
+        "npm run typecheck"
+      ],
+      "guardrails": "Không sửa shell/runtime/story ranges; chỗ cần sửa topology gửi contract change.",
+      "effortHours": [
+        6,
+        12
+      ],
+      "reviewFamily": "camera",
+      "packet": "docs/agents/tasks/W08.md",
+      "localAcceptance": [
+        "Arc-length/speed mapping liên tục; forward/reverse deterministic; quaternion không flip/roll.",
+        "42mm seed trong khoảng 35–55mm equivalent, không nhầm FOV degrees.",
+        "Sweep qua cửa thật bao near-plane; reject lookAt trùng vị trí; shell thật được xác nhận W13."
+      ],
+      "integrationChecks": [
+        "W13: clearance kiểm lại với shell thật, video tuyến tới/lùi."
+      ],
+      "dispatchable": true
+    },
+    {
+      "id": "W09",
+      "title": "Asset registry và zone streaming",
+      "phase": 1,
+      "legacyTasks": [
+        "T06"
+      ],
+      "dependsOn": [
+        "W02"
+      ],
+      "implementerTier": "H",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/lib/three/assetLoader.ts",
+        "src/lib/three/zoneManager.ts",
+        "src/lib/three/resourceRegistry.ts",
+        "tests/unit/zone-manager.test.ts"
+      ],
+      "readFiles": [
+        "docs/ASSET_PIPELINE.md",
+        "docs/SCENE_ARCHITECTURE.md"
+      ],
+      "consumes": "C07 manifest/ZoneHandle/ZoneManager APIs; fake loader fixture W02.",
+      "produces": "createZoneManager(deps), update(p,direction), dispose(); resource registry có owner/refcount.",
+      "acceptance": [
+        "Active/shell không bị evict; neighbor bounded bytes; reverse đổi ưu tiên.",
+        "Shared material còn reference không dispose; canceled/rejected job trả ref/buffer.",
+        "GLB decorative lỗi trả proxy; core failure được báo lên mode gate, không nuốt lỗi hoặc retry vô hạn."
+      ],
+      "verification": [
+        "npm run test -- tests/unit/zone-manager.test.ts",
+        "npm run typecheck"
+      ],
+      "guardrails": "Không gọi dispose từ consumer của asset shared; không sửa Canvas hoặc import toàn scene vào HTML.",
+      "effortHours": [
+        6,
+        12
+      ],
+      "reviewFamily": "resources",
+      "packet": "docs/agents/tasks/W09.md",
+      "localAcceptance": [
+        "Active/shell không bị evict; neighbor bounded bytes; reverse đổi ưu tiên.",
+        "Shared material còn reference không dispose; canceled/rejected job trả ref/buffer.",
+        "GLB decorative lỗi trả proxy; core failure được báo lên mode gate, không nuốt lỗi hoặc retry vô hạn."
+      ],
+      "integrationChecks": [
+        "W26: peak GPU/resource trên production integrated scene."
+      ],
+      "dispatchable": true
+    },
+    {
+      "id": "W10",
+      "title": "Villa shell và proxy có đường thông",
+      "phase": 1,
+      "legacyTasks": [
+        "T06"
+      ],
+      "dependsOn": [
+        "W02"
+      ],
+      "implementerTier": "M",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/components/scene/VillaShell.tsx",
+        "src/components/scene/proxies/FurnitureProxy.tsx",
+        "src/components/scene/proxies/GardenProxy.tsx"
+      ],
+      "readFiles": [
+        "docs/SCENE_ARCHITECTURE.md",
+        "docs/UX_STORYBOARD.md"
+      ],
+      "consumes": "C06 world envelope và connectors; C05 ZoneProps.",
+      "produces": "Persistent shell và proxy đúng meter/Y-up; cửa chính/cửa sau mở thật; garden-tree anchor từ đầu.",
+      "acceptance": [
+        "Tỷ lệ nhà/lối đi đúng blockout; không sealed box rồi ẩn tường.",
+        "Shell không duplicate các mặt của detail, không unmount theo chapter.",
+        "Proxy giữ đủ silhouette từ mọi hướng; không đổi origin của rail."
+      ],
+      "verification": [
+        "npm run typecheck"
+      ],
+      "guardrails": "Không cài asset paid; mọi tài sản mới ghi record trong report để integrator cập nhật license.",
+      "effortHours": [
+        5,
+        9
+      ],
+      "reviewFamily": "spec-and-quality",
+      "packet": "docs/agents/tasks/W10.md",
+      "localAcceptance": [
+        "Tỷ lệ nhà/lối đi đúng blockout; không sealed box rồi ẩn tường.",
+        "Shell không duplicate các mặt của detail, không unmount theo chapter.",
+        "Proxy giữ đủ silhouette từ mọi hướng; không đổi origin của rail."
+      ],
+      "integrationChecks": [
+        "W13: top-view, keyframes, actual clearance so W08."
+      ],
+      "dispatchable": true
+    },
+    {
+      "id": "W11",
+      "title": "Canvas boundary và mode gate từ đầu",
+      "phase": 1,
+      "legacyTasks": [
+        "T06",
+        "T15"
+      ],
+      "dependsOn": [
+        "W06",
+        "W09",
+        "W10"
+      ],
+      "implementerTier": "H",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/components/story/ExperienceGate.tsx",
+        "src/lib/performance/selectMode.ts",
+        "src/components/scene/SceneCanvas.tsx",
+        "src/components/scene/ZoneBoundary.tsx",
+        "tests/unit/mode.test.ts"
+      ],
+      "readFiles": [
+        "docs/ACCESSIBILITY_SPEC.md",
+        "docs/SCENE_ARCHITECTURE.md"
+      ],
+      "consumes": "C05 component slots; C07 loader; C08 mode state/reasons.",
+      "produces": "selectMode và dynamic import boundary; fail-to-static đã có trước camera runtime.",
+      "acceptance": [
+        "Reduced motion/userStatic kiểm trước import R3F/Three; SSR vẫn đủ HTML.",
+        "Decorative failure dùng proxy, core/context failure về static; late-load khi đã scroll xa giữ static.",
+        "Poster/loading không che CTA; renderer shutdown không tắt nội dung DOM."
+      ],
+      "verification": [
+        "npm run test -- tests/unit/mode.test.ts",
+        "npm run build"
+      ],
+      "guardrails": "Không tự mount vào route hoặc tạo runtime progress riêng; đưa exported host component cho integrator.",
+      "effortHours": [
+        5,
+        9
+      ],
+      "reviewFamily": "spec-and-quality",
+      "packet": "docs/agents/tasks/W11.md",
+      "localAcceptance": [
+        "Reduced motion/userStatic kiểm trước import R3F/Three; SSR vẫn đủ HTML.",
+        "Decorative failure dùng proxy, core/context failure về static; late-load khi đã scroll xa giữ static.",
+        "Poster/loading không che CTA; renderer shutdown không tắt nội dung DOM."
+      ],
+      "integrationChecks": [
+        "W13: network reduced/noWebGL proof khi gate mount."
+      ],
+      "dispatchable": true
+    },
+    {
+      "id": "W12",
+      "title": "Progress runtime, lifecycle và store",
+      "phase": 1,
+      "legacyTasks": [
+        "T08"
+      ],
+      "dependsOn": [
+        "W04",
+        "W08"
+      ],
+      "implementerTier": "H",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/lib/story/progress.ts",
+        "src/lib/story/runtime.ts",
+        "src/components/story/ScrollRuntime.tsx",
+        "src/hooks/useStoryRuntime.ts",
+        "src/stores/experienceStore.ts",
+        "tests/unit/progress.test.ts",
+        "tests/unit/runtime-lifecycle.test.ts"
+      ],
+      "readFiles": [
+        "docs/CAMERA_SCROLL_SPEC.md",
+        "docs/HOTSPOT_SPEC.md"
+      ],
+      "consumes": "C08 runtime/store contracts; C06 derivative; sampleChapter W04.",
+      "produces": "Một runtime owner renderedStoryProgress; subscribe discrete snapshot; freeze/resume/reset lifecycle.",
+      "acceptance": [
+        "Native raw target khác rendered p; camera/light/hotspot chỉ dùng cùng rendered frame.",
+        "World speed và angular speed có limit, đảo hướng có gia tốc; hidden tab không dt jump.",
+        "Modal freeze native+raw/rendered; unmount không duplicate ScrollTrigger/listener; store không React-render toàn cây mỗi frame."
+      ],
+      "verification": [
+        "npm run test -- tests/unit/progress.test.ts tests/unit/runtime-lifecycle.test.ts",
+        "npm run typecheck"
+      ],
+      "guardrails": "Protected store chỉ writer task này và integrator về sau; không side-effect trong sampler.",
+      "effortHours": [
+        6,
+        12
+      ],
+      "reviewFamily": "runtime",
+      "packet": "docs/agents/tasks/W12.md",
+      "localAcceptance": [
+        "Native raw target khác rendered p; camera/light/hotspot chỉ dùng cùng rendered frame.",
+        "World speed và angular speed có limit, đảo hướng có gia tốc; hidden tab không dt jump.",
+        "Modal freeze native+raw/rendered; unmount không duplicate ScrollTrigger/listener; store không React-render toàn cây mỗi frame."
+      ],
+      "integrationChecks": [],
+      "dispatchable": true
+    },
+    {
+      "id": "W13",
+      "title": "Tích hợp nền và camera — G1",
+      "phase": 1,
+      "legacyTasks": [
+        "T03",
+        "T06",
+        "T08"
+      ],
+      "dependsOn": [
+        "W06",
+        "W07",
+        "W08",
+        "W09",
+        "W10",
+        "W11",
+        "W12"
+      ],
+      "implementerTier": "H",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/app/[locale]/page.tsx",
+        "src/components/story/ExperienceHost.tsx",
+        "src/components/story/StoryOverlay.tsx",
+        "src/components/scene/SceneCanvas.tsx",
+        "src/styles/globals.css",
+        "src/config/zones.ts",
+        "tests/e2e/scroll-journey.spec.ts"
+      ],
+      "readFiles": [
+        "docs/CAMERA_SCROLL_SPEC.md",
+        "docs/ACCEPTANCE_CRITERIA.md"
+      ],
+      "consumes": "C01–C08 và các modules đã integrated đúng SHA.",
+      "produces": "Composition root nối providers; G1 evidence camera through-door và static fallback baseline.",
+      "acceptance": [
+        "Một canvas/runtime, CSS/DOM slots đúng, route chỉ một #contact.",
+        "Scroll tới/lùi/Home/End không cut; fallback đầu phiên không tải renderer.",
+        "validateStory kiểm cấu trúc và references tới ID đã khai báo của W02; ghi verdict definition-only. G1 không chứng nhận implementation của lighting/audio hoặc asset poster. Chỉ test fixture được mock; scene baseline dùng shell/proxy và light tối thiểu có thật."
+      ],
+      "verification": [
+        "npm run typecheck",
+        "npm run build",
+        "npm run test:e2e -- tests/e2e/scroll-journey.spec.ts tests/e2e/static-story.spec.ts",
+        "Video rail và network fallback"
+      ],
+      "guardrails": "Integration-only task; một writer trên integration checkout; re-review mọi conflict resolutions.",
+      "effortHours": [
+        6,
+        10
+      ],
+      "reviewFamily": "integration",
+      "packet": "docs/agents/tasks/W13.md",
+      "localAcceptance": [
+        "Một canvas/runtime, CSS/DOM slots đúng, route chỉ một #contact.",
+        "Scroll tới/lùi/Home/End không cut; fallback đầu phiên không tải renderer.",
+        "validateStory kiểm cấu trúc và references tới ID đã khai báo của W02; ghi verdict definition-only. G1 không chứng nhận implementation của lighting/audio hoặc asset poster. Chỉ test fixture được mock; scene baseline dùng shell/proxy và light tối thiểu có thật."
+      ],
+      "integrationChecks": [
+        "W25: kiểm riêng runtime-resources — preset implementations và mọi URI poster/audio thật tồn tại, decode/load được, có provenance; definition-only pass ở W13 không đóng nghĩa vụ này."
+      ],
+      "dispatchable": true
+    },
+    {
+      "id": "W14",
+      "title": "Ngoại thất và entrance chi tiết",
+      "phase": 1,
+      "legacyTasks": [
+        "T09"
+      ],
+      "dependsOn": [
+        "W13"
+      ],
+      "implementerTier": "M",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/components/scene/zones/Exterior.tsx",
+        "src/components/scene/zones/Entrance.tsx",
+        "tests/unit/exterior-entrance-layout.test.ts"
+      ],
+      "readFiles": [
+        "docs/UX_STORYBOARD.md",
+        "docs/ASSET_PIPELINE.md"
+      ],
+      "consumes": "C05 ZoneProps; C06 shell anchors đã qua G1.",
+      "produces": "Zone detail không thay shell/rail; image evidence các frame exterior/entrance.",
+      "acceptance": [
+        "Kiến trúc Contemporary Tropical Minimalism, tự nhiên và tỷ lệ hợp lý.",
+        "Không che cửa/rail bởi cây mới; reverse nhìn đủ geometry.",
+        "Asset records/byte estimates có trong report; không sửa ASSET_LICENSES cùng worker khác."
+      ],
+      "verification": [
+        "npm run typecheck",
+        "npm run test -- tests/unit/exterior-entrance-layout.test.ts",
+        "Evidence local bounds/anchors/clearance; không ghi art accepted trước W25"
+      ],
+      "guardrails": "Không làm material registry mới trùng của zone khác; shared-material request qua integrator.",
+      "effortHours": [
+        5,
+        9
+      ],
+      "reviewFamily": "spec-and-quality",
+      "packet": "docs/agents/tasks/W14.md",
+      "localAcceptance": [
+        "Kiến trúc Contemporary Tropical Minimalism, tự nhiên và tỷ lệ hợp lý.",
+        "Không che cửa/rail bởi cây mới; reverse nhìn đủ geometry.",
+        "Asset records/byte estimates có trong report; không sửa ASSET_LICENSES cùng worker khác."
+      ],
+      "integrationChecks": [
+        "W25: art review trong whole scene với final lighting."
+      ],
+      "dispatchable": true
+    },
+    {
+      "id": "W15",
+      "title": "Living và vật liệu điểm nhấn",
+      "phase": 1,
+      "legacyTasks": [
+        "T09"
+      ],
+      "dependsOn": [
+        "W13"
+      ],
+      "implementerTier": "M",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/components/scene/zones/Living.tsx",
+        "src/components/scene/materials/LivingMaterials.tsx",
+        "tests/unit/living-layout.test.ts"
+      ],
+      "readFiles": [
+        "docs/UX_STORYBOARD.md",
+        "docs/LIGHTING_SPEC.md"
+      ],
+      "consumes": "C05 ZoneProps; stable travertine/sliding-glass anchors.",
+      "produces": "Phòng khách hero có góc nhìn vườn, hai hotspot surfaces và nội thất đúng tỷ lệ.",
+      "acceptance": [
+        "Không furniture chắn clearance đã duyệt; khung vườn đúng vườn chung.",
+        "PBR roughness/texture scale mét đúng, không heavy bloom che scene yếu.",
+        "Material riêng có ownership; shared resource chỉ release không dispose trực tiếp."
+      ],
+      "verification": [
+        "npm run typecheck",
+        "npm run test -- tests/unit/living-layout.test.ts",
+        "Evidence local bounds/anchors/clearance; không ghi art accepted trước W25"
+      ],
+      "guardrails": "Không đổi copy/anchor config hoặc rail để đẹp riêng phòng này.",
+      "effortHours": [
+        5,
+        10
+      ],
+      "reviewFamily": "spec-and-quality",
+      "packet": "docs/agents/tasks/W15.md",
+      "localAcceptance": [
+        "Không furniture chắn clearance đã duyệt; khung vườn đúng vườn chung.",
+        "PBR roughness/texture scale mét đúng, không heavy bloom che scene yếu.",
+        "Material riêng có ownership; shared resource chỉ release không dispose trực tiếp."
+      ],
+      "integrationChecks": [
+        "W25: living + actual lights/material/budget."
+      ],
+      "dispatchable": true
+    },
+    {
+      "id": "W16",
+      "title": "Predicate hiển thị hotspot",
+      "phase": 1,
+      "legacyTasks": [
+        "T10"
+      ],
+      "dependsOn": [
+        "W02"
+      ],
+      "implementerTier": "L",
+      "reviewerTier": "M",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/lib/story/hotspotVisibility.ts",
+        "tests/unit/hotspot.test.ts"
+      ],
+      "readFiles": [
+        "docs/HOTSPOT_SPEC.md"
+      ],
+      "consumes": "C09 VisibilityInput exact; local range eligibility truyền vào.",
+      "produces": "isHotspotVisible(input):boolean; hàm thuần theo predicate trong task card.",
+      "acceptance": [
+        "Đúng room, local activation range, distance, frustum và không occluded mới true.",
+        "Sai từng một điều kiện phải false; equality distance được phép; non-finite distance/maxDistance false.",
+        "Không renderer/DOM/store hoặc đọc scroll trong helper."
+      ],
+      "verification": [
+        "npm run test -- tests/unit/hotspot.test.ts",
+        "npm run typecheck"
+      ],
+      "guardrails": "Task nhỏ phù hợp L: dùng code/test đầy đủ trong card; nếu cần raycast đó là W17, không mở rộng scope.",
+      "effortHours": [
+        1,
+        2
+      ],
+      "reviewFamily": "pure-logic",
+      "packet": "docs/agents/tasks/W16.md",
+      "localAcceptance": [
+        "Đúng room, local activation range, distance, frustum và không occluded mới true.",
+        "Sai từng một điều kiện phải false; equality distance được phép; non-finite distance/maxDistance false.",
+        "Không renderer/DOM/store hoặc đọc scroll trong helper."
+      ],
+      "integrationChecks": [],
+      "dispatchable": true
+    },
+    {
+      "id": "W17",
+      "title": "Hotspot DOM, projection và modal",
+      "phase": 1,
+      "legacyTasks": [
+        "T10"
+      ],
+      "dependsOn": [
+        "W03",
+        "W12",
+        "W13",
+        "W16"
+      ],
+      "implementerTier": "M",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/components/hotspots/HotspotButton.tsx",
+        "src/components/hotspots/HotspotPanel.tsx",
+        "src/components/hotspots/DetailList.tsx",
+        "src/hooks/useHotspotProjection.ts",
+        "tests/unit/hotspot-panel.test.tsx",
+        "tests/unit/hotspot-projection.test.ts"
+      ],
+      "readFiles": [
+        "docs/HOTSPOT_SPEC.md",
+        "docs/ACCESSIBILITY_SPEC.md"
+      ],
+      "consumes": "C09 hotspot inputs; C08 freeze/resume; C02 copy; anchors W02/W10.",
+      "produces": "Ba chi tiết accessible và marker controller; raycast budget không every mesh every frame.",
+      "acceptance": [
+        "Button/keyboard/touch mở cùng dialog; Escape/backdrop/focus restore, không modal lồng.",
+        "Freeze snapshot khi mở; đóng lúc raw xa rendered không teleport; CTA hủy old restore.",
+        "Garden proxy có anchor để test sớm; ảnh/vị trí trên Garden thật xác nhận W25."
+      ],
+      "verification": [
+        "npm run test -- tests/unit/hotspot-panel.test.tsx tests/unit/hotspot-projection.test.ts",
+        "npm run typecheck"
+      ],
+      "guardrails": "Không sửa runtime nếu thiếu API; đề xuất contract change cho owner.",
+      "effortHours": [
+        5,
+        9
+      ],
+      "reviewFamily": "modal",
+      "packet": "docs/agents/tasks/W17.md",
+      "localAcceptance": [
+        "Button/keyboard/touch mở cùng dialog; Escape/backdrop/focus restore, không modal lồng.",
+        "Freeze snapshot khi mở; đóng lúc raw xa rendered không teleport; CTA hủy old restore.",
+        "Garden proxy có anchor để test sớm; ảnh/vị trí trên Garden thật xác nhận W25."
+      ],
+      "integrationChecks": [
+        "W25: garden-tree marker trên Garden thật và modal/locale seams."
+      ],
+      "dispatchable": true
+    },
+    {
+      "id": "W18",
+      "title": "Lighting track và môi trường",
+      "phase": 1,
+      "legacyTasks": [
+        "T11"
+      ],
+      "dependsOn": [
+        "W02",
+        "W13"
+      ],
+      "implementerTier": "M",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/config/lighting.ts",
+        "src/lib/three/sampleLighting.ts",
+        "src/components/scene/LightingRig.tsx",
+        "src/components/scene/EnvironmentalMotion.tsx",
+        "tests/unit/lighting.test.ts"
+      ],
+      "readFiles": [
+        "docs/LIGHTING_SPEC.md"
+      ],
+      "consumes": "C01 LightingPreset; C08 frame; preset IDs frozen W02.",
+      "produces": "sampleLighting(p), rig và slow environment motion theo tier.",
+      "acceptance": [
+        "Late afternoon→sunset→dusk subtle; reverse cùng p ra cùng ánh sáng.",
+        "Không standalone tween/time-of-day khác progress; finite/nonnegative values.",
+        "Shadow/postprocessing theo budget; no auto-exposure gây mismatch; reflection không che architecture."
+      ],
+      "verification": [
+        "npm run test -- tests/unit/lighting.test.ts",
+        "npm run typecheck"
+      ],
+      "guardrails": "Không thay renderer color settings/quality config ngoài scope; phối hợp integration W25.",
+      "effortHours": [
+        5,
+        9
+      ],
+      "reviewFamily": "spec-and-quality",
+      "packet": "docs/agents/tasks/W18.md",
+      "localAcceptance": [
+        "Late afternoon→sunset→dusk subtle; reverse cùng p ra cùng ánh sáng.",
+        "Không standalone tween/time-of-day khác progress; finite/nonnegative values.",
+        "Shadow/postprocessing theo budget; no auto-exposure gây mismatch; reflection không che architecture."
+      ],
+      "integrationChecks": [
+        "W25: final LightingRig mounted, ảnh keyframes/render stats."
+      ],
+      "dispatchable": true
+    },
+    {
+      "id": "W19",
+      "title": "Garden detail và finale component",
+      "phase": 1,
+      "legacyTasks": [
+        "T12"
+      ],
+      "dependsOn": [
+        "W03",
+        "W13"
+      ],
+      "implementerTier": "M",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/components/scene/zones/Garden.tsx",
+        "src/components/story/Finale.tsx",
+        "tests/unit/garden-layout.test.ts"
+      ],
+      "readFiles": [
+        "docs/UX_STORYBOARD.md",
+        "docs/CAMERA_SCROLL_SPEC.md"
+      ],
+      "consumes": "C05 ZoneProps; same shell garden, C02 copy; ContactSection W06 chỉ consume không clone.",
+      "produces": "Garden detail và finale copy wrapper; không tạo #contact thứ hai.",
+      "acceptance": [
+        "Cửa ra vườn giữ clearance; final rise ngoài mái và nhà ấm nhìn từ ngoài.",
+        "garden-tree anchor giữ tọa độ và nghĩa; cây mới không che rail.",
+        "CTA finale dùng contact anchor từ contract; không fake channel links."
+      ],
+      "verification": [
+        "npm run typecheck",
+        "npm run test -- tests/unit/garden-layout.test.ts",
+        "Evidence local bounds/anchors/clearance; không ghi art accepted trước W25"
+      ],
+      "guardrails": "Không đổi rail hoặc central route; integration mount W25.",
+      "effortHours": [
+        5,
+        9
+      ],
+      "reviewFamily": "spec-and-quality",
+      "packet": "docs/agents/tasks/W19.md",
+      "localAcceptance": [
+        "Cửa ra vườn giữ clearance; final rise ngoài mái và nhà ấm nhìn từ ngoài.",
+        "garden-tree anchor giữ tọa độ và nghĩa; cây mới không che rail.",
+        "CTA finale dùng contact anchor từ contract; không fake channel links."
+      ],
+      "integrationChecks": [
+        "W25: garden/finale mount và video continuous."
+      ],
+      "dispatchable": true
+    },
+    {
+      "id": "W20",
+      "title": "Audio controller opt-in",
+      "phase": 1,
+      "legacyTasks": [
+        "T13"
+      ],
+      "dependsOn": [
+        "W02",
+        "W12"
+      ],
+      "implementerTier": "M",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/config/audio.ts",
+        "src/lib/audio/audioController.ts",
+        "tests/unit/audio.test.ts",
+        "public/audio/outdoor.ogg",
+        "public/audio/interior.ogg",
+        "public/audio/garden.ogg"
+      ],
+      "readFiles": [
+        "docs/AUDIO_SPEC.md"
+      ],
+      "consumes": "C10 AudioController; C08 frame; audio preset IDs frozen.",
+      "produces": "AudioController enable/disable/setProgress/dispose; ba file Ogg có thật ở write set, chỉ lazy-load sau gesture; mapping threshold crossfade outdoor/interior, garden/finale dùng garden.",
+      "acceptance": [
+        "Không request/context/play trước opt-in; toggle nhanh/loading không play muộn.",
+        "Crossfade rendered p, reverse ổn; hidden suspend, disabled vẫn tắt; locale cleanup tắt nguồn cũ.",
+        "Lỗi decode/resume trả mute; cả ba file Ogg có thật, loop/decode kiểm được, tổng nén mục tiêu ≤1,5 MB. Report nêu source/creator/license/attribution/modifications/checksum; reviewer kiểm provenance của các file trước integration của W20."
+      ],
+      "verification": [
+        "npm run test -- tests/unit/audio.test.ts",
+        "Kiểm container/decode/loop của public/audio/outdoor.ogg, interior.ogg, garden.ogg; log kích thước và SHA-256 cùng nguồn giấy phép"
+      ],
+      "guardrails": "Audio độc lập WebGL; không import/preload samples từ root HTML. Chỉ dùng sample CC0/public-domain có bằng chứng hoặc audio nguyên gốc có provenance, không bản quyền mơ hồ. Chưa có sample hợp lệ thì báo BLOCKED audio asset, không tạo URI giả; W25 giữ gate audio chưa đạt. Không chỉnh ASSET_LICENSES trực tiếp.",
+      "effortHours": [
+        4,
+        7
+      ],
+      "reviewFamily": "audio",
+      "packet": "docs/agents/tasks/W20.md",
+      "localAcceptance": [
+        "Không request/context/play trước opt-in; toggle nhanh/loading không play muộn.",
+        "Crossfade rendered p, reverse ổn; hidden suspend, disabled vẫn tắt; locale cleanup tắt nguồn cũ.",
+        "Lỗi decode/resume trả mute; cả ba file Ogg có thật, loop/decode kiểm được, tổng nén mục tiêu ≤1,5 MB. Report nêu source/creator/license/attribution/modifications/checksum; reviewer kiểm provenance của các file trước integration của W20."
+      ],
+      "integrationChecks": [
+        "W25: Network/no-autoplay và nghe thật; hardware thiếu giữ obligation chưa đạt.",
+        "W25 nhập các record của W20 vào ASSET_LICENSES trước integration của W25; không chặn integration của W20 khi provenance trong report đã được review."
+      ],
+      "dispatchable": true
+    },
+    {
+      "id": "W21",
+      "title": "Adaptive quality policy và monitor",
+      "phase": 1,
+      "legacyTasks": [
+        "T14"
+      ],
+      "dependsOn": [
+        "W02",
+        "W12"
+      ],
+      "implementerTier": "M",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/config/quality.ts",
+        "src/lib/performance/qualityPolicy.ts",
+        "src/lib/performance/frameMonitor.ts",
+        "tests/unit/quality.test.ts"
+      ],
+      "readFiles": [
+        "docs/PERFORMANCE_BUDGET.md"
+      ],
+      "consumes": "C10 QualityWindow và QualityTier; frame timing runtime W12.",
+      "produces": "chooseTier + bounded window monitor không gửi analytics/network.",
+      "acceptance": [
+        "Hai slow windows sau warm-up/cooldown mới downgrade; tab hidden/resize excluded.",
+        "DPR caps/frame budget từ performance spec, không tự upgrade/oscillate.",
+        "Giữ camera/story IDs khi tier đổi; low sustained bad báo fallback request tới host."
+      ],
+      "verification": [
+        "npm run test -- tests/unit/quality.test.ts",
+        "npm run typecheck"
+      ],
+      "guardrails": "Không mutate renderer/route trong pure policy; consumer wiring ở W25.",
+      "effortHours": [
+        4,
+        7
+      ],
+      "reviewFamily": "performance",
+      "packet": "docs/agents/tasks/W21.md",
+      "localAcceptance": [
+        "Hai slow windows sau warm-up/cooldown mới downgrade; tab hidden/resize excluded.",
+        "DPR caps/frame budget từ performance spec, không tự upgrade/oscillate.",
+        "Giữ camera/story IDs khi tier đổi; low sustained bad báo fallback request tới host."
+      ],
+      "integrationChecks": [
+        "W26: policy trên frame telemetry máy thật."
+      ],
+      "dispatchable": true
+    },
+    {
+      "id": "W22",
+      "title": "Event abstraction và dedupe thuần",
+      "phase": 1,
+      "legacyTasks": [
+        "T16"
+      ],
+      "dependsOn": [
+        "W02"
+      ],
+      "implementerTier": "M",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/lib/analytics/events.ts",
+        "tests/unit/events.test.ts"
+      ],
+      "readFiles": [
+        "docs/ANALYTICS_SPEC.md"
+      ],
+      "consumes": "C10 AnalyticsEvent union/clock injection.",
+      "produces": "emit(event), bounded dev buffer, dwell/dedupe lifecycle và no-op production sink.",
+      "acceptance": [
+        "Đủ 10 event/allowlist, reject payload ngoài enum và không PII.",
+        "Chapter dwell300ms/visible, A→B→A valid; completion≥.99 + CTA50%/1000ms + started.",
+        "Không phát đôi CTA vì bubbling; không request/cookie/persistent ID mặc định."
+      ],
+      "verification": [
+        "npm run test -- tests/unit/events.test.ts",
+        "npm run typecheck"
+      ],
+      "guardrails": "Không gắn listeners UI từ module thuần, integration W28 sở hữu hooks.",
+      "effortHours": [
+        4,
+        7
+      ],
+      "reviewFamily": "analytics",
+      "packet": "docs/agents/tasks/W22.md",
+      "localAcceptance": [
+        "Đủ 10 event/allowlist, reject payload ngoài enum và không PII.",
+        "Chapter dwell300ms/visible, A→B→A valid; completion≥.99 + CTA50%/1000ms + started.",
+        "Không phát đôi CTA vì bubbling; không request/cookie/persistent ID mặc định."
+      ],
+      "integrationChecks": [],
+      "dispatchable": true
+    },
+    {
+      "id": "W23",
+      "title": "Metadata, sitemap và robots",
+      "phase": 1,
+      "legacyTasks": [
+        "T16"
+      ],
+      "dependsOn": [
+        "W03",
+        "W05",
+        "W06"
+      ],
+      "implementerTier": "M",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/lib/seo/metadata.ts",
+        "src/app/sitemap.ts",
+        "src/app/robots.ts",
+        "tests/unit/seo.test.ts"
+      ],
+      "readFiles": [
+        "docs/SEO_SPEC.md"
+      ],
+      "consumes": "C02 metadata copy; C04 site/publicOrigin.",
+      "produces": "Metadata builder, static sitemap và environment robots; không giả origin/OG.",
+      "acceptance": [
+        "Preview noindex và origin null không invented canonical; production origin verified.",
+        "VI/EN canonical/hreflang consistent trailing slash, chưa tạo fake schema.",
+        "OG chỉ reference file thật sau W25; missing asset thành release issue không silently pass."
+      ],
+      "verification": [
+        "npm run test -- tests/unit/seo.test.ts",
+        "npm run build"
+      ],
+      "guardrails": "Layout metadata wiring do W28, không sửa layout đồng thời W24.",
+      "effortHours": [
+        3,
+        6
+      ],
+      "reviewFamily": "seo",
+      "packet": "docs/agents/tasks/W23.md",
+      "localAcceptance": [
+        "Preview noindex và origin null không invented canonical; production origin verified.",
+        "VI/EN canonical/hreflang consistent trailing slash, chưa tạo fake schema.",
+        "OG chỉ reference file thật sau W25; missing asset thành release issue không silently pass."
+      ],
+      "integrationChecks": [
+        "W28: route metadata wire và OG thật; W29: origin/contact release gate."
+      ],
+      "dispatchable": true
+    },
+    {
+      "id": "W24",
+      "title": "Locale restoration và history lifecycle",
+      "phase": 1,
+      "legacyTasks": [
+        "T03",
+        "T08"
+      ],
+      "dependsOn": [
+        "W03",
+        "W12",
+        "W13"
+      ],
+      "implementerTier": "H",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/lib/i18n/navigationContext.ts",
+        "src/components/ui/LanguageSwitcher.tsx",
+        "tests/unit/navigation-context.test.ts",
+        "tests/unit/language-switcher.test.tsx"
+      ],
+      "readFiles": [
+        "docs/I18N_SPEC.md",
+        "docs/HOTSPOT_SPEC.md"
+      ],
+      "consumes": "C08 navigation snapshot/storage key/version/TTL/consume semantics.",
+      "produces": "One-shot locale handoff + history.entry scoped restore adapter; anchor fallback no-JS.",
+      "acceptance": [
+        "Giữ chapter/local progress, #contact và mode; restore trước reveal canvas.",
+        "Snapshot stale/wrong schema/unknown chapter bỏ an toàn; no PII; storage unavailable vẫn navigation dùng được.",
+        "Đóng modal để đổi locale hủy scroll restore cũ; không bật audio ở route mới; hard navigation/back-forward covered."
+      ],
+      "verification": [
+        "npm run test -- tests/unit/navigation-context.test.ts tests/unit/language-switcher.test.tsx",
+        "npm run typecheck"
+      ],
+      "guardrails": "Không đổi root layout schema/route/hook owner; integration W25 mount adapter.",
+      "effortHours": [
+        5,
+        9
+      ],
+      "reviewFamily": "locale-lifecycle",
+      "packet": "docs/agents/tasks/W24.md",
+      "localAcceptance": [
+        "Giữ chapter/local progress, #contact và mode; restore trước reveal canvas.",
+        "Snapshot stale/wrong schema/unknown chapter bỏ an toàn; no PII; storage unavailable vẫn navigation dùng được.",
+        "Đóng modal để đổi locale hủy scroll restore cũ; không bật audio ở route mới; hard navigation/back-forward covered."
+      ],
+      "integrationChecks": [
+        "W25: actual route/history/modal restoration sau mounting."
+      ],
+      "dispatchable": true
+    },
+    {
+      "id": "W25",
+      "title": "Ghép toàn hành trình và poster — G2",
+      "phase": 1,
+      "legacyTasks": [
+        "T09",
+        "T10",
+        "T11",
+        "T12",
+        "T13",
+        "T14"
+      ],
+      "dependsOn": [
+        "W14",
+        "W15",
+        "W17",
+        "W18",
+        "W19",
+        "W20",
+        "W21",
+        "W24"
+      ],
+      "implementerTier": "H",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/components/story/ExperienceHost.tsx",
+        "src/components/scene/SceneCanvas.tsx",
+        "src/components/ui/BrandHeader.tsx",
+        "src/app/[locale]/page.tsx",
+        "src/config/zones.ts",
+        "src/config/hotspots.ts",
+        "src/config/camera.ts",
+        "public/images/story/exterior-desktop.webp",
+        "public/images/story/exterior-mobile.webp",
+        "public/images/story/approach-desktop.webp",
+        "public/images/story/approach-mobile.webp",
+        "public/images/story/entrance-desktop.webp",
+        "public/images/story/entrance-mobile.webp",
+        "public/images/story/living-desktop.webp",
+        "public/images/story/living-mobile.webp",
+        "public/images/story/garden-desktop.webp",
+        "public/images/story/garden-mobile.webp",
+        "public/images/story/finale-desktop.webp",
+        "public/images/story/finale-mobile.webp",
+        "public/images/og-havenart.jpg",
+        "ASSET_LICENSES.md",
+        "tests/e2e/phase-one.spec.ts",
+        "tests/e2e/audio.spec.ts",
+        "tests/e2e/hotspot.spec.ts",
+        "tests/e2e/language.spec.ts",
+        "scripts/validate-runtime-resources.mjs",
+        "tests/unit/runtime-resources.test.ts"
+      ],
+      "readFiles": [
+        "docs/ACCEPTANCE_CRITERIA.md",
+        "docs/UX_STORYBOARD.md"
+      ],
+      "consumes": "Modules approved/integrated W14–24; W13 composition.",
+      "produces": "Full Phase1 montage, 3 real hotspots, native-scroll journey, opt-in audio, tier wiring, original posters/OG.",
+      "acceptance": [
+        "Mọi system dùng same rendered frame, no duplicate runtime/scene/audio/listeners.",
+        "G1 không regress; G2 full flow tới garden + contact, reverse, modal+locale.",
+        "Posters/OG từ scene gốc, ba sample audio thật và provenance đầy đủ trong ASSET_LICENSES; validateStory definition-only và validate-runtime-resources implementation/assets là hai kết quả riêng. Thiếu file/module/decode phải fail runtime-resources, không dùng fixture thay evidence."
+      ],
+      "verification": [
+        "npm run typecheck",
+        "npm run build",
+        "npm run test:e2e -- tests/e2e/phase-one.spec.ts tests/e2e/hotspot.spec.ts tests/e2e/audio.spec.ts tests/e2e/language.spec.ts",
+        "Video whole journey + screenshots",
+        "node scripts/validate-runtime-resources.mjs",
+        "npm run test -- tests/unit/runtime-resources.test.ts"
+      ],
+      "guardrails": "Integration writer độc quyền; material/shared changes được ghi rõ và reviewer kiểm consumer impacted.",
+      "effortHours": [
+        8,
+        14
+      ],
+      "reviewFamily": "integration",
+      "packet": "docs/agents/tasks/W25.md",
+      "localAcceptance": [
+        "Mọi system dùng same rendered frame, no duplicate runtime/scene/audio/listeners.",
+        "G1 không regress; G2 full flow tới garden + contact, reverse, modal+locale.",
+        "Posters/OG từ scene gốc, ba sample audio thật và provenance đầy đủ trong ASSET_LICENSES; validateStory definition-only và validate-runtime-resources implementation/assets là hai kết quả riêng. Thiếu file/module/decode phải fail runtime-resources, không dùng fixture thay evidence."
+      ],
+      "integrationChecks": [],
+      "dispatchable": true
+    },
+    {
+      "id": "W26",
+      "title": "Đo tải, GPU và sửa theo ngân sách",
+      "phase": 1,
+      "legacyTasks": [
+        "T14"
+      ],
+      "dependsOn": [
+        "W25"
+      ],
+      "implementerTier": "H",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "scripts/measure-payload.mjs",
+        "src/lib/performance/debugOverlay.tsx",
+        "tests/unit/payload-report.test.ts"
+      ],
+      "readFiles": [
+        "docs/PERFORMANCE_BUDGET.md"
+      ],
+      "consumes": "Production integrated build W25; C07 manifest byte accounting.",
+      "produces": "Report bytes/frame-time/draw calls/memory trên máy thật; actionable optimization requests.",
+      "acceptance": [
+        "Core≤8MB/initial≤15MB là target có số đo đúng, JS/poster/audio thống kê riêng.",
+        "Cold/warm, device/browser/build/tier/DPR rõ; không dùng headlessFPS chứng minh GPU.",
+        "Ba vòng tới/lùi không leak; peak swap counted; mọi tuning ngoài write set thành scoped fix task."
+      ],
+      "verification": [
+        "npm run build",
+        "node scripts/measure-payload.mjs",
+        "Máy thật desktop/iOS/Android theo performance matrix; ghi chưa đo nếu thiếu"
+      ],
+      "guardrails": "Không tự nới budget hoặc sửa hàng loạt meshes; tối ưu có diff review và chạy lại affected flows.",
+      "effortHours": [
+        6,
+        12
+      ],
+      "reviewFamily": "performance",
+      "packet": "docs/agents/tasks/W26.md",
+      "localAcceptance": [
+        "Core≤8MB/initial≤15MB là target có số đo đúng, JS/poster/audio thống kê riêng.",
+        "Cold/warm, device/browser/build/tier/DPR rõ; không dùng headlessFPS chứng minh GPU.",
+        "Ba vòng tới/lùi không leak; peak swap counted; mọi tuning ngoài write set thành scoped fix task."
+      ],
+      "integrationChecks": [],
+      "dispatchable": true
+    },
+    {
+      "id": "W27",
+      "title": "Fault matrix, mobile và accessibility — G3",
+      "phase": 1,
+      "legacyTasks": [
+        "T15"
+      ],
+      "dependsOn": [
+        "W25",
+        "W26"
+      ],
+      "implementerTier": "M",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "tests/e2e/fallback.spec.ts",
+        "tests/e2e/mobile.spec.ts",
+        "tests/e2e/accessibility.spec.ts",
+        "tests/fixtures/browser-faults.ts"
+      ],
+      "readFiles": [
+        "docs/ACCESSIBILITY_SPEC.md",
+        "docs/PERFORMANCE_BUDGET.md"
+      ],
+      "consumes": "Integrated app + browser failure injection test adapters C08.",
+      "produces": "Evidence matrix reduced/noJS/noWebGL/assetfail/lowGPU/modal/mobile/history.",
+      "acceptance": [
+        "Reduced mode đầu phiên không renderer request; static vẫn đủ nội dung/CTA/details.",
+        "Thử bật reduce giữa phiên, context loss lúc modal, dynamic viewport và no keyboard trap.",
+        "Failures mở issue/fix packet đúng owner, không sửa app từ test agent hoặc làm test luôn pass."
+      ],
+      "verification": [
+        "npm run test:e2e -- tests/e2e/fallback.spec.ts tests/e2e/mobile.spec.ts tests/e2e/accessibility.spec.ts",
+        "Keyboard/NVDA/VoiceOver hoặc ghi đúng phần chưa kiểm chứng"
+      ],
+      "guardrails": "Tests pass không thay actual device QA; G3 blocked nếu required hardware evidence còn thiếu.",
+      "effortHours": [
+        5,
+        10
+      ],
+      "reviewFamily": "a11y-recovery",
+      "packet": "docs/agents/tasks/W27.md",
+      "localAcceptance": [
+        "Reduced mode đầu phiên không renderer request; static vẫn đủ nội dung/CTA/details.",
+        "Thử bật reduce giữa phiên, context loss lúc modal, dynamic viewport và no keyboard trap.",
+        "Failures mở issue/fix packet đúng owner, không sửa app từ test agent hoặc làm test luôn pass."
+      ],
+      "integrationChecks": [],
+      "dispatchable": true
+    },
+    {
+      "id": "W28",
+      "title": "Ghép SEO và sự kiện vào UI thật",
+      "phase": 1,
+      "legacyTasks": [
+        "T16"
+      ],
+      "dependsOn": [
+        "W22",
+        "W23",
+        "W25"
+      ],
+      "implementerTier": "H",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "src/app/[locale]/layout.tsx",
+        "src/components/story/ExperienceHost.tsx",
+        "src/components/ui/ContactSection.tsx",
+        "src/hooks/useAnalyticsBridge.ts",
+        "tests/e2e/seo.spec.ts",
+        "tests/e2e/analytics.spec.ts"
+      ],
+      "readFiles": [
+        "docs/SEO_SPEC.md",
+        "docs/ANALYTICS_SPEC.md"
+      ],
+      "consumes": "Pure SEO/events W22/W23 + integrated UI W25.",
+      "produces": "Events từ hành vi thực, metadata thực và no-op production verified.",
+      "acceptance": [
+        "Không duplicate event bởi StrictMode/listener bubbling/locale; started/completed per document.",
+        "No PII/network/default storage analytics; navigation không đợi sink.",
+        "HTML source vi/en metadata, sitemap/robots và OG thật đúng môi trường."
+      ],
+      "verification": [
+        "npm run build",
+        "npm run test:e2e -- tests/e2e/seo.spec.ts tests/e2e/analytics.spec.ts",
+        "Network/storage inspection"
+      ],
+      "guardrails": "Serialized shared route/host edits; re-run language/contact smoke cho integrated candidate.",
+      "effortHours": [
+        4,
+        8
+      ],
+      "reviewFamily": "integration",
+      "packet": "docs/agents/tasks/W28.md",
+      "localAcceptance": [
+        "Không duplicate event bởi StrictMode/listener bubbling/locale; started/completed per document.",
+        "No PII/network/default storage analytics; navigation không đợi sink.",
+        "HTML source vi/en metadata, sitemap/robots và OG thật đúng môi trường."
+      ],
+      "integrationChecks": [],
+      "dispatchable": true
+    },
+    {
+      "id": "W29",
+      "title": "Kiểm asset/release và bàn giao",
+      "phase": 1,
+      "legacyTasks": [
+        "T17"
+      ],
+      "dependsOn": [
+        "W27",
+        "W28"
+      ],
+      "implementerTier": "M",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "scripts/validate-assets.mjs",
+        "scripts/validate-release.mjs",
+        "tests/unit/release-validation.test.ts",
+        "README.md",
+        "docs/RUNBOOK.md",
+        "ASSET_LICENSES.md"
+      ],
+      "readFiles": [
+        "docs/ACCEPTANCE_CRITERIA.md",
+        "docs/SEO_SPEC.md",
+        "docs/ASSET_PIPELINE.md"
+      ],
+      "consumes": "Integrated build, actual manifests, actual owner-supplied contacts/origin (if present).",
+      "produces": "Validation commands và runbook: run/edit/extend/build/static-host/check/rollback.",
+      "acceptance": [
+        "Đủ provenance cho mọi model/font/audio/poster; thiếu evidence làm fail.",
+        "Preview build được nhưng release không pass khi contact/domain chưa thật.",
+        "Runbook không phụ thuộc service trả phí, khôi phục build không xóa dữ liệu/source."
+      ],
+      "verification": [
+        "npm run test -- tests/unit/release-validation.test.ts",
+        "node scripts/validate-assets.mjs",
+        "node scripts/validate-release.mjs",
+        "node scripts/validate-runtime-resources.mjs"
+      ],
+      "guardrails": "Không mua hosting/deploy/DNS trong task; reports không giả dữ liệu để pass release.",
+      "effortHours": [
+        4,
+        8
+      ],
+      "reviewFamily": "release",
+      "packet": "docs/agents/tasks/W29.md",
+      "localAcceptance": [
+        "Đủ provenance cho mọi model/font/audio/poster; thiếu evidence làm fail.",
+        "Preview build được nhưng release không pass khi contact/domain chưa thật.",
+        "Runbook không phụ thuộc service trả phí, khôi phục build không xóa dữ liệu/source."
+      ],
+      "integrationChecks": [],
+      "dispatchable": true
+    },
+    {
+      "id": "W30",
+      "title": "Review toàn hệ thống và nghiệm thu G4",
+      "phase": 1,
+      "legacyTasks": [
+        "T17"
+      ],
+      "dependsOn": [
+        "W26",
+        "W27",
+        "W28",
+        "W29"
+      ],
+      "implementerTier": "H",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "havenart-contracts-1.1",
+      "writeFiles": [
+        "docs/reports/ACCEPTANCE.md",
+        "docs/reports/PERFORMANCE.md",
+        "docs/reports/ART_REVIEW.md"
+      ],
+      "readFiles": [
+        "docs/ACCEPTANCE_CRITERIA.md",
+        "docs/RISK_REGISTER.md"
+      ],
+      "consumes": "Exact integrated candidate SHA, all task reports/diffs/reviews and full regression logs.",
+      "produces": "Whole-system independent review + 18 AC statuses with evidence; no app edits by reviewer.",
+      "acceptance": [
+        "Spec và quality đều pass, không open blocking finding; unavailable test không pass.",
+        "Review seams scroll+modal+locale+audio+tier+asset errors trên cùng candidate.",
+        "Code complete khác ready production; contacts/devices thiếu thì G4 chưa đạt và ghi rõ."
+      ],
+      "verification": [
+        "npm ci",
+        "npm run typecheck",
+        "npm run lint",
+        "npm run test",
+        "npm run build",
+        "npm run test:e2e",
+        "node scripts/validate-assets.mjs",
+        "node scripts/measure-payload.mjs",
+        "node scripts/validate-release.mjs",
+        "node scripts/validate-runtime-resources.mjs"
+      ],
+      "guardrails": "Integrator chạy full suite một lần trên candidate cuối; reviewer kiểm evidence và chỉ rerun focused khi có nghi vấn cụ thể. Không publish.",
+      "effortHours": [
+        6,
+        12
+      ],
+      "reviewFamily": "whole-system",
+      "packet": "docs/agents/tasks/W30.md",
+      "localAcceptance": [
+        "Spec và quality đều pass, không open blocking finding; unavailable test không pass.",
+        "Review seams scroll+modal+locale+audio+tier+asset errors trên cùng candidate.",
+        "Code complete khác ready production; contacts/devices thiếu thì G4 chưa đạt và ghi rõ."
+      ],
+      "integrationChecks": [],
+      "dispatchable": true
+    },
+    {
+      "id": "W31",
+      "title": "Phase 2 — Kitchen",
+      "phase": 2,
+      "legacyTasks": [
+        "T18"
+      ],
+      "dependsOn": [
+        "W30"
+      ],
+      "implementerTier": "M",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "requires-phase-2-contract",
+      "writeFiles": [
+        "src/components/scene/zones/Kitchen.tsx",
+        "tests/e2e/phase-two-kitchen.spec.ts"
+      ],
+      "readFiles": [
+        "docs/STORY_CHAPTER_SPEC.md",
+        "docs/ASSET_PIPELINE.md"
+      ],
+      "consumes": "G4 và Phase2 contract/layout được kiến trúc sư/lead review trước dispatch; schema v2 cập nhật bởi integrator.",
+      "produces": "Zone kitchen với interface giữ nguyên, draft copy/poster/anchor/config changes trong report cho integrator.",
+      "acceptance": [
+        "Xác nhận topology/đường thông trước asset chi tiết; không camera xuyên sàn/tường.",
+        "Đủ VI/EN/static/poster/chi tiết; baseline art/material vẫn cùng concept.",
+        "Integrator áp dụng config/rail/copy/registry changes trong integration child-step và reviewer kiểm trước accepted."
+      ],
+      "verification": [
+        "npm run test:e2e -- tests/e2e/phase-two-kitchen.spec.ts",
+        "Config/rail/locale/static regression toàn tuyến và budget active scene"
+      ],
+      "guardrails": "Phase2 chưa được dispatch chỉ vì có file card; phải có additive contract v2, actual floorplan và write-set integration cụ thể. Các shared-file changes serialize; balcony bao full journey final regression.",
+      "effortHours": [
+        8,
+        16
+      ],
+      "reviewFamily": "scene-expansion",
+      "packet": "docs/agents/tasks/W31.md",
+      "localAcceptance": [
+        "Xác nhận topology/đường thông trước asset chi tiết; không camera xuyên sàn/tường.",
+        "Đủ VI/EN/static/poster/chi tiết; baseline art/material vẫn cùng concept.",
+        "Integrator áp dụng config/rail/copy/registry changes trong integration child-step và reviewer kiểm trước accepted."
+      ],
+      "integrationChecks": [],
+      "dispatchable": false
+    },
+    {
+      "id": "W32",
+      "title": "Phase 2 — Courtyard",
+      "phase": 2,
+      "legacyTasks": [
+        "T18"
+      ],
+      "dependsOn": [
+        "W31"
+      ],
+      "implementerTier": "M",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "requires-phase-2-contract",
+      "writeFiles": [
+        "src/components/scene/zones/Courtyard.tsx",
+        "tests/e2e/phase-two-courtyard.spec.ts"
+      ],
+      "readFiles": [
+        "docs/STORY_CHAPTER_SPEC.md",
+        "docs/ASSET_PIPELINE.md"
+      ],
+      "consumes": "G4 và Phase2 contract/layout được kiến trúc sư/lead review trước dispatch; schema v2 cập nhật bởi integrator.",
+      "produces": "Zone courtyard với interface giữ nguyên, draft copy/poster/anchor/config changes trong report cho integrator.",
+      "acceptance": [
+        "Xác nhận topology/đường thông trước asset chi tiết; không camera xuyên sàn/tường.",
+        "Đủ VI/EN/static/poster/chi tiết; baseline art/material vẫn cùng concept.",
+        "Integrator áp dụng config/rail/copy/registry changes trong integration child-step và reviewer kiểm trước accepted."
+      ],
+      "verification": [
+        "npm run test:e2e -- tests/e2e/phase-two-courtyard.spec.ts",
+        "Config/rail/locale/static regression toàn tuyến và budget active scene"
+      ],
+      "guardrails": "Phase2 chưa được dispatch chỉ vì có file card; phải có additive contract v2, actual floorplan và write-set integration cụ thể. Các shared-file changes serialize; balcony bao full journey final regression.",
+      "effortHours": [
+        8,
+        16
+      ],
+      "reviewFamily": "scene-expansion",
+      "packet": "docs/agents/tasks/W32.md",
+      "localAcceptance": [
+        "Xác nhận topology/đường thông trước asset chi tiết; không camera xuyên sàn/tường.",
+        "Đủ VI/EN/static/poster/chi tiết; baseline art/material vẫn cùng concept.",
+        "Integrator áp dụng config/rail/copy/registry changes trong integration child-step và reviewer kiểm trước accepted."
+      ],
+      "integrationChecks": [],
+      "dispatchable": false
+    },
+    {
+      "id": "W33",
+      "title": "Phase 2 — Bedroom",
+      "phase": 2,
+      "legacyTasks": [
+        "T19"
+      ],
+      "dependsOn": [
+        "W32"
+      ],
+      "implementerTier": "M",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "requires-phase-2-contract",
+      "writeFiles": [
+        "src/components/scene/zones/Bedroom.tsx",
+        "tests/e2e/phase-two-bedroom.spec.ts"
+      ],
+      "readFiles": [
+        "docs/STORY_CHAPTER_SPEC.md",
+        "docs/ASSET_PIPELINE.md"
+      ],
+      "consumes": "G4 và Phase2 contract/layout được kiến trúc sư/lead review trước dispatch; schema v2 cập nhật bởi integrator.",
+      "produces": "Zone bedroom với interface giữ nguyên, draft copy/poster/anchor/config changes trong report cho integrator.",
+      "acceptance": [
+        "Xác nhận topology/đường thông trước asset chi tiết; không camera xuyên sàn/tường.",
+        "Đủ VI/EN/static/poster/chi tiết; baseline art/material vẫn cùng concept.",
+        "Integrator áp dụng config/rail/copy/registry changes trong integration child-step và reviewer kiểm trước accepted."
+      ],
+      "verification": [
+        "npm run test:e2e -- tests/e2e/phase-two-bedroom.spec.ts",
+        "Config/rail/locale/static regression toàn tuyến và budget active scene"
+      ],
+      "guardrails": "Phase2 chưa được dispatch chỉ vì có file card; phải có additive contract v2, actual floorplan và write-set integration cụ thể. Các shared-file changes serialize; balcony bao full journey final regression.",
+      "effortHours": [
+        8,
+        16
+      ],
+      "reviewFamily": "scene-expansion",
+      "packet": "docs/agents/tasks/W33.md",
+      "localAcceptance": [
+        "Xác nhận topology/đường thông trước asset chi tiết; không camera xuyên sàn/tường.",
+        "Đủ VI/EN/static/poster/chi tiết; baseline art/material vẫn cùng concept.",
+        "Integrator áp dụng config/rail/copy/registry changes trong integration child-step và reviewer kiểm trước accepted."
+      ],
+      "integrationChecks": [],
+      "dispatchable": false
+    },
+    {
+      "id": "W34",
+      "title": "Phase 2 — Bathroom",
+      "phase": 2,
+      "legacyTasks": [
+        "T19"
+      ],
+      "dependsOn": [
+        "W33"
+      ],
+      "implementerTier": "M",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "requires-phase-2-contract",
+      "writeFiles": [
+        "src/components/scene/zones/Bathroom.tsx",
+        "tests/e2e/phase-two-bathroom.spec.ts"
+      ],
+      "readFiles": [
+        "docs/STORY_CHAPTER_SPEC.md",
+        "docs/ASSET_PIPELINE.md"
+      ],
+      "consumes": "G4 và Phase2 contract/layout được kiến trúc sư/lead review trước dispatch; schema v2 cập nhật bởi integrator.",
+      "produces": "Zone bathroom với interface giữ nguyên, draft copy/poster/anchor/config changes trong report cho integrator.",
+      "acceptance": [
+        "Xác nhận topology/đường thông trước asset chi tiết; không camera xuyên sàn/tường.",
+        "Đủ VI/EN/static/poster/chi tiết; baseline art/material vẫn cùng concept.",
+        "Integrator áp dụng config/rail/copy/registry changes trong integration child-step và reviewer kiểm trước accepted."
+      ],
+      "verification": [
+        "npm run test:e2e -- tests/e2e/phase-two-bathroom.spec.ts",
+        "Config/rail/locale/static regression toàn tuyến và budget active scene"
+      ],
+      "guardrails": "Phase2 chưa được dispatch chỉ vì có file card; phải có additive contract v2, actual floorplan và write-set integration cụ thể. Các shared-file changes serialize; balcony bao full journey final regression.",
+      "effortHours": [
+        8,
+        16
+      ],
+      "reviewFamily": "scene-expansion",
+      "packet": "docs/agents/tasks/W34.md",
+      "localAcceptance": [
+        "Xác nhận topology/đường thông trước asset chi tiết; không camera xuyên sàn/tường.",
+        "Đủ VI/EN/static/poster/chi tiết; baseline art/material vẫn cùng concept.",
+        "Integrator áp dụng config/rail/copy/registry changes trong integration child-step và reviewer kiểm trước accepted."
+      ],
+      "integrationChecks": [],
+      "dispatchable": false
+    },
+    {
+      "id": "W35",
+      "title": "Phase 2 — Workspace",
+      "phase": 2,
+      "legacyTasks": [
+        "T20"
+      ],
+      "dependsOn": [
+        "W34"
+      ],
+      "implementerTier": "M",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "requires-phase-2-contract",
+      "writeFiles": [
+        "src/components/scene/zones/Workspace.tsx",
+        "tests/e2e/phase-two-workspace.spec.ts"
+      ],
+      "readFiles": [
+        "docs/STORY_CHAPTER_SPEC.md",
+        "docs/ASSET_PIPELINE.md"
+      ],
+      "consumes": "G4 và Phase2 contract/layout được kiến trúc sư/lead review trước dispatch; schema v2 cập nhật bởi integrator.",
+      "produces": "Zone workspace với interface giữ nguyên, draft copy/poster/anchor/config changes trong report cho integrator.",
+      "acceptance": [
+        "Xác nhận topology/đường thông trước asset chi tiết; không camera xuyên sàn/tường.",
+        "Đủ VI/EN/static/poster/chi tiết; baseline art/material vẫn cùng concept.",
+        "Integrator áp dụng config/rail/copy/registry changes trong integration child-step và reviewer kiểm trước accepted."
+      ],
+      "verification": [
+        "npm run test:e2e -- tests/e2e/phase-two-workspace.spec.ts",
+        "Config/rail/locale/static regression toàn tuyến và budget active scene"
+      ],
+      "guardrails": "Phase2 chưa được dispatch chỉ vì có file card; phải có additive contract v2, actual floorplan và write-set integration cụ thể. Các shared-file changes serialize; balcony bao full journey final regression.",
+      "effortHours": [
+        8,
+        16
+      ],
+      "reviewFamily": "scene-expansion",
+      "packet": "docs/agents/tasks/W35.md",
+      "localAcceptance": [
+        "Xác nhận topology/đường thông trước asset chi tiết; không camera xuyên sàn/tường.",
+        "Đủ VI/EN/static/poster/chi tiết; baseline art/material vẫn cùng concept.",
+        "Integrator áp dụng config/rail/copy/registry changes trong integration child-step và reviewer kiểm trước accepted."
+      ],
+      "integrationChecks": [],
+      "dispatchable": false
+    },
+    {
+      "id": "W36",
+      "title": "Phase 2 — Balcony",
+      "phase": 2,
+      "legacyTasks": [
+        "T20"
+      ],
+      "dependsOn": [
+        "W35"
+      ],
+      "implementerTier": "M",
+      "reviewerTier": "H",
+      "status": "planned",
+      "contractVersion": "requires-phase-2-contract",
+      "writeFiles": [
+        "src/components/scene/zones/Balcony.tsx",
+        "tests/e2e/phase-two-balcony.spec.ts"
+      ],
+      "readFiles": [
+        "docs/STORY_CHAPTER_SPEC.md",
+        "docs/ASSET_PIPELINE.md"
+      ],
+      "consumes": "G4 và Phase2 contract/layout được kiến trúc sư/lead review trước dispatch; schema v2 cập nhật bởi integrator.",
+      "produces": "Zone balcony với interface giữ nguyên, draft copy/poster/anchor/config changes trong report cho integrator.",
+      "acceptance": [
+        "Xác nhận topology/đường thông trước asset chi tiết; không camera xuyên sàn/tường.",
+        "Đủ VI/EN/static/poster/chi tiết; baseline art/material vẫn cùng concept.",
+        "Integrator áp dụng config/rail/copy/registry changes trong integration child-step và reviewer kiểm trước accepted."
+      ],
+      "verification": [
+        "npm run test:e2e -- tests/e2e/phase-two-balcony.spec.ts",
+        "Config/rail/locale/static regression toàn tuyến và budget active scene"
+      ],
+      "guardrails": "Phase2 chưa được dispatch chỉ vì có file card; phải có additive contract v2, actual floorplan và write-set integration cụ thể. Các shared-file changes serialize; balcony bao full journey final regression.",
+      "effortHours": [
+        8,
+        16
+      ],
+      "reviewFamily": "scene-expansion",
+      "packet": "docs/agents/tasks/W36.md",
+      "localAcceptance": [
+        "Xác nhận topology/đường thông trước asset chi tiết; không camera xuyên sàn/tường.",
+        "Đủ VI/EN/static/poster/chi tiết; baseline art/material vẫn cùng concept.",
+        "Integrator áp dụng config/rail/copy/registry changes trong integration child-step và reviewer kiểm trước accepted."
+      ],
+      "integrationChecks": [],
+      "dispatchable": false
+    }
+  ]
+}
