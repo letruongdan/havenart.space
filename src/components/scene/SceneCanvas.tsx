@@ -1,18 +1,19 @@
 'use client';
 
 /**
- * HavenArt — Scene Canvas Host & WebGL Context Lifecycle
+ * HavenArt — Scene Canvas Host & WebGL Context Lifecycle (Gate G2 Full Montage)
  * Contract Version: havenart-contracts-1.1
- * References: docs/SCENE_ARCHITECTURE.md, docs/LIGHTING_SPEC.md
+ * References: docs/SCENE_ARCHITECTURE.md, docs/LIGHTING_SPEC.md, docs/PERFORMANCE_BUDGET.md
  *
- * Local Criteria (W11):
- * - W11-AC1: WebGL context lifecycle và canvas mounting.
- * - W11-AC2: Bắt sự kiện webglcontextlost, dispatch fallback to static mode.
- * - W11-AC3: Persistent shell + zone boundary mounting.
+ * Local Criteria (W25):
+ * - W25-AC1: Mọi system dùng same rendered frame, no duplicate runtime/scene/audio/listeners.
+ * - W25-AC2: G1 không regress; G2 full flow tới garden + contact, reverse, modal+locale.
+ * - Persistent shell + full architectural zones (Exterior, Entrance, Living, Garden).
+ * - Synchronized LightingRig & EnvironmentalMotion.
  */
 
 import '@react-three/fiber';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { QualityTier } from '@/types/story';
@@ -20,8 +21,15 @@ import type { ZoneHandle } from '@/types/scene';
 import type { StoryRuntime } from '@/types/runtime';
 import { sampleRail } from '@/lib/three/cameraRail';
 import { CAMERA_OPTICS, focalLengthToVerticalFov } from '@/config/camera';
+import { getEffectiveDpr } from '@/config/quality';
 import { VillaShell } from './VillaShell';
 import { ZoneBoundary } from './ZoneBoundary';
+import { Exterior } from './zones/Exterior';
+import { Entrance } from './zones/Entrance';
+import { Living } from './zones/Living';
+import { Garden } from './zones/Garden';
+import { createLightingRigObject } from './LightingRig';
+import { EnvironmentalMotion } from './EnvironmentalMotion';
 import { FurnitureProxy } from './proxies/FurnitureProxy';
 import { GardenProxy } from './proxies/GardenProxy';
 
@@ -46,35 +54,24 @@ export interface SceneCanvasProps {
 }
 
 /**
- * Baseline architectural lighting setup for the scene.
+ * Dynamic Architectural Lighting rig synchronized strictly to renderedStoryProgress (W18, W25).
  */
-function BaselineLighting() {
-  return (
-    <>
-      {/* Soft ambient fill: warm tropical atmosphere */}
-      <ambientLight color="#fdfbf7" intensity={0.65} />
+function SceneLighting({
+  runtime,
+  tier = 'high',
+}: {
+  runtime?: StoryRuntime | null;
+  tier?: Exclude<QualityTier, 'fallback'>;
+}) {
+  const rig = useMemo(() => createLightingRigObject(0, tier), [tier]);
 
-      {/* Primary directional sunlight: afternoon golden angle */}
-      <directionalLight
-        color="#fff5e6"
-        intensity={1.2}
-        position={[12, 18, -10]}
-        castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
-        shadow-camera-near={0.5}
-        shadow-camera-far={60}
-        shadow-camera-left={-20}
-        shadow-camera-right={20}
-        shadow-camera-top={20}
-        shadow-camera-bottom={-20}
-        shadow-bias={-0.0001}
-      />
+  useFrame(() => {
+    const activeRuntime = runtime ?? getActiveStoryRuntime();
+    const p = activeRuntime ? activeRuntime.getSnapshot().renderedStoryProgress : 0;
+    rig.update(p, tier);
+  });
 
-      {/* Secondary soft sky bounce light */}
-      <directionalLight color="#9dc4db" intensity={0.3} position={[-8, 12, 10]} />
-    </>
-  );
+  return <primitive object={rig.group} />;
 }
 
 /**
@@ -92,7 +89,6 @@ function ContextLossHandler({
     if (!canvas || !onContextLost) return;
 
     const handleContextLost = (event: Event) => {
-      // Prevent default to enable clean recovery or graceful static fallback
       event.preventDefault();
       onContextLost();
     };
@@ -109,7 +105,7 @@ function ContextLossHandler({
 /**
  * Camera Controller component inside R3F Canvas.
  * Synchronizes camera position, orientation quaternion, and vertical FOV
- * with continuous renderedStoryProgress from StoryRuntime (W08, W13).
+ * with continuous renderedStoryProgress from StoryRuntime (W08, W13, W25).
  */
 function CameraController({ runtime }: { runtime?: StoryRuntime | null }) {
   const { camera } = useThree();
@@ -146,7 +142,7 @@ function CameraController({ runtime }: { runtime?: StoryRuntime | null }) {
 }
 
 /**
- * SceneCanvas: React Three Fiber host for the 3D scene.
+ * SceneCanvas: React Three Fiber host for the complete HavenArt 3D experience.
  */
 export const SceneCanvas: React.FC<SceneCanvasProps> = ({
   tier = 'high',
@@ -158,6 +154,24 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
   children,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Responsive DPR budgeting (W21, PERFORMANCE_BUDGET)
+  const [effectiveDpr, setEffectiveDpr] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      return getEffectiveDpr(tier, window.devicePixelRatio || 1, window.innerWidth, window.innerHeight);
+    }
+    return tier === 'high' ? 1.5 : tier === 'medium' ? 1.25 : 1.0;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setEffectiveDpr(
+        getEffectiveDpr(tier, window.devicePixelRatio || 1, window.innerWidth, window.innerHeight)
+      );
+    };
+    window.addEventListener('resize', handleResize, { passive: true });
+    return () => window.removeEventListener('resize', handleResize);
+  }, [tier]);
 
   useEffect(() => {
     onSceneReady?.();
@@ -184,33 +198,53 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
           near: 0.08,
           far: 100.0,
         }}
-        dpr={tier === 'high' ? [1, 2] : [1, 1.5]}
+        dpr={effectiveDpr}
         shadows={tier !== 'low'}
       >
         <ContextLossHandler canvasRef={canvasRef} onContextLost={onContextLost} />
         <CameraController runtime={runtime} />
 
-        {/* Ambient & Sun Lighting */}
-        <BaselineLighting />
+        {/* Dynamic Architectural Sun & Atmosphere Lighting (W18, W25) */}
+        <SceneLighting runtime={runtime} tier={tier} />
 
-        {/* Persistent Villa Shell (W10) */}
+        {/* Subtle Environmental Wind Motion (W18, W25) */}
+        <EnvironmentalMotion tier={tier} enabled={tier !== 'low'} />
+
+        {/* Persistent Villa Shell (W10, W25) */}
         <VillaShell tier={tier} />
 
-        {/* Zone detail and streaming boundary (W11-AC2) */}
+        {/* Full Phase 1 Architectural Zones (Gate G2 Montage) */}
         <ZoneBoundary
           zoneId="root"
           isCore={false}
           onCoreFailure={onCoreFailure}
           residentHandles={residentHandles}
         >
-          {/* Baseline detail proxies when residentHandles are not yet loaded */}
-          {residentHandles.length === 0 && (
+          {residentHandles.length > 0 ? (
+            children
+          ) : (
             <>
-              <FurnitureProxy tier={tier} />
-              <GardenProxy tier={tier} />
+              {/* Exterior Zone Detail (W14) */}
+              <Exterior tier={tier} />
+
+              {/* Entrance Zone Detail (W14) */}
+              <Entrance tier={tier} />
+
+              {/* Living Room Zone Detail with PBR Materials (W15) */}
+              <Living tier={tier} />
+
+              {/* Rear Garden Terrace & Finale Tree (W19) */}
+              <Garden tier={tier} />
+
+              {/* Baseline detail proxies for low tier or additional safety */}
+              {tier === 'low' && (
+                <>
+                  <FurnitureProxy tier={tier} />
+                  <GardenProxy tier={tier} />
+                </>
+              )}
             </>
           )}
-          {children}
         </ZoneBoundary>
       </Canvas>
     </div>
