@@ -1,0 +1,86 @@
+{
+  "taskId": "W02",
+  "candidate": {
+    "base": "cc22b2cf4035ea69117a907c715073bd3af7c89e",
+    "head": "3beaabad3292b4ac3a2fc658a47486f2009b0ae2",
+    "buildHash": null
+  },
+  "reviewer": {
+    "id": "reviewer-w02-independent",
+    "tier": "H"
+  },
+  "verdict": {
+    "spec": "pass",
+    "quality": "pass",
+    "integration": "blocked-not-evaluated"
+  },
+  "acceptance": [
+    {
+      "id": "W02-AC1",
+      "criterion": "Types chung không import WebGL runtime; modules chỉ import type khi cần.",
+      "status": "pass",
+      "evidence": "src/types/story.ts, src/types/runtime.ts, và src/types/telemetry.ts hoàn toàn thuần TypeScript không import WebGL runtime; src/types/scene.ts chỉ sử dụng import type { Object3D } from 'three'. Không kéo Three.js runtime vào HTML routes."
+    },
+    {
+      "id": "W02-AC2",
+      "criterion": "Các preset references và dictionary keys được định nghĩa trước consumer; validate fixture qua registry truyền vào, không import module chưa có.",
+      "status": "pass",
+      "evidence": "PRESET_REGISTRIES trong src/config/story.ts định nghĩa đầy đủ lighting (golden, sunset, dusk), audio (outdoor, threshold, indoor, garden), zones (exterior, entrance, living, garden), và posters (6 chapters). tests/fixtures/story.ts cung cấp createTestOnlyDictionary với nhãn [TEST-ONLY] và validStoryValidationInput qua registries truyền vào, không phụ thuộc module chưa triển khai."
+    },
+    {
+      "id": "W02-AC3",
+      "criterion": "Story IDs/ranges, hotspot local ranges và DOM IDs duy nhất đúng spec; không có contact giả trong production config.",
+      "status": "pass",
+      "evidence": "CHAPTERS gồm 6 chương liên tục từ 0.0 đến 1.0 không chồng lấn hay đứt đoạn theo half-open intervals; HOTSPOTS gồm 3 hotspots có local ranges chuẩn ([0.15, 0.60], [0.42, 0.92], [0.20, 0.75]); copyKeys tuân thủ đúng chapters.${id} và hotspots.${id}; production config không chứa bất kỳ URL liên hệ giả nào."
+    }
+  ],
+  "findings": [],
+  "checks": [
+    {
+      "command": "node docs/agents/validate-plan.mjs",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "All 36 packages valid, orderedSharedFilePairs=14, 0 errors",
+      "environment": "node v24.13.0, windows x64"
+    },
+    {
+      "command": "npm run typecheck",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors",
+      "environment": "typescript 5.7.3, windows x64"
+    },
+    {
+      "command": "npm run lint",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "eslint . passed with 0 errors and 0 warnings",
+      "environment": "eslint 9.20.1, windows x64"
+    },
+    {
+      "command": "npm test",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "vitest run passed with exit code 0 (passWithNoTests: true)",
+      "environment": "vitest 3.0.5, windows x64"
+    },
+    {
+      "command": "npm run build",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "Next.js static export build passed, generated out/index.html and out/_not-found/index.html",
+      "environment": "next 15.5.26, node v24.13.0, windows x64"
+    }
+  ],
+  "unknowns": [],
+  "visualReview": {
+    "status": "not-run",
+    "artifact": null,
+    "reviewer": null
+  },
+  "decision": {
+    "action": "ready-for-integration",
+    "owner": "integrator",
+    "round": 1
+  }
+}
