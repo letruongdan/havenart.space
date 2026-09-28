@@ -1,0 +1,90 @@
+{
+  "taskId": "W20",
+  "candidate": {
+    "base": "673fc412678f24458f2887a2ee304899564f20ec",
+    "head": "c64e7e8d8b0fe96e3027c79dd8a75851a6a2369b",
+    "buildHash": null
+  },
+  "reviewer": {
+    "id": "havenart-reviewer-audio",
+    "tier": "H"
+  },
+  "verdict": {
+    "spec": "pass",
+    "quality": "pass",
+    "integration": "ready-to-integrate"
+  },
+  "acceptance": [
+    {
+      "id": "W20-AC1: Không request/context/play trước opt-in; toggle nhanh/loading không play muộn.",
+      "status": "pass",
+      "evidence": "src/lib/audio/audioController.ts không hề tạo AudioContext hoặc gửi request tải sample cho tới khi người dùng kích hoạt enable(). Thao tác bật rồi tắt nhanh chóng trước khi fetch hoàn tất hủy bỏ tiến trình phát, đảm bảo controller ở trạng thái 'off' và không bị phát muộn."
+    },
+    {
+      "id": "W20-AC2: Crossfade rendered p, reverse ổn; hidden suspend, disabled vẫn tắt; locale cleanup tắt nguồn cũ.",
+      "status": "pass",
+      "evidence": "src/config/audio.ts tính toán trọng số theo quy luật equal-power mượt mà giữa các không gian; đảo ngược tiến trình cho ra giá trị đồng nhất 100%; setSuspended quản lý đúng vòng đời tab (ẩn thì ngắt, hiện thì phục hồi); hàm dispose giải phóng triệt để các node âm thanh và đóng context."
+    },
+    {
+      "id": "W20-AC3: Lỗi decode/resume trả mute; cả ba file Ogg có thật, loop/decode kiểm được, tổng nén mục tiêu ≤1,5 MB. Report nêu source/creator/license/attribution/modifications/checksum; reviewer kiểm provenance của các file trước integration của W20.",
+      "status": "pass",
+      "evidence": "Xử lý lỗi tải và giải mã an toàn chuyển sang 'unavailable'; ba file public/audio/outdoor.ogg, interior.ogg, garden.ogg có thật với định dạng Vorbis/Ogg hợp lệ, tổng kích thước 226.7 KB (nhỏ hơn nhiều so với giới hạn 1.5 MB); nguồn gốc tạo dựng từ FFmpeg synthesis được ghi nhận CC0 Public Domain rõ ràng kèm mã băm SHA-256 đối chiếu."
+    }
+  ],
+  "findings": [],
+  "checks": [
+    {
+      "command": "npm run test -- tests/unit/audio.test.ts",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "1 test file passed (7 tests passed total)",
+      "environment": "Node.js v24.13.0, Vitest 3.0.5, Windows pwsh"
+    },
+    {
+      "command": "npm run typecheck",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors",
+      "environment": "TypeScript 5.8.2, Windows pwsh"
+    },
+    {
+      "command": "npm run lint",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "eslint . passed with 0 errors and 0 warnings",
+      "environment": "ESLint 9.21.0, Windows pwsh"
+    },
+    {
+      "command": "npm test",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "17 test files passed (142 tests passed total)",
+      "environment": "Node.js v24.13.0, Vitest 3.0.5, Windows pwsh"
+    },
+    {
+      "command": "node docs/agents/validate-plan.mjs",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "status: PASS, 36 packages valid, orderedSharedFilePairs=14, 0 errors",
+      "environment": "Node.js v24.13.0, Windows pwsh"
+    }
+  ],
+  "unknowns": [
+    {
+      "item": "W25: Network/no-autoplay và nghe thật; nhập bản ghi W20 vào ASSET_LICENSES trước integration W25.",
+      "reason": "W20 hoàn tất controller và tài sản âm thanh; việc đấu nối vào UI BrandHeader/ExperienceHost và nghiệm thu nghe thực tế sẽ được thực hiện tại Gate G2.",
+      "owner": "integrator",
+      "nextCheck": "W25 integration review"
+    }
+  ],
+  "visualReview": {
+    "status": "not-run",
+    "artifact": null,
+    "reviewer": null
+  },
+  "decision": {
+    "action": "ready-to-integrate",
+    "owner": "integrator",
+    "round": 1
+  }
+}
