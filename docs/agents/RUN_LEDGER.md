@@ -94,12 +94,13 @@
 | W07 | Design tokens và brand shell | integrated | `8caf3a5` | `c4e7e81` | SPEC: PASS, QUALITY: PASS | `c4e7e81` | 3 files, round 1 pass |
 | W08 | Spline rail, quaternion và clearance | integrated | `5b139a9` | `710c6bb` | SPEC: PASS, QUALITY: PASS | `710c6bb` | 4 files, round 1 pass |
 | W09 | Asset registry và zone streaming | integrated | `a5708fe` | `ef02685` | SPEC: PASS, QUALITY: PASS | `ef02685` | 4 files, round 1 pass, registry & proxy fallback |
-| W10 | Villa shell và proxy có đường thông | ready | `3beaaba` | — | — | — | W02 integrated |
+| W10 | Villa shell và proxy có đường thông | integrated | `a9249f8` | `964dd6b` | SPEC: PASS, QUALITY: PASS | `964dd6b` | 3 files, round 1 pass, persistent shell & proxies |
+| W11 | Canvas boundary và mode gate từ đầu | ready | `964dd6b` | — | — | — | W06, W09, W10 integrated |
 | W12 | Time-clamped progress store và camera sync | ready | `710c6bb` | — | — | — | W04, W08 integrated |
 | W16 | Predicate hiển thị hotspot | ready | `3beaaba` | — | — | — | W02 integrated |
 | W22 | Event abstraction và dedupe thuần | ready | `3beaaba` | — | — | — | W02 integrated |
 | W23 | Modal liên hệ và sao chép/fallback thuần | ready | `c7d7d35` | — | — | — | W03, W05, W06 integrated |
-| W11, W13.. | Các gói tiếp theo | planned | — | — | — | — | Chờ dependencies theo DAG |
+| W13.. | Các gói tiếp theo | planned | — | — | — | — | Chờ dependencies theo DAG |
 | W31–W36 | Các phòng Phase 2 | planned | — | — | — | — | Khóa dispatch |
 
 ---
@@ -116,6 +117,7 @@
 - **2026-09-28 [RULING-08]:** Tích hợp thành công gói W07 tại integration SHA `c4e7e8160c49b30ff35ae9148532eabee154b3ff` sau khi đạt 100% SPEC & QUALITY PASS ngay ở Round 1. Thiết lập bảng token CSS (typography ≤2 font families, màu sắc nhiệt đới tối giản, touch targets ≥44px), BrandHeader gắn thanh điều hướng và StoryOverlay thuần props trình bày nội dung theo từng chapter active mà không đọc scroll hay tạo store. Nghĩa vụ kiểm chứng visual/screenshot được ghi nhận hoãn tới Gate G1 (W13).
 - **2026-09-28 [RULING-09]:** Tích hợp thành công gói W08 tại integration SHA `710c6bb08648b842707157540e9286d61ab861d6` sau khi đạt 100% SPEC & QUALITY PASS ngay ở Round 1 (họ review: camera). Cấu hình 9 waypoint camera Phase 1, spline Catmull-Rom centripetal với nội suy PCHIP, tính đơn định 100% khi tra cứu xuôi/ngược, triệt tiêu roll hoàn toàn và đảm bảo liên tục bán cầu quaternion. Kiểm tra clearance đạt 0 vi phạm qua hai khoảng mở cửa villa với khoảng hở an toàn >= 0.38m. Với W04 và W08 đều đã integrated, gói W12 (Time-clamped progress store và camera sync) đủ điều kiện chuyển sang `ready`.
 - **2026-09-28 [RULING-10]:** Tích hợp thành công gói W09 tại integration SHA `ef02685660f36efaed33b8eaed50eb54579ea6a8` sau khi đạt 100% SPEC & QUALITY PASS ngay ở Round 1 (họ review: resources). Triển khai ResourceRegistry ref-counting cho materials, geometries, textures; ZoneLoader với fallback an toàn sang procedural proxy cho decorative asset; createZoneManager quản lý LRU eviction, hướng di chuyển (direction-based prioritization), bảo toàn pinned activeZone & shell, cùng xử lý AbortSignal và báo lỗi core failure lên mode gate. Nghĩa vụ kiểm chứng peak GPU/resource được ghi nhận hoãn tới W26.
+- **2026-09-28 [RULING-11]:** Tích hợp thành công gói W10 tại integration SHA `964dd6bc4a20635e1571eef9dbeeaa164146a729` sau khi đạt 100% SPEC & QUALITY PASS ngay ở Round 1 (họ review: spec-and-quality). Triển khai VillaShell persistent với kích thước meter chuẩn (phong bì đất 24x52m, sàn 16x15.5m, mái 3.8m), khoảng mở cửa trước X in [-1.4, 1.4] và cửa sau X in [0.8, 3.8] bằng hình học thực tế không sealed box; FurnitureProxy và GardenProxy giữ trọn silhouette từ mọi góc nhìn, không đổi origin của camera rail, và định danh chính xác 3 stable hotspot anchors ('travertine-wall', 'sliding-glass', 'garden-tree'). Nghĩa vụ kiểm chứng top-view keyframes và clearance chi tiết được ghi nhận chuyển tới Gate G1 (W13). Với W06, W09, W10 đều đã integrated, gói W11 đủ điều kiện chuyển sang trạng thái `ready`.
 
 
 

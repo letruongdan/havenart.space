@@ -1,0 +1,55 @@
+{
+  "taskId": "W10",
+  "status": "SUBMITTED",
+  "baseSha": "a9249f8cb4a285e21eb648fc8412298337f0286d",
+  "headSha": "964dd6bc4a20635e1571eef9dbeeaa164146a729",
+  "contractVersion": "havenart-contracts-1.1",
+  "changedFiles": [
+    "src/components/scene/VillaShell.tsx",
+    "src/components/scene/proxies/FurnitureProxy.tsx",
+    "src/components/scene/proxies/GardenProxy.tsx"
+  ],
+  "acceptanceEvidence": [
+    {
+      "criterion": "W10-AC1: Tỷ lệ nhà/lối đi đúng blockout; không sealed box rồi ẩn tường.",
+      "evidence": "src/components/scene/VillaShell.tsx dựng hình học chuẩn meter (1 unit = 1m), Y-up; gốc thế giới (0, 0, 0) tại ngưỡng cửa chính; phong bì đất 24x52m; lối đi sân trước [-1.5, 1.5] x [-20, 0]; sàn hoàn thiện [-8, 8] x [0, 15.5] cao độ Y=0; hiên sau [-2, 6] x [15.5, 19]; mái Y=3.8-4.0. Cửa chính (Z=0, X in [-1.4, 1.4], Y in [0, 2.8]) và cửa trượt sau (Z=15.5, X in [0.8, 3.8], Y in [0, 2.8]) được để trống bằng hình học thực tế (khoảng mở thông suốt giữa các mảng tường trái/phải và lanh-tô phía trên), hoàn toàn không phải hộp kín rồi ẩn tường."
+    },
+    {
+      "criterion": "W10-AC2: Shell không duplicate các mặt của detail, không unmount theo chapter.",
+      "evidence": "VillaShell chỉ sở hữu kết cấu vỏ nhà (tường bao, sàn, mái, lanh-tô, cột kiến trúc) mà không chứa nội thất hay cảnh quan; đồ nội thất (sofa, bàn trà, mảng tường travertine, khung kính trượt) nằm tách bạch trong FurnitureProxy; cảnh quan (cây chủ, bồn cây, cây bụi) nằm trong GardenProxy; không có các mặt phẳng đồng diện gây z-fighting; VillaShell là persistent shell giữ nguyên vòng đời cho toàn bộ phiên 3D, không unmount theo từng chapter."
+    },
+    {
+      "criterion": "W10-AC3: Proxy giữ đủ silhouette từ mọi hướng; không đổi origin của rail.",
+      "evidence": "FurnitureProxy và GardenProxy tuân thủ nghiêm ngặt hệ tọa độ world coordinates với origin (0, 0, 0) của camera rail; giữ silhouette nhận diện từ mọi góc nhìn (sofa dáng chữ L, bàn trà tối giản, tường đá travertine, khung cửa trượt, thân cây và tán lá đa tầng, viền bồn cây sân vườn); các hành lang camera rail từ W08 đều có khoảng hở an toàn lớn (> 0.5m); tích hợp đầy đủ stable hotspot anchors: hotspot-anchor-travertine-wall tại [-2.5, 1.4, 9.2], hotspot-anchor-sliding-glass tại [2.2, 1.5, 14.8], và hotspot-anchor-garden-tree tại [1.5, 2.0, 24.5]."
+    }
+  ],
+  "commandsAndActualResults": [
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors"
+    },
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "output": "eslint . passed with 0 errors and 0 warnings"
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "output": "6 test files passed (52 tests passed total)"
+    },
+    {
+      "command": "node docs/agents/validate-plan.mjs",
+      "exitCode": 0,
+      "output": "status: PASS, 36 packages valid, orderedSharedFilePairs=14, 0 errors"
+    }
+  ],
+  "integrationObligations": [
+    "W13: top-view, keyframes, actual clearance so W08."
+  ],
+  "unverifiedItems": [],
+  "openRisks": [],
+  "assetRecords": [],
+  "reportPath": "docs/agents/reports/W10-report.json"
+}
