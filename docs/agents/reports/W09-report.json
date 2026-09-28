@@ -1,0 +1,61 @@
+{
+  "taskId": "W09",
+  "status": "SUBMITTED",
+  "baseSha": "a5708fedf0bb98768e3406f477db86bada78459c",
+  "headSha": "ef02685660f36efaed33b8eaed50eb54579ea6a8",
+  "contractVersion": "havenart-contracts-1.1",
+  "changedFiles": [
+    "src/lib/three/resourceRegistry.ts",
+    "src/lib/three/assetLoader.ts",
+    "src/lib/three/zoneManager.ts",
+    "tests/unit/zone-manager.test.ts"
+  ],
+  "acceptanceEvidence": [
+    {
+      "criterion": "W09-AC1: Active/shell không bị evict; neighbor bounded bytes; reverse đổi ưu tiên.",
+      "evidence": "src/lib/three/zoneManager.ts cài đặt createZoneManager quản lý vòng đời zone: activeZone và shell luôn được pin và bảo vệ tuyệt đối khỏi cơ chế evictOldest(); neighbors được xác định theo progress p và hướng di chuyển direction (direction < 0 ưu tiên zone phía trước/prev, direction >= 0 ưu tiên zone kế tiếp/next); giới hạn bộ nhớ budgetBytes và maxDetailZones được thực thi nghiêm ngặt, tự động giải phóng các detail zone xa nhất và cũ nhất."
+    },
+    {
+      "criterion": "W09-AC2: Shared material còn reference không dispose; canceled/rejected job trả ref/buffer.",
+      "evidence": "src/lib/three/resourceRegistry.ts cài đặt ResourceRegistry quản lý ref-count cho materials, geometries, textures; material dùng chung chỉ thực sự gọi dispose() khi ref count giảm về 0; assetLoader.ts và zoneManager.ts hỗ trợ AbortSignal xử lý dọn dẹp và releaseZoneAssets ngay khi tác vụ bị hủy hoặc reject, không rò rỉ buffer hay giữ reference ma."
+    },
+    {
+      "criterion": "W09-AC3: GLB decorative lỗi trả proxy; core failure được báo lên mode gate, không nuốt lỗi hoặc retry vô hạn.",
+      "evidence": "assetLoader.ts hỗ trợ cơ chế fallback an toàn: đối với asset decorative (required: false), khi tải GLB thất bại sẽ tự động fallback sang createProceduralProxy(zoneId) mà không làm sập zone; đối với shell hoặc core zone (required: true), lỗi tải được ném ra và chuyển thẳng tới callback onCoreFailure của zoneManager để mode gate xử lý chuyển static fallback, hoàn toàn không nuốt lỗi hay lặp retry vô hạn."
+    }
+  ],
+  "commandsAndActualResults": [
+    {
+      "command": "npm run test -- tests/unit/zone-manager.test.ts",
+      "exitCode": 0,
+      "output": "1 test file passed (8 tests passed total)"
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "output": "6 test files passed (52 tests passed total)"
+    },
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors"
+    },
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "output": "eslint . passed with 0 errors and 0 warnings"
+    },
+    {
+      "command": "node docs/agents/validate-plan.mjs",
+      "exitCode": 0,
+      "output": "status: PASS, 36 packages valid, orderedSharedFilePairs=14, 0 errors"
+    }
+  ],
+  "integrationObligations": [
+    "W26: peak GPU/resource trên production integrated scene."
+  ],
+  "unverifiedItems": [],
+  "openRisks": [],
+  "assetRecords": [],
+  "reportPath": "docs/agents/reports/W09-report.json"
+}
