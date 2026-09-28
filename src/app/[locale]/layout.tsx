@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import '@/styles/globals.css';
 import { parseLocale } from '@/lib/i18n/locale';
 import { getDictionary } from '@/lib/i18n/dictionary';
+import { buildPageMetadata } from '@/lib/seo/metadata';
+import { SITE_CONFIG } from '@/config/site';
 
 export const dynamicParams = false;
 
@@ -23,15 +25,32 @@ export async function generateMetadata({
 
   const copy = await getDictionary(locale);
 
-  return {
-    title: copy.metadata.title,
-    description: copy.metadata.description,
-    openGraph: {
-      title: copy.metadata.ogTitle,
-      description: copy.metadata.ogDescription,
-      locale: locale === 'vi' ? 'vi_VN' : 'en_US',
-    },
-  };
+  const metadata = buildPageMetadata({
+    locale,
+    copy,
+    siteConfig: SITE_CONFIG,
+    ogImageVerified: true,
+  });
+
+  // Ensure OpenGraph images reference the verified static image asset /images/og-havenart.jpg (W25, W28-AC3)
+  const isProduction = SITE_CONFIG.environment === 'production';
+  const cleanOrigin =
+    isProduction && SITE_CONFIG.publicOrigin
+      ? SITE_CONFIG.publicOrigin.replace(/\/+$/, '')
+      : '';
+
+  if (metadata.openGraph) {
+    metadata.openGraph.images = [
+      {
+        url: cleanOrigin ? `${cleanOrigin}/images/og-havenart.jpg` : '/images/og-havenart.jpg',
+        width: 1200,
+        height: 630,
+        alt: copy.metadata.ogAlt,
+      },
+    ];
+  }
+
+  return metadata;
 }
 
 export default async function LocaleLayout({

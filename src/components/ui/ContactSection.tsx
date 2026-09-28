@@ -12,9 +12,21 @@ import { getContactUrl, REQUIRED_CONTACT_CHANNELS } from '@/lib/contact';
 export interface ContactSectionProps {
   readonly copy: Dictionary['contact'];
   readonly contacts: ContactConfig;
+  readonly onChannelClick?: (channel: 'zalo' | 'messenger' | 'whatsapp') => void;
 }
 
-export function ContactSection({ copy, contacts }: ContactSectionProps) {
+export function ContactSection({ copy, contacts, onChannelClick }: ContactSectionProps) {
+  const handleChannelClick = (channel: 'zalo' | 'messenger' | 'whatsapp') => {
+    onChannelClick?.(channel);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('havenart:channel-click', {
+          detail: { channel, placement: 'finale' },
+        })
+      );
+    }
+  };
+
   return (
     <section
       id="contact"
@@ -37,6 +49,7 @@ export function ContactSection({ copy, contacts }: ContactSectionProps) {
             <div
               key={channel}
               role="listitem"
+              data-channel-container={channel}
               className="p-5 rounded-lg border border-stone-200 bg-stone-100/70 flex flex-col justify-between"
             >
               <div className="mb-4">
@@ -53,12 +66,15 @@ export function ContactSection({ copy, contacts }: ContactSectionProps) {
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
+                  data-channel={channel}
+                  onClick={() => handleChannelClick(channel)}
                   className="inline-flex items-center justify-center px-4 py-2 bg-stone-900 text-stone-50 text-sm font-medium rounded hover:bg-stone-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-stone-900 transition-colors"
                 >
                   {copy.cta} — {channelName}
                 </a>
               ) : (
                 <span
+                  data-channel={channel}
                   className="inline-flex items-center justify-center px-4 py-2 bg-stone-200/80 text-stone-500 text-sm font-medium rounded cursor-not-allowed select-none"
                   aria-disabled="true"
                 >

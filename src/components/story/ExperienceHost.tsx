@@ -44,6 +44,7 @@ import { HotspotPanel } from '@/components/hotspots/HotspotPanel';
 import { useExperienceStore } from '@/stores/experienceStore';
 import { setActiveStoryRuntime } from '@/components/scene/SceneCanvas';
 import type { StaticReason } from '@/lib/performance/selectMode';
+import { useAnalyticsBridge } from '@/hooks/useAnalyticsBridge';
 
 export interface ExperienceHostProps {
   readonly locale: Locale;
@@ -236,6 +237,75 @@ export const ExperienceHost: React.FC<ExperienceHostProps> = ({
     [runtime]
   );
 
+  // 6. Canonical Analytics Bridge & Dwell Tracking (W22, W28-AC1, W28-AC2)
+  const analyticsBridge = useAnalyticsBridge({
+    locale,
+    mode,
+    staticReason: runtime.getSnapshot().staticReason,
+    activeChapterId,
+    renderedProgress,
+    isAudioActive: audioState === 'playing',
+    activeHotspotId,
+  });
+
+  // Delegated CTA click listener for #contact and channel clicks
+  useEffect(() => {
+    const handleDocumentClick = (e: MouseEvent) => {
+      const target = (e.target as HTMLElement)?.closest?.('a[href="#contact"]');
+      if (target) {
+        const isHeader = Boolean(target.closest('header'));
+        const placement = isHeader ? 'persistent' : 'mid';
+        analyticsBridge.handleCtaClick(placement, 'contact-section');
+      }
+    };
+
+    const handleChannelEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{
+        channel: 'zalo' | 'messenger' | 'whatsapp';
+        placement?: 'finale' | 'mid' | 'persistent';
+      }>;
+      if (customEvent.detail?.channel) {
+        analyticsBridge.handleCtaClick(
+          customEvent.detail.placement ?? 'finale',
+          customEvent.detail.channel
+        );
+      }
+    };
+
+    document.addEventListener('click', handleDocumentClick, { capture: true, passive: true });
+    window.addEventListener('havenart:channel-click', handleChannelEvent);
+
+    return () => {
+      document.removeEventListener('click', handleDocumentClick, { capture: true });
+      window.removeEventListener('havenart:channel-click', handleChannelEvent);
+    };
+  }, [analyticsBridge]);
+
+  // Completion observer for finale contact section
+  useEffect(() => {
+    const contactElem = document.getElementById('contact');
+    if (!contactElem) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.target === contactElem) {
+            analyticsBridge.updateCompletionProgress(
+              renderedProgress,
+              entry.intersectionRatio
+            );
+          }
+        }
+      },
+      { threshold: [0, 0.25, 0.5, 0.75, 1.0] }
+    );
+
+    observer.observe(contactElem);
+    return () => {
+      observer.disconnect();
+    };
+  }, [renderedProgress, analyticsBridge]);
+
   // Compute 2D projected coordinates and visibility for active hotspots (W16, W17, W25)
   const projectedHotspots = useMemo(() => {
     if (mode !== 'cinematic' || viewport.width <= 0 || viewport.height <= 0) {
@@ -356,6 +426,7 @@ export const ExperienceHost: React.FC<ExperienceHostProps> = ({
             copy={activeHotspotCopy}
             onClose={() => setActiveHotspotId(null)}
             onContactCta={() => {
+              analyticsBridge.handleCtaClick('mid', 'contact-section');
               setActiveHotspotId(null);
               document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
             }}
