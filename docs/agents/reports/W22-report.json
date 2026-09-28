@@ -1,0 +1,52 @@
+{
+  "taskId": "W22",
+  "status": "SUBMITTED",
+  "baseSha": "4337b1ea0cf200e19488a0e03be16a3bc5db681d",
+  "headSha": "33f7891cbcb30c6040442a83e4abeb363c4bb114",
+  "contractVersion": "havenart-contracts-1.1",
+  "changedFiles": [
+    "src/lib/analytics/events.ts",
+    "tests/unit/events.test.ts"
+  ],
+  "acceptanceEvidence": [
+    {
+      "criterion": "W22-AC1: Đủ 10 event/allowlist, reject payload ngoài enum và không PII.",
+      "evidence": "src/lib/analytics/events.ts triển khai validateEventPayload và validateAnalyticsEvent kiểm duyệt đầy đủ 10 sự kiện chuẩn theo hợp đồng C10 và đặc tả ANALYTICS_SPEC. Loại bỏ nghiêm ngặt các thuộc tính lạ, các giá trị ngoài enum và mọi dấu vết PII (tên, email, số điện thoại, URL query, v.v.)."
+    },
+    {
+      "criterion": "W22-AC2: Chapter dwell 300ms / visible, A -> B -> A valid; completion >= .99 + CTA 50% / 1000ms + started.",
+      "evidence": "createChapterDwellTracker chỉ kích hoạt chapter_entered khi chương ổn định >= 300ms trong trạng thái document visible, hủy bộ đếm khi tab bị ẩn; xử lý chính xác chuỗi di chuyển A -> B -> A với direction='backward' và entryIndex tăng dần. createExperienceLifecycleTracker bảo đảm experience_started chỉ phát tối đa 1 lần khi có thao tác chủ ý, và experience_completed chỉ phát sau started khi đồng thời thỏa mãn progress >= 0.99 và CTA visible >= 50% trong 1000ms liên tục."
+    },
+    {
+      "criterion": "W22-AC3: Không phát đôi CTA vì bubbling; không request/cookie/persistent ID mặc định.",
+      "evidence": "createCtaCoordinator khử trùng lặp sự kiện click trong cửa sổ 300ms, ngăn chặn double-firing do bubbling giữa anchor/button; createAnalyticsTracker cung cấp buffer RAM dev giới hạn 100 sự kiện (FIFO) và sink mặc định là no-op; hoàn toàn không gửi request mạng, không ghi cookie, localStorage hay persistent identifiers."
+    }
+  ],
+  "commandsAndActualResults": [
+    {
+      "command": "npm run test -- tests/unit/events.test.ts",
+      "exitCode": 0,
+      "output": "1 test file passed (12 tests passed total)"
+    },
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors"
+    },
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "output": "eslint . passed with 0 errors and 0 warnings"
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "output": "11 test files passed (104 tests passed total)"
+    }
+  ],
+  "integrationObligations": [],
+  "unverifiedItems": [],
+  "openRisks": [],
+  "assetRecords": [],
+  "reportPath": "docs/agents/reports/W22-report.json"
+}
