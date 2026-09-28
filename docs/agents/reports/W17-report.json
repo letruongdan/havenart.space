@@ -1,0 +1,62 @@
+{
+  "taskId": "W17",
+  "status": "SUBMITTED",
+  "baseSha": "9e87980df06d3c5edb3246657de87f5a69c83ac1",
+  "headSha": "af56b2e8e83eb6f76d8fc64ffadcb3d03a83baf3",
+  "contractVersion": "havenart-contracts-1.1",
+  "changedFiles": [
+    "src/components/hotspots/HotspotButton.tsx",
+    "src/components/hotspots/HotspotPanel.tsx",
+    "src/components/hotspots/DetailList.tsx",
+    "src/hooks/useHotspotProjection.ts",
+    "tests/unit/hotspot-panel.test.tsx",
+    "tests/unit/hotspot-projection.test.ts"
+  ],
+  "acceptanceEvidence": [
+    {
+      "criterion": "W17-AC1: Button/keyboard/touch mở cùng dialog; Escape/backdrop/focus restore, không modal lồng.",
+      "evidence": "HotspotButton triển khai đầy đủ các thuộc tính chuẩn ARIA (aria-haspopup=\"dialog\", aria-expanded, aria-controls=\"hotspot-panel\", aria-label chi tiết) cùng diện tích chạm đạt chuẩn WCAG (min 44x44 CSS px); HotspotPanel thiết lập dialog modal với role=\"dialog\", aria-modal=\"true\", aria-labelledby và aria-describedby; bẫy focus (focus trap) luân chuyển tuần hoàn Tab/Shift+Tab bên trong dialog; hỗ trợ đóng bằng phím Escape, click nút đóng hoặc click backdrop (có bảo vệ mousedown/mouseup chống đóng nhầm khi bôi đen văn bản); phục hồi focus ưu tiên về đúng nút kích hoạt hoặc anchor DOM fallback; khi đổi hotspot lúc panel đang mở thì nội dung cập nhật trực tiếp trong cùng một dialog, loại trừ hoàn toàn modal lồng nhau."
+    },
+    {
+      "criterion": "W17-AC2: Freeze snapshot khi mở; đóng lúc raw xa rendered không teleport; CTA hủy old restore.",
+      "evidence": "Khi HotspotPanel mở, invoke runtime.freeze(scrollY) để chụp snapshot và lưu giữ FreezeToken, đồng thời khóa cuộn nền (body overflow hidden); khi đóng thông thường, gọi runtime.resume(token, 'close') khôi phục native scroll và tiếp tục vận tốc mượt mà theo speed limit từ frame đang giữ, không gây teleport; khi người dùng click CTA 'Liên hệ kiến trúc sư', gọi runtime.resume(token, 'navigate') hủy bỏ phục hồi vị trí cuộn cũ, mở khóa nền và điều hướng trực tiếp tới duy nhất một đích đến #contact."
+    },
+    {
+      "criterion": "W17-AC3: Garden proxy có anchor để test sớm; ảnh/vị trí trên Garden thật xác nhận W25.",
+      "evidence": "Tương thích 100% với 3 điểm neo hotspot đã định danh từ W02/W10/W15/W19 ('travertine-wall', 'sliding-glass', 'garden-tree'); DetailList cung cấp danh mục HTML tương đương với các thẻ bài viết mang ID detail-{id}, dễ dàng đọc được khi không có JavaScript; useHotspotProjection áp dụng chính sách ngân sách raycast nghiêm ngặt: chỉ thực hiện kiểm tra che khuất (isOccluded) đối với các hotspot đã vượt qua các bộ lọc nhanh (đúng phòng activeRoom, nằm trong activationRange, nằm trong frustum và khoảng cách <= maxDistanceM), đồng thời áp dụng cơ chế bộ đệm/throttle mỗi 6 khung hình để loại trừ việc raycast mọi mesh ở mọi khung hình."
+    }
+  ],
+  "commandsAndActualResults": [
+    {
+      "command": "npm run test -- tests/unit/hotspot-panel.test.tsx tests/unit/hotspot-projection.test.ts",
+      "exitCode": 0,
+      "output": "2 test files passed (14 tests passed total)"
+    },
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors"
+    },
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "output": "eslint . passed with 0 errors and 0 warnings"
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "output": "20 test files passed (174 tests passed total)"
+    },
+    {
+      "command": "npm run build",
+      "exitCode": 0,
+      "output": "Compiled successfully, 8/8 static pages exported cleanly"
+    }
+  ],
+  "integrationObligations": [
+    "W25: garden-tree marker trên Garden thật và modal/locale seams."
+  ],
+  "unverifiedItems": [],
+  "openRisks": [],
+  "reportPath": "docs/agents/reports/W17-report.json"
+}
