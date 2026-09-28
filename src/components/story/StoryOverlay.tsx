@@ -83,3 +83,6 @@ export function StoryOverlay({ locale = 'vi', activeChapterId, copy }: StoryOver
     </aside>
   );
 }
+
+export default StoryOverlay;
+

@@ -11,19 +11,34 @@
  * - W11-AC3: Persistent shell + zone boundary mounting.
  */
 
+import '@react-three/fiber';
 import React, { useEffect, useRef } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { QualityTier } from '@/types/story';
 import type { ZoneHandle } from '@/types/scene';
+import type { StoryRuntime } from '@/types/runtime';
+import { sampleRail } from '@/lib/three/cameraRail';
+import { CAMERA_OPTICS, focalLengthToVerticalFov } from '@/config/camera';
 import { VillaShell } from './VillaShell';
 import { ZoneBoundary } from './ZoneBoundary';
 import { FurnitureProxy } from './proxies/FurnitureProxy';
 import { GardenProxy } from './proxies/GardenProxy';
 
+let activeRuntimeInstance: StoryRuntime | null = null;
+
+export function setActiveStoryRuntime(runtime: StoryRuntime | null): void {
+  activeRuntimeInstance = runtime;
+}
+
+export function getActiveStoryRuntime(): StoryRuntime | null {
+  return activeRuntimeInstance;
+}
+
 export interface SceneCanvasProps {
   readonly tier?: Exclude<QualityTier, 'fallback'>;
   readonly residentHandles?: readonly ZoneHandle[];
+  readonly runtime?: StoryRuntime | null;
   readonly onContextLost?: () => void;
   readonly onCoreFailure?: (error: Error) => void;
   readonly onSceneReady?: () => void;
@@ -92,11 +107,51 @@ function ContextLossHandler({
 }
 
 /**
+ * Camera Controller component inside R3F Canvas.
+ * Synchronizes camera position, orientation quaternion, and vertical FOV
+ * with continuous renderedStoryProgress from StoryRuntime (W08, W13).
+ */
+function CameraController({ runtime }: { runtime?: StoryRuntime | null }) {
+  const { camera } = useThree();
+
+  useEffect(() => {
+    camera.near = CAMERA_OPTICS.nearPlaneM;
+    camera.far = CAMERA_OPTICS.farPlaneM;
+    camera.updateProjectionMatrix();
+  }, [camera]);
+
+  useFrame(() => {
+    const activeRuntime = runtime ?? getActiveStoryRuntime();
+    const p = activeRuntime ? activeRuntime.getSnapshot().renderedStoryProgress : 0;
+    const pose = sampleRail(p);
+
+    camera.position.set(pose.position[0], pose.position[1], pose.position[2]);
+    camera.quaternion.set(
+      pose.quaternion[0],
+      pose.quaternion[1],
+      pose.quaternion[2],
+      pose.quaternion[3]
+    );
+
+    if (camera instanceof THREE.PerspectiveCamera) {
+      const targetFov = focalLengthToVerticalFov(pose.focalLengthMm);
+      if (Math.abs(camera.fov - targetFov) > 0.001) {
+        camera.fov = targetFov;
+        camera.updateProjectionMatrix();
+      }
+    }
+  });
+
+  return null;
+}
+
+/**
  * SceneCanvas: React Three Fiber host for the 3D scene.
  */
 export const SceneCanvas: React.FC<SceneCanvasProps> = ({
   tier = 'high',
   residentHandles = [],
+  runtime,
   onContextLost,
   onCoreFailure,
   onSceneReady,
@@ -133,6 +188,7 @@ export const SceneCanvas: React.FC<SceneCanvasProps> = ({
         shadows={tier !== 'low'}
       >
         <ContextLossHandler canvasRef={canvasRef} onContextLost={onContextLost} />
+        <CameraController runtime={runtime} />
 
         {/* Ambient & Sun Lighting */}
         <BaselineLighting />
