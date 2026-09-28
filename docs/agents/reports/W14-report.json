@@ -1,0 +1,60 @@
+{
+  "taskId": "W14",
+  "status": "SUBMITTED",
+  "baseSha": "95767829e3c4a9ec2a48963b1a4881ae12e679c5",
+  "headSha": "4c9ee6b4ff1f3568ac8d44b26d9712b722eab8a6",
+  "contractVersion": "havenart-contracts-1.1",
+  "changedFiles": [
+    "src/components/scene/zones/Entrance.tsx",
+    "src/components/scene/zones/Exterior.tsx",
+    "tests/unit/exterior-entrance-layout.test.ts"
+  ],
+  "acceptanceEvidence": [
+    {
+      "criterion": "W14-AC1: Kiến trúc Contemporary Tropical Minimalism, tự nhiên và tỷ lệ hợp lý.",
+      "evidence": "createExteriorZoneObject và createEntranceZoneObject triển khai ngôn ngữ Contemporary Tropical Minimalism với các luống bồn cây viền đá curb, cây hoa sứ / cọ nhiệt đới đa tầng tán, khóm cây bụi monstera/philodendron, bể nước gương phản chiếu mặt trời, bậc dạo travertine, đèn bollard thấp, cửa gỗ teak pivot mở 85 độ, bàn console và gốm tối giản tại sảnh. Toàn bộ hình khối nằm trọn trong ranh giới ZONE_MANIFESTS của exterior ([-12, -1, -20] tới [12, 10, 0]) và entrance ([-3, -1, 0] tới [3, 5, 4])."
+    },
+    {
+      "criterion": "W14-AC2: Không che cửa/rail bởi cây mới; reverse nhìn đủ geometry.",
+      "evidence": "Khoảng mở cửa chính X in [-1.4, 1.4] tại Z=0 hoàn toàn thông suốt với cánh cửa pivot nép sát mép trái (X=-1.30, Z in [0.05, 1.25]). Toàn bộ chướng ngại vật duy trì khoảng cách an toàn >= 1.2m tới tâm camera (vượt xa CAMERA_OPTICS.minClearanceM = 0.38m). Toàn bộ vật thể sử dụng hình học 3D có thể tích thật (width > 0, height > 0, depth > 0), không dùng polygon phẳng đơn phương diện, bảo tồn hình khối khi nhìn ngược từ lối vào ra sân trước."
+    },
+    {
+      "criterion": "W14-AC3: Asset records/byte estimates có trong report; không sửa ASSET_LICENSES cùng worker khác.",
+      "evidence": "Trong Phase 1, toàn bộ chi tiết là procedural proxy trực tiếp từ Three.js/R3F với assetUri=null, encodedBytes=0, tuân thủ ngân sách 0 USD. Không sửa đổi ASSET_LICENSES. Khóa nghĩa vụ nghiệm thu visual toàn cảnh cho mốc Gate G2 (W25)."
+    }
+  ],
+  "commandsAndActualResults": [
+    {
+      "command": "npm run test -- tests/unit/exterior-entrance-layout.test.ts",
+      "exitCode": 0,
+      "output": "1 test file passed (6 tests passed total)"
+    },
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors"
+    },
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "output": "eslint . passed with 0 errors and 0 warnings"
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "output": "13 test files passed (117 tests passed total)"
+    },
+    {
+      "command": "npm run build",
+      "exitCode": 0,
+      "output": "Next.js static export complete (8/8 static pages, including /robots.txt and /sitemap.xml)"
+    }
+  ],
+  "integrationObligations": [
+    "W25: art review trong whole scene với final lighting."
+  ],
+  "unverifiedItems": [],
+  "openRisks": [],
+  "assetRecords": [],
+  "reportPath": "docs/agents/reports/W14-report.json"
+}
