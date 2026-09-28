@@ -1,6 +1,6 @@
 # HavenArt — Hợp đồng giao việc giữa các agent
 
-Version đề xuất: `havenart-contracts-1.1`, ngày 28/09/2026. Bản 1.1 tách kiểm definition/runtime và giao ownership audio assets sau review độc lập. Đây là thiết kế module; W02 chuyển thành types/fixtures và kiểm tra trước dispatch consumer. Chưa có code hoặc contract test thực thi.
+Version chính thức: `havenart-contracts-1.1`, khóa tại W02 ngày 28/09/2026. Các types, schemas và fixtures đã được hiện thực hóa đầy đủ tại `src/types/*`, `src/config/*` và `tests/fixtures/*`.
 
 ## Authority và ownership
 
