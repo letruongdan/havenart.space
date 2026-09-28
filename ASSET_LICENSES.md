@@ -73,6 +73,22 @@ Danh sách bên dưới là quy trình và schema bắt buộc; không phải ch
 - **Modifications:** Xuất xưởng trực tiếp từ cấu trúc hình học, phối cảnh và bảng màu ánh sáng hoàng hôn -> chạng vạng của biệt thự nhiệt đới HavenArt.
 - **VerifiedAt:** 2026-09-28 bởi HavenArt Integration Team.
 
+### 3. Kiểu chữ & Font hệ thống (Typography & System Fonts — W01, W07)
+
+| Trường | Nội dung xác thực |
+|---|---|
+| `name` | HavenArt Typography System (Serif, Sans-serif, Monospace) |
+| `source` | Ngăn xếp phông chữ hệ thống tiêu chuẩn web (Web-safe native system font stacks) |
+| `creator` | Hệ điều hành máy khách (Apple Inc., Microsoft Corp., Google LLC) |
+| `license` | System Native Fonts / Cài sẵn theo hệ điều hành (0 USD chi phí, 0 tệp font tải ngoài) |
+| `attribution` | Không bắt buộc |
+| `file` | Khai báo trực tiếp qua CSS tokens: `src/styles/tokens.css`, `src/styles/globals.css` |
+| `modifications` | Không tải tệp font ngoại vi, áp dụng font-feature-settings tối ưu dấu tiếng Việt |
+| `verifiedAt` | 2026-09-28 |
+| `verifiedBy` | HavenArt Integration Team |
+| `evidence` | docs/agents/reports/W01-report.json, docs/agents/reports/W07-report.json |
+| `checksum` | N/A (Web-safe system fonts, 0 external font download) |
+
 ---
 
 ## Điều kiện trước production
