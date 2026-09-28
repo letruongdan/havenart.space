@@ -1,0 +1,48 @@
+{
+  "taskId": "W04",
+  "status": "SUBMITTED",
+  "baseSha": "193432f027c04377495245f22ae42d90d5c325dd",
+  "headSha": "ed86fce0e53ed916bc8543dc4a023cd92bf4ba0f",
+  "contractVersion": "havenart-contracts-1.1",
+  "changedFiles": [
+    "src/lib/story/sampleChapter.ts",
+    "src/lib/story/validateStory.ts",
+    "tests/unit/story.test.ts"
+  ],
+  "acceptanceEvidence": [
+    {
+      "criterion": "W04-AC1: Biên 0/.15/.27/.39/.68/.87/1 đúng half-open; clamp finite ngoài range.",
+      "evidence": "sampleChapter xử lý chính xác half-open [start, end), biên thuộc về chương kế tiếp; chương cuối cùng finale bao gồm 1.0; giá trị âm/lớn hơn 1 được clamp an toàn về 0 và 1; NaN/Infinity ném Error."
+    },
+    {
+      "criterion": "W04-AC2: Từ chối duplicate/gap/overlap/NaN và reference thiếu trong registry được truyền vào.",
+      "evidence": "validateStory phát hiện triệt để: gap, overlap, duplicate id/slug, cameraRange lỗi, activationRange lỗi, lighting/audio presets không nằm trong registries, copyKey thiếu trong localeKeys."
+    },
+    {
+      "criterion": "W04-AC3: Query tiến/lùi cùng p cho cùng chapter; lỗi cấu hình không bị nuốt.",
+      "evidence": "Unit test xác nhận tính đơn định 100% khi query cùng điểm p theo chiều xuôi và ngược; validateStory trả danh sách lỗi đầy đủ khi dữ liệu sai lệch."
+    }
+  ],
+  "commandsAndActualResults": [
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "output": "3 test files passed (22 tests passed total)"
+    },
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors"
+    },
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "output": "eslint . passed with 0 errors and 0 warnings"
+    }
+  ],
+  "integrationObligations": [],
+  "unverifiedItems": [],
+  "openRisks": [],
+  "assetRecords": [],
+  "reportPath": "docs/agents/reports/W04-report.json"
+}
