@@ -1,0 +1,97 @@
+{
+  "taskId": "W25",
+  "candidate": {
+    "base": "b8753edf0e0ea63098e9fc7dfc57803e61c36fe4",
+    "head": "6b74a0c1a4bc803ee31465c4589c9b1572a90a86",
+    "buildHash": null
+  },
+  "reviewer": {
+    "id": "independent-reviewer-integration",
+    "tier": "H"
+  },
+  "verdict": {
+    "spec": "pass",
+    "quality": "pass",
+    "integration": "pass"
+  },
+  "acceptance": [
+    {
+      "id": "W25-AC1",
+      "status": "pass",
+      "evidence": "ExperienceHost là composition root duy nhất khởi tạo StoryRuntime, AudioController và FrameMonitor; CameraController, SceneLighting, EnvironmentalMotion, HotspotButton và StoryOverlay đồng bộ qua renderedStoryProgress trong cùng frame rAF; không có rAF listener hoặc WebGL context trùng lặp; dọn dẹp sạch khi unmount."
+    },
+    {
+      "id": "W25-AC2",
+      "status": "pass",
+      "evidence": "13 bài test baseline Gate G1 (static-story.spec.ts và scroll-journey.spec.ts) đạt 100% không hồi quy; 13 bài test Gate G2 (phase-one.spec.ts, hotspot.spec.ts, audio.spec.ts, language.spec.ts) đều pass; full flow tới garden + duy nhất section#contact; cuộn 2 chiều mượt mà; 3 hotspot APG modal dialog khóa cuộn qua freeze snapshot và phục hồi focus; chuyển ngữ VI<->EN bảo lưu tiến độ qua session storage handoff."
+    },
+    {
+      "id": "W25-AC3",
+      "status": "pass",
+      "evidence": "12 story posters WebP (desktop 1600x900, mobile 800x1200) và 1 OG JPEG image (1200x630) xuất phát từ kiến trúc HavenArt; 3 tệp âm thanh Ogg Vorbis thật trong public/audio/; toàn bộ 16 assets được ghi nhận nguồn gốc/giấy phép CC0-1.0 và khớp mã SHA-256 trong ASSET_LICENSES.md; validate-runtime-resources.mjs kiểm tra độc lập magic bytes, dung lượng, định dạng và mã băm thực tế trên đĩa (trả PASS với 0 errors); 7 vitest unit tests trong runtime-resources.test.ts kiểm chứng tính nhạy cảm và bắt lỗi khi thiếu file hoặc sai hash."
+    }
+  ],
+  "findings": [],
+  "checks": [
+    {
+      "command": "npm run typecheck",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors",
+      "environment": "Node.js v22.14.0, Windows pwsh"
+    },
+    {
+      "command": "npm run lint",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "eslint . passed cleanly with 0 errors and 0 warnings",
+      "environment": "Node.js v22.14.0, Windows pwsh"
+    },
+    {
+      "command": "npm test",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "23 test files passed (192 tests passed total)",
+      "environment": "Node.js v22.14.0, Windows pwsh"
+    },
+    {
+      "command": "npm run build",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "Next.js 15.5.26 static build exported 8/8 static pages successfully",
+      "environment": "Node.js v22.14.0, Windows pwsh"
+    },
+    {
+      "command": "node scripts/validate-runtime-resources.mjs",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "PASS: 16 runtime assets verified against ASSET_LICENSES.md with 0 errors",
+      "environment": "Node.js v22.14.0, Windows pwsh"
+    },
+    {
+      "command": "npx playwright test tests/e2e/phase-one.spec.ts tests/e2e/hotspot.spec.ts tests/e2e/audio.spec.ts tests/e2e/language.spec.ts",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "13 passed across 4 test files (17.1s)",
+      "environment": "Playwright Chromium headless, Windows pwsh"
+    },
+    {
+      "command": "node docs/agents/validate-plan.mjs",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "PASS: 36 packages valid",
+      "environment": "Node.js v22.14.0, Windows pwsh"
+    }
+  ],
+  "unknowns": [],
+  "visualReview": {
+    "status": "pass",
+    "artifact": "public/images/story/*, public/images/og-havenart.jpg",
+    "reviewer": "independent-reviewer-integration"
+  },
+  "decision": {
+    "action": "integrate",
+    "owner": "integrator",
+    "round": 1
+  }
+}

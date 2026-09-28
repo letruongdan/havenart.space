@@ -1,0 +1,90 @@
+{
+  "taskId": "W25",
+  "status": "SUBMITTED",
+  "baseSha": "b8753edf0e0ea63098e9fc7dfc57803e61c36fe4",
+  "headSha": "6b74a0c1a4bc803ee31465c4589c9b1572a90a86",
+  "contractVersion": "havenart-contracts-1.1",
+  "changedFiles": [
+    "src/components/story/ExperienceHost.tsx",
+    "src/components/scene/SceneCanvas.tsx",
+    "src/components/ui/BrandHeader.tsx",
+    "ASSET_LICENSES.md",
+    "scripts/validate-runtime-resources.mjs",
+    "tests/unit/runtime-resources.test.ts",
+    "tests/e2e/phase-one.spec.ts",
+    "tests/e2e/hotspot.spec.ts",
+    "tests/e2e/audio.spec.ts",
+    "tests/e2e/language.spec.ts",
+    "public/images/story/exterior-desktop.webp",
+    "public/images/story/exterior-mobile.webp",
+    "public/images/story/approach-desktop.webp",
+    "public/images/story/approach-mobile.webp",
+    "public/images/story/entrance-desktop.webp",
+    "public/images/story/entrance-mobile.webp",
+    "public/images/story/living-desktop.webp",
+    "public/images/story/living-mobile.webp",
+    "public/images/story/garden-desktop.webp",
+    "public/images/story/garden-mobile.webp",
+    "public/images/story/finale-desktop.webp",
+    "public/images/story/finale-mobile.webp",
+    "public/images/og-havenart.jpg"
+  ],
+  "acceptanceEvidence": [
+    {
+      "criterion": "W25-AC1: Mọi system dùng same rendered frame, no duplicate runtime/scene/audio/listeners.",
+      "evidence": "Composition root ExperienceHost khởi tạo duy nhất một StoryRuntime, một AudioController và một FrameMonitor; CameraController, SceneLighting, EnvironmentalMotion, HotspotButton projections và StoryOverlay đều đọc giá trị đồng nhất từ renderedStoryProgress trong cùng frame rAF; không có rAF listener hoặc audio context trùng lặp; dọn dẹp sạch sẽ khi chuyển mode hoặc unmount."
+    },
+    {
+      "criterion": "W25-AC2: G1 không regress; G2 full flow tới garden + contact, reverse, modal+locale.",
+      "evidence": "Toàn bộ 13 bài test baseline của Gate G1 (static-story.spec.ts và scroll-journey.spec.ts) đều PASS 100% không hồi quy; bộ test Gate G2 (phase-one.spec.ts, hotspot.spec.ts, audio.spec.ts, language.spec.ts) đạt 13/13 test PASS; hỗ trợ trọn vẹn hành trình từ exterior tới finale và duy nhất một section#contact; cuộn tiến/lùi mượt mà tuân thủ động học; 3 hotspot APG modal dialog khóa cuộn nền qua freeze snapshot và phục hồi focus chính xác; chuyển ngữ VI↔EN giữ nguyên tiến độ thông qua locale handoff session storage."
+    },
+    {
+      "criterion": "W25-AC3: Posters/OG từ scene gốc, ba sample audio thật và provenance đầy đủ trong ASSET_LICENSES; validateStory definition-only và validate-runtime-resources implementation/assets là hai kết quả riêng. Thiếu file/module/decode phải fail runtime-resources, không dùng fixture thay evidence.",
+      "evidence": "Tạo 12 story posters WebP (desktop 1600x900, mobile 800x1200) và 1 OG JPEG image (1200x630) xuất phát trực tiếp từ bố cục hình học và ánh sáng của biệt thự HavenArt; 3 tệp âm thanh Ogg Vorbis thực tế trong public/audio/; toàn bộ 16 tệp tài sản được đối chiếu mã băm SHA-256 chính xác và ghi nhận nguồn gốc/giấy phép CC0-1.0 trong ASSET_LICENSES.md; validate-runtime-resources.mjs kiểm tra độc lập các magic bytes, dung lượng, định dạng và mã băm thực tế trên đĩa (trả PASS với 0 errors); 7 vitest unit tests trong runtime-resources.test.ts kiểm chứng tính nhạy cảm và bắt lỗi khi thiếu file hoặc sai hash."
+    }
+  ],
+  "commandsAndActualResults": [
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors"
+    },
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "output": "eslint . passed with 0 errors and 0 warnings"
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "output": "23 test files passed (192 tests passed total)"
+    },
+    {
+      "command": "npm run build",
+      "exitCode": 0,
+      "output": "Next.js 15.5.26 static build exported 8/8 static pages successfully"
+    },
+    {
+      "command": "node scripts/validate-runtime-resources.mjs",
+      "exitCode": 0,
+      "output": "PASS: 16 runtime assets verified against ASSET_LICENSES.md with 0 errors"
+    },
+    {
+      "command": "npx playwright test",
+      "exitCode": 0,
+      "output": "26 passed across 6 test files (phase-one, hotspot, audio, language, scroll-journey, static-story)"
+    },
+    {
+      "command": "node docs/agents/validate-plan.mjs",
+      "exitCode": 0,
+      "output": "PASS: 36 packages valid"
+    }
+  ],
+  "integrationObligations": [
+    "W26: Đo FPS, draw calls, GPU residency và battery telemetry trên thiết bị thật.",
+    "W28: Tích hợp OpenGraph image và metadata route chính thức."
+  ],
+  "unverifiedItems": [],
+  "openRisks": [],
+  "reportPath": "docs/agents/reports/W25-report.json"
+}
