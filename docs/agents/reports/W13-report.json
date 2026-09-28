@@ -1,0 +1,71 @@
+{
+  "taskId": "W13",
+  "status": "SUBMITTED",
+  "baseSha": "3d9bbba2725ec385a8c98522e8ec5d1d6a8b7dd6",
+  "headSha": "c7f3543384e9ac287ef5e55b819f13c37cb7e394",
+  "contractVersion": "havenart-contracts-1.1",
+  "changedFiles": [
+    "src/app/[locale]/page.tsx",
+    "src/components/story/ExperienceHost.tsx",
+    "src/components/story/StoryOverlay.tsx",
+    "src/components/scene/SceneCanvas.tsx",
+    "src/styles/globals.css",
+    "src/config/zones.ts",
+    "tests/e2e/scroll-journey.spec.ts"
+  ],
+  "acceptanceEvidence": [
+    {
+      "criterion": "W13-AC1: Một canvas/runtime, CSS/DOM slots đúng, route chỉ một #contact.",
+      "evidence": "ExperienceHost.tsx đóng vai trò composition root duy nhất khởi tạo một instance StoryRuntime cho toàn bộ trang; quản lý slot phân tầng rõ ràng (.canvas-viewport fixed nền z-0, .experience-content-layer z-10 nổi phía trên với header, main, overlay và footer). Route chỉ render đúng một phần tử id=\"contact\" duy nhất trong ContactSection, được kiểm chứng tự động qua E2E test cho cả /vi và /en."
+    },
+    {
+      "criterion": "W13-AC2: Scroll tới/lùi/Home/End không cut; fallback đầu phiên không tải renderer.",
+      "evidence": "SceneCanvas.tsx tích hợp CameraController lấy mẫu liên tục qua sampleRail(renderedStoryProgress), cập nhật camera position, orientation quaternion và vertical FOV theo từng khung hình rAF mượt mà không teleport; hành vi cuộn xuôi/ngược và Home/End được kiểm chứng tự động qua E2E test tests/e2e/scroll-journey.spec.ts; khi prefers-reduced-motion: reduce hoặc người dùng nhấn nút chuyển chế độ tĩnh, canvas bị unmount hoàn toàn (0 thẻ canvas), không tải WebGL renderer."
+    },
+    {
+      "criterion": "W13-AC3: validateStory kiểm cấu trúc và references tới ID đã khai báo của W02; ghi verdict definition-only. G1 không chứng nhận implementation của lighting/audio hoặc asset poster. Chỉ test fixture được mock; scene baseline dùng shell/proxy và light tối thiểu có thật.",
+      "evidence": "validateStory(validStoryValidationInput) thực thi trong E2E suite trả về 0 lỗi; cấu trúc scene baseline được gắn kết hoàn chỉnh với VillaShell, FurnitureProxy, GardenProxy và hệ chiếu sáng tối thiểu BaselineLighting. Ghi nhận rõ verdict definition-only cho Gate G1, hoãn nghĩa vụ kiểm chứng implementation chi tiết của lighting/audio/asset poster sang W25."
+    }
+  ],
+  "commandsAndActualResults": [
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors"
+    },
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "output": "eslint . passed with 0 errors and 0 warnings"
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "output": "9 test files passed (83 tests passed total)"
+    },
+    {
+      "command": "npm run build",
+      "exitCode": 0,
+      "output": "Next.js 15.5.26 static pages generated successfully (6/6), static export complete (2/2)"
+    },
+    {
+      "command": "npm run test:e2e -- tests/e2e/scroll-journey.spec.ts tests/e2e/static-story.spec.ts",
+      "exitCode": 0,
+      "output": "13 passed (7.8s) across Chromium workers"
+    },
+    {
+      "command": "node docs/agents/validate-plan.mjs",
+      "exitCode": 0,
+      "output": "status: PASS, 36 packages valid, orderedSharedFilePairs=14, 0 errors"
+    }
+  ],
+  "integrationObligations": [
+    "W25: kiểm riêng runtime-resources — preset implementations và mọi URI poster/audio thật tồn tại, decode/load được, có provenance; definition-only pass ở W13 không đóng nghĩa vụ này."
+  ],
+  "unverifiedItems": [
+    "Video rail visual comfort và network degradation testing được hoãn kiểm tra thủ công sang G3/W26/W27; đã kiểm chứng tự động toàn bộ luồng E2E trên headless Chromium."
+  ],
+  "openRisks": [],
+  "assetRecords": [],
+  "reportPath": "docs/agents/reports/W13-report.json"
+}

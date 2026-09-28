@@ -97,11 +97,17 @@
 | W10 | Villa shell và proxy có đường thông | integrated | `a9249f8` | `964dd6b` | SPEC: PASS, QUALITY: PASS | `964dd6b` | 3 files, round 1 pass, persistent shell & proxies |
 | W11 | Canvas boundary và mode gate từ đầu | integrated | `7470cf6` | `684d0b7` | SPEC: PASS, QUALITY: PASS | `684d0b7` | 5 files, round 1 pass, mode gate & dynamic boundary |
 | W12 | Time-clamped progress store và camera sync | integrated | `8933bec` | `3975ef7` | SPEC: PASS, QUALITY: PASS | `3975ef7` | 7 files, round 1 pass, runtime & discrete store |
-| W13 | Tích hợp nền và camera — G1 | ready | `3975ef7` | — | — | — | W06, W07, W08, W09, W10, W11, W12 integrated |
+| W13 | Tích hợp nền và camera — G1 | integrated | `3d9bbba` | `c7f3543` | SPEC: PASS, QUALITY: PASS | `c7f3543` | 7 files, round 1 pass, Gate G1 composition root |
+| W14 | Ngoại thất và entrance chi tiết | ready | `c7f3543` | — | — | — | W13 integrated |
+| W15 | Living và vật liệu điểm nhấn | ready | `c7f3543` | — | — | — | W13 integrated |
 | W16 | Predicate hiển thị hotspot | ready | `3beaaba` | — | — | — | W02 integrated |
+| W18 | Lighting track và môi trường | ready | `c7f3543` | — | — | — | W02, W13 integrated |
+| W19 | Garden detail và finale component | ready | `c7f3543` | — | — | — | W03, W13 integrated |
 | W22 | Event abstraction và dedupe thuần | ready | `3beaaba` | — | — | — | W02 integrated |
 | W23 | Modal liên hệ và sao chép/fallback thuần | ready | `c7d7d35` | — | — | — | W03, W05, W06 integrated |
-| W14.. | Các gói tiếp theo | planned | — | — | — | — | Chờ dependencies theo DAG |
+| W24 | Locale restoration và history lifecycle | ready | `c7f3543` | — | — | — | W03, W12, W13 integrated |
+| W17 | Hotspot DOM, projection và modal | planned | — | — | — | — | Chờ W16 integrated |
+| W20.. | Các gói tiếp theo | planned | — | — | — | — | Chờ dependencies theo DAG |
 | W31–W36 | Các phòng Phase 2 | planned | — | — | — | — | Khóa dispatch |
 
 ---
@@ -121,6 +127,8 @@
 - **2026-09-28 [RULING-11]:** Tích hợp thành công gói W10 tại integration SHA `964dd6bc4a20635e1571eef9dbeeaa164146a729` sau khi đạt 100% SPEC & QUALITY PASS ngay ở Round 1 (họ review: spec-and-quality). Triển khai VillaShell persistent với kích thước meter chuẩn (phong bì đất 24x52m, sàn 16x15.5m, mái 3.8m), khoảng mở cửa trước X in [-1.4, 1.4] và cửa sau X in [0.8, 3.8] bằng hình học thực tế không sealed box; FurnitureProxy và GardenProxy giữ trọn silhouette từ mọi góc nhìn, không đổi origin của camera rail, và định danh chính xác 3 stable hotspot anchors ('travertine-wall', 'sliding-glass', 'garden-tree'). Nghĩa vụ kiểm chứng top-view keyframes và clearance chi tiết được ghi nhận chuyển tới Gate G1 (W13). Với W06, W09, W10 đều đã integrated, gói W11 đủ điều kiện chuyển sang trạng thái `ready`.
 - **2026-09-28 [RULING-12]:** Tích hợp thành công gói W11 tại integration SHA `684d0b7c4f0b7605edacf136c95874afbcbcb21d` sau khi đạt 100% SPEC & QUALITY PASS ngay ở Round 1 (họ review: spec-and-quality). Triển khai ExperienceGate kết hợp selectMode bảo đảm prefers-reduced-motion và userStatic có độ ưu tiên cao nhất, hoàn toàn không nạp module Three/R3F trên server hay khi ở chế độ tĩnh; ZoneBoundary phân tách lỗi decorative (dùng proxy) và lỗi core (chuyển sang static); SceneCanvas lắng nghe webglcontextlost và kích hoạt fallback tĩnh tức thì; kiểm soát late-load cuộn xa (> 300px) giữ vững bản đọc tĩnh tránh pop-in; bảo tồn 100% cây DOM ngữ nghĩa và CTA trong mọi tình huống. Nghĩa vụ kiểm chứng network proof / noWebGL trên thiết bị thật được ghi nhận chuyển tới Gate G1 (W13).
 - **2026-09-28 [RULING-13]:** Tích hợp thành công gói W12 tại integration SHA `3975ef7d44342804ae31378a1dc7f0823f6df0e6` sau khi đạt 100% SPEC & QUALITY PASS ngay ở Round 1 (họ review: runtime). Triển khai createStoryRuntime với snapshot bất biến, tách bạch rawScrollProgress và renderedStoryProgress; tính toán vận tốc tối đa theo spatial rail derivative và giới hạn động học (3.0 m/s indoor, 5.0 m/s outdoor, 0.5236 rad/s angular speed); kẹp cứng dt (maxDtSeconds = 0.1s) và xử lý visibilitychange triệt tiêu dt jump khi chuyển tab; hỗ trợ FreezeToken cho modal dialog và phục hồi mượt mà; ScrollRuntime dọn dẹp rAF sạch sẽ; useExperienceStore đảm bảo chỉ chứa discrete state, không gây re-render toàn cây mỗi frame. Với toàn bộ 7 gói tiền đề (W06, W07, W08, W09, W10, W11, W12) đã hoàn tất tích hợp, gói cột mốc Gate G1 (W13 — Tích hợp nền và camera) chính thức được mở khóa và chuyển sang trạng thái `ready`.
+- **2026-09-28 [RULING-14]:** Tích hợp thành công gói W13 (Gate G1 — Tích hợp nền và camera) tại integration SHA `c7f3543384e9ac287ef5e55b819f13c37cb7e394` sau khi đạt 100% SPEC & QUALITY PASS. Triển khai ExperienceHost kết nối providers và runtime; SceneCanvas tích hợp CameraController lấy mẫu sampleRail(renderedStoryProgress) liên tục trên từng khung hình rAF mượt mà không teleport; CSS/DOM slots phân tầng chuẩn (.canvas-viewport z-0, .experience-content-layer z-10); duy trì duy nhất một id="contact" trên toàn route; toàn bộ 13 bài test Playwright E2E đều PASS trên Chromium (hành trình cuộn xuôi/ngược/Home/End không cắt cảnh, fallback prefers-reduced-motion không tải renderer canvas, chuyển chế độ tĩnh bằng nút bấm, validateStory definition-only pass). Mốc Gate G1 đã chính thức hoàn thành, mở khóa 5 gói phụ thuộc: W14, W15, W18, W19, W24 sang trạng thái `ready`.
+
 
 
 
