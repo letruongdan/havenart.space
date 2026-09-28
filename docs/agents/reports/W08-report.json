@@ -1,0 +1,61 @@
+{
+  "taskId": "W08",
+  "status": "SUBMITTED",
+  "baseSha": "5b139a9a3f50e0a44bf7e98ef6104a96cf644a20",
+  "headSha": "710c6bb08648b842707157540e9286d61ab861d6",
+  "contractVersion": "havenart-contracts-1.1",
+  "changedFiles": [
+    "src/config/camera.ts",
+    "src/lib/three/cameraRail.ts",
+    "src/lib/three/railClearance.ts",
+    "tests/unit/camera-rail.test.ts"
+  ],
+  "acceptanceEvidence": [
+    {
+      "criterion": "W08-AC1: Arc-length/speed mapping liên tục; forward/reverse deterministic; quaternion không flip/roll.",
+      "evidence": "src/lib/three/cameraRail.ts sử dụng spline Catmull-Rom centripetal kết hợp phép nội suy PCHIP bảo toàn tính đơn điệu và liên tục C1; hàm sampleRail(p) cho kết quả hoàn toàn trùng khớp 100% khi tra cứu theo chiều xuôi, ngược hoặc bất kỳ thứ tự nào; quaternion được chuẩn hóa và tiền xử lý dấu liên tục trên cùng một bán cầu, dot product giữa các bước liên tiếp luôn dương (> 0.85); roll mục tiêu được tính toán và triệt tiêu bằng 0; sampleRailDerivative(p) cung cấp đạo hàm vận tốc dài (m/p) và vận tốc góc (rad/p) dương và hữu hạn."
+    },
+    {
+      "criterion": "W08-AC2: 42mm seed trong khoảng 35–55mm equivalent, không nhầm FOV degrees.",
+      "evidence": "CAMERA_OPTICS.defaultFocalLengthMm được cấu hình là 42mm (nằm trong dải 35–55mm của ống kính tiêu chuẩn); focalLengthToVerticalFov tính toán chính xác góc nhìn vertical FOV xấp xỉ 31.89° dựa trên cảm biến full-frame 36x24mm chuẩn, phân định rõ tiêu cự vật lý tính bằng milimet và góc mở tính bằng độ."
+    },
+    {
+      "criterion": "W08-AC3: Sweep qua cửa thật bao near-plane; reject lookAt trùng vị trí; shell thật được xác nhận W13.",
+      "evidence": "computeOrientation từ chối và ném Error khi điểm target trùng với position của camera; validateRailClearance quét 101 điểm lấy mẫu dày đặc xuyên suốt tuyến camera đối chiếu với VILLA_FIXTURE_OBSTACLES (cửa chính tại Z=0, X thuộc [-1.4, 1.4] và cửa trượt sau tại Z=15.5, X thuộc [0.8, 3.8]) đạt 0 vi phạm với khoảng hở an toàn >= 0.38m (bao gồm corridor radius 0.30m + near-plane 0.08m); phát hiện chính xác vật cản nhân tạo khi đặt trực tiếp vào quỹ đạo camera."
+    }
+  ],
+  "commandsAndActualResults": [
+    {
+      "command": "npm run test -- tests/unit/camera-rail.test.ts",
+      "exitCode": 0,
+      "output": "1 test file passed (10 tests passed total)"
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "output": "5 test files passed (44 tests passed total)"
+    },
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors"
+    },
+    {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "output": "eslint . passed with 0 errors and 0 warnings"
+    },
+    {
+      "command": "node docs/agents/validate-plan.mjs",
+      "exitCode": 0,
+      "output": "status: PASS, 36 packages valid, orderedSharedFilePairs=14, 0 errors"
+    }
+  ],
+  "integrationObligations": [
+    "W13: clearance kiểm lại với shell thật, video tuyến tới/lùi."
+  ],
+  "unverifiedItems": [],
+  "openRisks": [],
+  "assetRecords": [],
+  "reportPath": "docs/agents/reports/W08-report.json"
+}

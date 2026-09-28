@@ -1,0 +1,98 @@
+{
+  "taskId": "W08",
+  "candidate": {
+    "base": "5b139a9a3f50e0a44bf7e98ef6104a96cf644a20",
+    "head": "710c6bb08648b842707157540e9286d61ab861d6",
+    "buildHash": null
+  },
+  "reviewer": {
+    "id": "antigravity-reviewer-h",
+    "tier": "H"
+  },
+  "verdict": {
+    "spec": "pass",
+    "quality": "pass",
+    "integration": "blocked-not-evaluated"
+  },
+  "acceptance": [
+    {
+      "id": "W08-AC1: Arc-length/speed mapping liên tục; forward/reverse deterministic; quaternion không flip/roll.",
+      "status": "pass",
+      "evidence": "src/lib/three/cameraRail.ts sử dụng CatmullRomCurve3 (centripetal) kết hợp nội suy PCHIP Hermite S-curve cho C1 continuity; sampleRail(p) là pure function cho kết quả trùng khớp 100% khi tra cứu xuôi, ngược hoặc ngẫu nhiên; quaternion chuẩn hóa và liên tục trên bán cầu dương (dot product > 0.85); roll triệt tiêu bằng 0 do trục ngang nằm ngang (y=0); sampleRailDerivative tính toán m/p và rad/p dương và hữu hạn."
+    },
+    {
+      "id": "W08-AC2: 42mm seed trong khoảng 35–55mm equivalent, không nhầm FOV degrees.",
+      "status": "pass",
+      "evidence": "CAMERA_OPTICS.defaultFocalLengthMm là 42mm (dải 35–55mm); focalLengthToVerticalFov tính chính xác góc nhìn đứng 31.89° trên cảm biến 36x24mm chuẩn full-frame; phân tách minh bạch giữa tiêu cự vật lý mm và FOV độ; chặn các giá trị không dương focalLengthMm <= 0."
+    },
+    {
+      "id": "W08-AC3: Sweep qua cửa thật bao near-plane; reject lookAt trùng vị trí; shell thật được xác nhận W13.",
+      "status": "pass",
+      "evidence": "computeOrientation từ chối và ném Error khi camera position trùng lookAt target (dist < 1e-4); validateRailClearance kiểm tra 101 điểm lấy mẫu xuyên suốt tuyến rail đối chiếu VILLA_FIXTURE_OBSTACLES với minClearanceM = 0.38m (corridor 0.30m + near-plane 0.08m) đạt 0 vi phạm tại cả hai ngưỡng cửa Z=0 và Z=15.5; phát hiện chính xác vật cản nhân tạo khi đặt vào hành lang camera; nghĩa vụ shell thật được ghi nhận hoãn đến W13."
+    }
+  ],
+  "findings": [
+    {
+      "severity": "P3",
+      "location": "src/lib/three/cameraRail.ts:72-74",
+      "impact": "Logic từ chối lookAt trùng position (dist < 1e-4) đã được hiện thực trong computeOrientation nhưng do hàm này không export, tests/unit/camera-rail.test.ts chưa kích hoạt trực tiếp nhánh Error này.",
+      "evidence": "src/lib/three/cameraRail.ts dòng 72-74 kiểm tra dist < 1e-4; tests/unit/camera-rail.test.ts chỉ kiểm tra NaN/Infinity cho p và non-positive focal length.",
+      "owner": "implementer"
+    }
+  ],
+  "checks": [
+    {
+      "command": "npm run test -- tests/unit/camera-rail.test.ts",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "1 test file passed (10 tests passed total)",
+      "environment": "Node.js v24.13.0, Vitest 3.0.5, Windows pwsh"
+    },
+    {
+      "command": "npm test",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "5 test files passed (44 tests passed total)",
+      "environment": "Node.js v24.13.0, Vitest 3.0.5, Windows pwsh"
+    },
+    {
+      "command": "npm run typecheck",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors",
+      "environment": "TypeScript 5.7.3, Windows pwsh"
+    },
+    {
+      "command": "npm run lint",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "eslint . passed with 0 errors and 0 warnings",
+      "environment": "ESLint 9.20.1, Windows pwsh"
+    },
+    {
+      "command": "node docs/agents/validate-plan.mjs",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "status: PASS, 36 packages valid, orderedSharedFilePairs=14, 0 errors",
+      "environment": "Node.js v24.13.0, Windows pwsh"
+    }
+  ],
+  "unknowns": [
+    {
+      "item": "W13 shell clearance validation",
+      "reason": "W08 chỉ kiểm tra fixture obstacle proxies theo C06; shell 3D thực tế và video tuyến tới/lùi sẽ được kiểm chứng toàn diện tại W13.",
+      "owner": "integrator",
+      "nextCheck": "Nghiệm thu tại gói W13 với scene shell hoàn chỉnh."
+    }
+  ],
+  "visualReview": {
+    "status": "not-run",
+    "artifact": null,
+    "reviewer": null
+  },
+  "decision": {
+    "action": "ready-to-integrate",
+    "owner": "integrator",
+    "round": 1
+  }
+}
