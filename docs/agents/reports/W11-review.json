@@ -1,0 +1,105 @@
+{
+  "taskId": "W11",
+  "candidate": {
+    "base": "7470cf63af3d8fe4731719dac6c967ee0aeedef9",
+    "head": "684d0b7c4f0b7605edacf136c95874afbcbcb21d",
+    "buildHash": null
+  },
+  "reviewer": {
+    "id": "antigravity-reviewer-h",
+    "tier": "H"
+  },
+  "verdict": {
+    "spec": "pass",
+    "quality": "pass",
+    "integration": "blocked-not-evaluated"
+  },
+  "acceptance": [
+    {
+      "id": "W11-AC1: Reduced motion/userStatic kiểm trước import R3F/Three; SSR vẫn đủ HTML.",
+      "status": "pass",
+      "evidence": "src/lib/performance/selectMode.ts ưu tiên kiểm tra prefers-reduced-motion và userStatic trước WebGL và tài nguyên; src/components/story/ExperienceGate.tsx sử dụng next/dynamic với ssr: false cho SceneCanvas, và chỉ mount dynamic canvas khi shouldRenderCanvas thỏa mãn (không reduced motion, không user static, có hỗ trợ WebGL). Quá trình SSR không import hay thực thi mã Three.js/R3F; First Load JS shared đạt 103 kB; các trang tĩnh SSG xuất đầy đủ HTML và nội dung ngữ nghĩa của children."
+    },
+    {
+      "id": "W11-AC2: Decorative failure dùng proxy, core/context failure về static; late-load khi đã scroll xa giữ static.",
+      "status": "pass",
+      "evidence": "src/components/scene/ZoneBoundary.tsx phân tách lỗi: zone trang trí (isCore=false) được error boundary bắt và render proxy fallback (hoặc giữ canvas tiếp tục chạy), zone cốt lõi (isCore=true) kích hoạt onCoreFailure để ExperienceGate chuyển trạng thái về static mode (lý do load-error); SceneCanvas.tsx lắng nghe sự kiện webglcontextlost và kích hoạt fallback tĩnh (lý do unsupported); ExperienceGate.tsx theo dõi vị trí cuộn trang, nếu người dùng đã cuộn qua ngưỡng SCROLLED_FAR_THRESHOLD_PX (300px) trước khi 3D sẵn sàng thì tự động khóa ở chế độ đọc tĩnh (hasScrolledFarBeforeReady) tránh pop-in canvas."
+    },
+    {
+      "id": "W11-AC3: Poster/loading không che CTA; renderer shutdown không tắt nội dung DOM.",
+      "status": "pass",
+      "evidence": "Nội dung DOM cốt lõi được render trong lớp experience-content-layer (relative z-10) nằm phía trên canvas-viewport (fixed inset-0 pointer-events-none z-0), đảm bảo toàn bộ CTA, liên kết và bài viết hiển thị 100% trong mọi chế độ; nút chuyển chế độ tĩnh static-mode-control đạt chuẩn kích thước chạm min-h-[44px] min-w-[44px]; khi renderer unmount hoặc shutdown do lỗi context/core, cây DOM con hoàn toàn không bị ảnh hưởng."
+    }
+  ],
+  "findings": [
+    {
+      "severity": "P3",
+      "location": "src/components/scene/SceneCanvas.tsx:107-109",
+      "impact": "SceneCanvas gọi onSceneReady?.() ngay khi canvas mount trong useEffect. Khi tích hợp đầy đủ asset loader ở W13/W25, tín hiệu này cần được kích hoạt sau khi asset manager báo cáo tải xong tài nguyên tối thiểu thay vì chỉ canvas mount.",
+      "evidence": "useEffect(() => { onSceneReady?.(); }, [onSceneReady]);",
+      "owner": "integrator"
+    }
+  ],
+  "checks": [
+    {
+      "command": "npm run test -- tests/unit/mode.test.ts",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "1 test file passed (15 tests passed total)",
+      "environment": "Node.js v24.13.0, Vitest 3.0.5, Windows pwsh"
+    },
+    {
+      "command": "npm run build",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "Next.js 15.5.26 production build succeeded; 6/6 static pages generated; First load JS shared 103 kB",
+      "environment": "Node.js v24.13.0, Next.js 15.5.26, Windows pwsh"
+    },
+    {
+      "command": "npm run typecheck",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "tsc --noEmit passed cleanly with 0 errors",
+      "environment": "TypeScript 5.8.2, Windows pwsh"
+    },
+    {
+      "command": "npm run lint",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "eslint . passed with 0 errors and 0 warnings",
+      "environment": "ESLint 9.21.0, Windows pwsh"
+    },
+    {
+      "command": "npm test",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "7 test files passed (67 tests passed total)",
+      "environment": "Node.js v24.13.0, Vitest 3.0.5, Windows pwsh"
+    },
+    {
+      "command": "node docs/agents/validate-plan.mjs",
+      "status": "pass",
+      "exitCode": 0,
+      "output": "status: PASS, 36 packages valid, orderedSharedFilePairs=14, 0 errors",
+      "environment": "Node.js v24.13.0, Windows pwsh"
+    }
+  ],
+  "unknowns": [
+    {
+      "item": "W13: network reduced/noWebGL proof khi gate mount",
+      "reason": "W11 cung cấp component gate và boundary cục bộ; việc đo đạc network proof và noWebGL trên thiết bị thật là nghĩa vụ kiểm chứng sau tích hợp tại W13",
+      "owner": "integrator",
+      "nextCheck": "W13 local review & device testing"
+    }
+  ],
+  "visualReview": {
+    "status": "not-run",
+    "artifact": null,
+    "reviewer": null
+  },
+  "decision": {
+    "action": "ready-to-integrate",
+    "owner": "integrator",
+    "round": 1
+  }
+}
