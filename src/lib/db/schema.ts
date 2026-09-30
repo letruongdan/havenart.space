@@ -110,7 +110,7 @@ export function generateUlid(now: number = Date.now()): string {
   if (now === lastTime) {
     // Increment randomness bytes to ensure monotonic sorting within same millisecond
     for (let i = lastRandomBytes.length - 1; i >= 0; i--) {
-      if (lastRandomBytes[i] < 255) {
+      if (lastRandomBytes[i] < ENCODING_LEN - 1) {
         lastRandomBytes[i]++;
         break;
       }
@@ -119,17 +119,21 @@ export function generateUlid(now: number = Date.now()): string {
   } else {
     lastTime = now;
     if (cryptoObj?.getRandomValues) {
-      cryptoObj.getRandomValues(lastRandomBytes);
+      const raw = new Uint8Array(16);
+      cryptoObj.getRandomValues(raw);
+      for (let i = 0; i < 16; i++) {
+        lastRandomBytes[i] = raw[i] % ENCODING_LEN;
+      }
     } else {
       for (let i = 0; i < lastRandomBytes.length; i++) {
-        lastRandomBytes[i] = Math.floor(Math.random() * 256);
+        lastRandomBytes[i] = Math.floor(Math.random() * ENCODING_LEN);
       }
     }
   }
 
   let randStr = '';
   for (let i = 0; i < 16; i++) {
-    randStr += ENCODING[lastRandomBytes[i] % ENCODING_LEN];
+    randStr += ENCODING[lastRandomBytes[i]];
   }
 
   return timeStr + randStr;

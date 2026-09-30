@@ -97,9 +97,11 @@ export class JournalRepository {
     updates: UpdateJournalEntryInput
   ): Promise<JournalEntry> {
     const db = await this.getDb();
-    const existing = await db.get('entries', id);
+    const tx = db.transaction('entries', 'readwrite');
+    const existing = await tx.store.get(id);
 
     if (!existing) {
+      await tx.done;
       throw new Error(`Journal entry with id "${id}" not found`);
     }
 
@@ -113,7 +115,8 @@ export class JournalRepository {
     if (updates.mood !== undefined) updated.mood = updates.mood;
     if (updates.deletedAt !== undefined) updated.deletedAt = updates.deletedAt;
 
-    await db.put('entries', updated);
+    await tx.store.put(updated);
+    await tx.done;
     return updated;
   }
 
@@ -125,7 +128,9 @@ export class JournalRepository {
     const all = await db.getAll('entries');
     return all
       .filter((entry) => entry.deletedAt === null)
-      .sort((a, b) => b.createdAt - a.createdAt);
+      .sort((a, b) =>
+        b.createdAt !== a.createdAt ? b.createdAt - a.createdAt : b.id.localeCompare(a.id)
+      );
   }
 
   /**
