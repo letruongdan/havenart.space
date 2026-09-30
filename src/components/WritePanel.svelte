@@ -29,7 +29,7 @@
   let statusMessage = $state<string>('');
   let isSavingEntry = $state(false);
 
-  let localRepo: JournalRepository | null = null;
+  let localRepo = $state<JournalRepository | null>(null);
   let activeRepo = $derived(props.repo || localRepo);
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
