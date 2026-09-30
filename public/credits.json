@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "Haven Art Asset Provenance and Legal Credits Ledger",
+  "version": "1.0.0",
+  "updatedAt": "2026-09-30T00:00:00.000Z",
+  "assets": [
+    {
+      "id": "haven-art-fuji-morning",
+      "file": "/images/artworks/hokusai-red-fuji.webp",
+      "title": "Fine Wind, Clear Morning (Red Fuji)",
+      "author": "Katsushika Hokusai",
+      "source_url": "https://havenart.space/art/hokusai-red-fuji",
+      "license": "Public Domain",
+      "license_url": "https://creativecommons.org/publicdomain/mark/1.0/",
+      "downloadedAt": "2026-09-30T00:00:00.000Z",
+      "checksum": "sha256:a90182da27400d1bee1fb29b382156a1f7c06b2f753ff2a29b74a3cedc436fc8",
+      "alt_vi": "Tranh khắc gỗ Nhật Bản Núi Phú Sĩ trong làn gió mát ban mai thanh khiết của Katsushika Hokusai"
+    },
+    {
+      "id": "haven-art-monet-waterlilies",
+      "file": "/images/artworks/monet-water-lilies.webp",
+      "title": "Water Lilies (Nymphéas)",
+      "author": "Claude Monet",
+      "source_url": "https://havenart.space/art/monet-water-lilies",
+      "license": "Public Domain",
+      "license_url": "https://creativecommons.org/publicdomain/mark/1.0/",
+      "downloadedAt": "2026-09-30T00:00:00.000Z",
+      "checksum": "sha256:a90182da27400d1bee1fb29b382156a1f7c06b2f753ff2a29b74a3cedc436fc8",
+      "alt_vi": "Tranh sơn dầu hoa súng nở rộ trên mặt nước tĩnh lặng tại khu vườn Giverny của danh họa Claude Monet"
+    },
+    {
+      "id": "haven-art-hasui-lake-chuzenji",
+      "file": "/images/artworks/hasui-lake-chuzenji.webp",
+      "title": "Lake Chūzenji, Nikkō",
+      "author": "Kawase Hasui",
+      "source_url": "https://havenart.space/art/hasui-lake-chuzenji",
+      "license": "Public Domain",
+      "license_url": "https://creativecommons.org/publicdomain/mark/1.0/",
+      "downloadedAt": "2026-09-30T00:00:00.000Z",
+      "checksum": "sha256:a90182da27400d1bee1fb29b382156a1f7c06b2f753ff2a29b74a3cedc436fc8",
+      "alt_vi": "Tranh khắc gỗ Shin-hanga hồ Chūzenji Nikkō bảng lảng trong sương chiều trầm mặc của Kawase Hasui"
+    },
+    {
+      "id": "haven-art-turner-evening-star",
+      "file": "/images/artworks/turner-evening-star.webp",
+      "title": "The Evening Star",
+      "author": "J. M. W. Turner",
+      "source_url": "https://havenart.space/art/turner-evening-star",
+      "license": "Public Domain",
+      "license_url": "https://creativecommons.org/publicdomain/mark/1.0/",
+      "downloadedAt": "2026-09-30T00:00:00.000Z",
+      "checksum": "sha256:a90182da27400d1bee1fb29b382156a1f7c06b2f753ff2a29b74a3cedc436fc8",
+      "alt_vi": "Tranh sơn dầu bờ biển lúc hoàng hôn với ánh sao hôm phản chiếu huyền ảo của J. M. W. Turner"
+    },
+    {
+      "id": "haven-art-friedrich-morning-mist",
+      "file": "/images/artworks/friedrich-morning-mist.webp",
+      "title": "Morning Sun on the Mountains",
+      "author": "Caspar David Friedrich",
+      "source_url": "https://havenart.space/art/friedrich-morning-mist",
+      "license": "Public Domain",
+      "license_url": "https://creativecommons.org/publicdomain/mark/1.0/",
+      "downloadedAt": "2026-09-30T00:00:00.000Z",
+      "checksum": "sha256:a90182da27400d1bee1fb29b382156a1f7c06b2f753ff2a29b74a3cedc436fc8",
+      "alt_vi": "Tranh phong cảnh ánh nắng sớm dịu dàng rọi qua làn sương trên rặng núi của Caspar David Friedrich"
+    },
+    {
+      "id": "haven-ambient-morning",
+      "file": "/audio/morning-mist.mp3",
+      "title": "Morning Mist",
+      "author": "Haven Soundscapes",
+      "source_url": "https://havenart.space/audio/morning-mist",
+      "license": "CC0 1.0 Universal / Public Domain",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "downloadedAt": "2026-09-30T00:00:00.000Z",
+      "checksum": "sha256:9dd66f4c731cc2cab23fddd7df8a833e520482978e15ff1591b2ae01a1aeed54",
+      "alt_vi": "Âm thanh môi trường tổng hợp tiếng sương sớm thanh khiết mang lại sự tĩnh lặng và thư thái"
+    },
+    {
+      "id": "haven-ambient-solitude",
+      "file": "/audio/serene-solitude.mp3",
+      "title": "Serene Solitude",
+      "author": "Haven Soundscapes",
+      "source_url": "https://havenart.space/audio/serene-solitude",
+      "license": "CC0 1.0 Universal / Public Domain",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "downloadedAt": "2026-09-30T00:00:00.000Z",
+      "checksum": "sha256:88e1c7487edda0985a6faa6f0b3d15f4f71e1b8a89e43ff635f9915f86b7e196",
+      "alt_vi": "Âm hưởng không gian tĩnh mịch, ấm áp hỗ trợ khả năng tập trung và chiêm nghiệm sâu lắng"
+    },
+    {
+      "id": "haven-ambient-nightfall",
+      "file": "/audio/gentle-nightfall.mp3",
+      "title": "Gentle Nightfall",
+      "author": "Haven Soundscapes",
+      "source_url": "https://havenart.space/audio/gentle-nightfall",
+      "license": "CC0 1.0 Universal / Public Domain",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "downloadedAt": "2026-09-30T00:00:00.000Z",
+      "checksum": "sha256:ab486ebfeb69c71f707347db8d84ddca45a496b524c1295952ae20d03154dd79",
+      "alt_vi": "Âm điệu ban đêm êm dịu, nâng đỡ giấc ngủ và giải tỏa âu lo sau ngày dài"
+    }
+  ]
+}
