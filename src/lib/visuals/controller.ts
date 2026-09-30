@@ -699,3 +699,15 @@ export class VisualController {
     }
   }
 }
+
+/**
+ * Convenience factory to initialize VisualController on a canvas element.
+ */
+export async function initVisuals(
+  canvas: HTMLCanvasElement,
+  options?: VisualControllerOptions
+): Promise<VisualController> {
+  const controller = new VisualController(options);
+  await controller.init(canvas);
+  return controller;
+}
