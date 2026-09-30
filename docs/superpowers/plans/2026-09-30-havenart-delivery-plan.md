@@ -532,7 +532,7 @@ git commit -m "feat(journal): implement write panel and xss-safe journal viewer"
 - Consumes: `JournalRepository`.
 - Produces: `exportBackup()`, `validateImportPayload()`, `importBackup()`.
 
-- [ ] **Step 1: Viết test cho toàn bộ chu trình Backup Roundtrip và loại bỏ bản ghi trùng**
+- [x] **Step 1: Viết test cho toàn bộ chu trình Backup Roundtrip và loại bỏ bản ghi trùng**
 ```typescript
 // tests/db/backup.spec.ts
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -565,18 +565,18 @@ describe('BackupManager', () => {
 });
 ```
 
-- [ ] **Step 2: Chạy test để xác nhận test thất bại**
+- [x] **Step 2: Chạy test để xác nhận test thất bại**
 Run: `npx vitest run tests/db/backup.spec.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Triển khai `BackupManager`**
+- [x] **Step 3: Triển khai `BackupManager`**
 Thực hiện validate schema trước khi ghi vào database; nếu phát hiện file hỏng, hủy bỏ giao dịch hoàn toàn (atomic transaction rollback).
 
-- [ ] **Step 4: Chạy test xác nhận backup pass**
+- [x] **Step 4: Chạy test xác nhận backup pass**
 Run: `npx vitest run tests/db/backup.spec.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 ```bash
 git add src/lib/export/ tests/db/backup.spec.ts
 git commit -m "feat(backup): implement atomic json export/import with deduplication"
