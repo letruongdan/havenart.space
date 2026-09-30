@@ -4,9 +4,15 @@
   import Dock from './Dock.svelte';
   import { AudioEngine } from '../lib/audio/engine';
   import { VisualController, type VisualMode, type Artwork } from '../lib/visuals/controller';
+  import WritePanel from './WritePanel.svelte';
+  import JournalList from './JournalList.svelte';
+  import { JournalRepository } from '../lib/db/repository';
+  import type { JournalEntry } from '../lib/db/schema';
 
   let experienceState = $state<'gate' | 'haven'>('gate');
   let activeModal = $state<'write' | 'list' | null>(null);
+  let journalRepo = $state<JournalRepository | null>(null);
+  let journalRefreshTrigger = $state(0);
 
   // Audio state
   let isPlaying = $state(false);
@@ -49,11 +55,21 @@
     } catch (e) {
       console.warn('VisualController init warning:', e);
     }
+
+    try {
+      journalRepo = new JournalRepository();
+      journalRepo.init().catch((e) => {
+        console.warn('JournalRepository init warning:', e);
+      });
+    } catch (e) {
+      console.warn('JournalRepository init warning:', e);
+    }
   });
 
   onDestroy(() => {
     audioEngine?.destroy();
     visualController?.destroy();
+    journalRepo?.close().catch(() => {});
   });
 
   // When experience enters haven and canvas is mounted, initialize visual controller
@@ -144,6 +160,10 @@
 
   function handleCloseModal() {
     activeModal = null;
+  }
+
+  function handleJournalSaved(_savedEntry: JournalEntry) {
+    journalRefreshTrigger += 1;
   }
 
   function handleWindowKeyDown(event: KeyboardEvent) {
@@ -289,21 +309,11 @@
         <div class="py-6">
           {#if activeModal === 'write'}
             <div id="journal-write-container" class="space-y-4">
-              <p class="text-sm text-stone-600 dark:text-stone-300 font-light leading-relaxed">
-                Nơi ghi lại những suy ngẫm, cảm xúc và giây phút an yên. Mọi dòng chữ của bạn được mã hóa an toàn và lưu trữ nội bộ trên thiết bị.
-              </p>
-              <div class="p-4 rounded-2xl bg-stone-100 dark:bg-stone-800/60 border border-stone-200/60 dark:border-stone-700/50 text-xs text-stone-500 dark:text-stone-400">
-                Trình viết nhật ký riêng tư — Không thu thập dữ liệu cá nhân.
-              </div>
+              <WritePanel repo={journalRepo ?? undefined} onSave={handleJournalSaved} />
             </div>
           {:else if activeModal === 'list'}
             <div id="journal-list-container" class="space-y-4">
-              <p class="text-sm text-stone-600 dark:text-stone-300 font-light leading-relaxed">
-                Những khoảnh khắc bạn đã lưu giữ. Bạn có thể xem lại, tìm kiếm hoặc xuất bản sao lưu bất kỳ lúc nào.
-              </p>
-              <div class="p-4 rounded-2xl bg-stone-100 dark:bg-stone-800/60 border border-stone-200/60 dark:border-stone-700/50 text-xs text-stone-500 dark:text-stone-400">
-                Danh sách bài viết được mã hóa cục bộ.
-              </div>
+              <JournalList repo={journalRepo ?? undefined} refreshTrigger={journalRefreshTrigger} />
             </div>
           {/if}
         </div>

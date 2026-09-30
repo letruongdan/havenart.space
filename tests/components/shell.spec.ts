@@ -48,4 +48,30 @@ describe('HavenShell Experience State Machine', () => {
     await fireEvent.click(closeBtn);
     expect(queryByRole('dialog')).toBeNull();
   });
+
+  it('mounts WritePanel and JournalList inside respective containers', async () => {
+    const { getByRole, getByPlaceholderText, queryByPlaceholderText } = render(HavenShell);
+    const enterBtn = getByRole('button', { name: /bước vào/i });
+    await fireEvent.click(enterBtn);
+
+    // Open Write modal
+    const writeBtn = await waitFor(() => getByRole('button', { name: /viết nhật ký/i }));
+    await fireEvent.click(writeBtn);
+
+    // WritePanel is mounted with its textarea
+    expect(document.querySelector('#journal-write-container')).not.toBeNull();
+    expect(getByPlaceholderText(/viết những suy nghĩ của bạn/i)).toBeDefined();
+
+    // Close write modal
+    const closeBtn = getByRole('button', { name: /đóng/i });
+    await fireEvent.click(closeBtn);
+
+    // Open List modal
+    const listBtn = getByRole('button', { name: /danh sách bài viết/i });
+    await fireEvent.click(listBtn);
+
+    // JournalList is mounted with its search input
+    expect(document.querySelector('#journal-list-container')).not.toBeNull();
+    expect(getByPlaceholderText(/tìm kiếm bài viết/i)).toBeDefined();
+  });
 });
