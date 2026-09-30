@@ -16,6 +16,14 @@ interface TrackNode {
   sourceNode?: AudioNode;
 }
 
+interface ActiveCrossfade {
+  outgoingNode: TrackNode;
+  incomingNode: TrackNode;
+  targetTrack: AudioTrack;
+  resolve: () => void;
+  timer: ReturnType<typeof setTimeout>;
+}
+
 class StubGainNode {
   gain = {
     value: 1,
@@ -106,7 +114,7 @@ export class AudioEngine {
   private audioContext: AudioContext | null = null;
   private masterGainNode: GainNode | null = null;
   private trackNodes = new Map<string, TrackNode>();
-  private crossfadeTimer: ReturnType<typeof setTimeout> | null = null;
+  private activeCrossfade: ActiveCrossfade | null = null;
 
   constructor(options?: AudioEngineOptions) {
     this.tracks = options?.tracks && options.tracks.length > 0 ? [...options.tracks] : [...DEFAULT_TRACKS];
@@ -250,9 +258,42 @@ export class AudioEngine {
     }
   }
 
+  private finishActiveCrossfade(): void {
+    if (!this.activeCrossfade) return;
+
+    const { outgoingNode, incomingNode, targetTrack, timer, resolve } = this.activeCrossfade;
+    clearTimeout(timer);
+    this.activeCrossfade = null;
+
+    try {
+      outgoingNode.audio.pause?.();
+      outgoingNode.audio.currentTime = 0;
+      if (this.audioContext) {
+        outgoingNode.gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+      } else {
+        outgoingNode.gainNode.gain.value = 0;
+      }
+    } catch {}
+
+    try {
+      if (this.audioContext) {
+        incomingNode.gainNode.gain.setValueAtTime(1.0, this.audioContext.currentTime);
+      } else {
+        incomingNode.gainNode.gain.value = 1.0;
+      }
+    } catch {}
+
+    this.currentTrack = targetTrack;
+    resolve();
+  }
+
   public async play(trackId?: string): Promise<void> {
     if (!this.unlocked) {
       throw new Error('User gesture required to unlock audio');
+    }
+
+    if (this.activeCrossfade) {
+      this.finishActiveCrossfade();
     }
 
     let targetTrack: AudioTrack | undefined;
@@ -302,14 +343,16 @@ export class AudioEngine {
   }
 
   public pause(): void {
-    if (this.currentTrack) {
-      const node = this.trackNodes.get(this.currentTrack.id);
-      if (node) {
-        try {
-          node.audio.pause?.();
-        } catch {}
-      }
+    if (this.activeCrossfade) {
+      this.finishActiveCrossfade();
     }
+
+    for (const node of this.trackNodes.values()) {
+      try {
+        node.audio.pause?.();
+      } catch {}
+    }
+
     this.isPlayingState = false;
     this.updateMediaSession();
   }
@@ -332,7 +375,7 @@ export class AudioEngine {
       throw new Error(`Track with id "${toTrackId}" not found`);
     }
 
-    if (this.currentTrack?.id === targetTrack.id && this.isPlayingState) {
+    if (this.currentTrack?.id === targetTrack.id && this.isPlayingState && !this.activeCrossfade) {
       return;
     }
 
@@ -341,10 +384,9 @@ export class AudioEngine {
       return;
     }
 
-    // Cancel any active crossfade timer
-    if (this.crossfadeTimer) {
-      clearTimeout(this.crossfadeTimer);
-      this.crossfadeTimer = null;
+    // Cancel and immediately finish prior active crossfade
+    if (this.activeCrossfade) {
+      this.finishActiveCrossfade();
     }
 
     const oldTrack = this.currentTrack;
@@ -359,7 +401,7 @@ export class AudioEngine {
       newNode.gainNode.gain.setValueAtTime(0.0001, now);
       const playPromise = newNode.audio.play?.();
       if (playPromise && typeof playPromise.then === 'function') {
-        await playPromise.catch(() => {});
+        playPromise.catch(() => {});
       }
       newNode.gainNode.gain.linearRampToValueAtTime(1.0, now + dur);
 
@@ -377,7 +419,7 @@ export class AudioEngine {
     this.updateMediaSession();
 
     await new Promise<void>((resolve) => {
-      this.crossfadeTimer = setTimeout(() => {
+      const timer = setTimeout(() => {
         try {
           oldNode.audio.pause?.();
           oldNode.audio.currentTime = 0;
@@ -387,9 +429,17 @@ export class AudioEngine {
             oldNode.gainNode.gain.value = 0;
           }
         } catch {}
-        this.crossfadeTimer = null;
+        this.activeCrossfade = null;
         resolve();
       }, dur * 1000);
+
+      this.activeCrossfade = {
+        outgoingNode: oldNode,
+        incomingNode: newNode,
+        targetTrack,
+        resolve,
+        timer,
+      };
     });
   }
 
@@ -481,9 +531,8 @@ export class AudioEngine {
   }
 
   public destroy(): void {
-    if (this.crossfadeTimer) {
-      clearTimeout(this.crossfadeTimer);
-      this.crossfadeTimer = null;
+    if (this.activeCrossfade) {
+      this.finishActiveCrossfade();
     }
 
     this.pause();

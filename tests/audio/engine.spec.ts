@@ -4,14 +4,21 @@ import { DEFAULT_TRACKS, getAllTracks, getDefaultTrack, getTrackById } from '../
 
 describe('AudioEngine', () => {
   let engine: AudioEngine;
+  let originalMediaSession: any;
 
   beforeEach(() => {
     localStorage.clear();
+    originalMediaSession = (navigator as any).mediaSession;
     engine = new AudioEngine({ defaultCrossfadeDurationSec: 0.05 });
   });
 
   afterEach(() => {
     engine.destroy();
+    if (originalMediaSession !== undefined) {
+      (navigator as any).mediaSession = originalMediaSession;
+    } else {
+      delete (navigator as any).mediaSession;
+    }
   });
 
   describe('1. No-Autoplay and Gesture Gating', () => {
@@ -169,6 +176,40 @@ describe('AudioEngine', () => {
       // Previous wraps to last track
       await engine.previousTrack(0.05);
       expect(engine.getCurrentTrack()?.id).toBe(DEFAULT_TRACKS[2].id);
+    });
+
+    it('handles rapid concurrent crossfade calls resolving all pending promises and stopping outgoing tracks', async () => {
+      await engine.unlockAudio();
+      await engine.play(DEFAULT_TRACKS[0].id);
+
+      // Trigger two crossfades in rapid succession
+      const p1 = engine.crossfade(DEFAULT_TRACKS[1].id, 0.5);
+      const p2 = engine.crossfade(DEFAULT_TRACKS[2].id, 0.05);
+
+      // Both promises must resolve cleanly without hanging
+      await expect(Promise.all([p1, p2])).resolves.toBeDefined();
+
+      // Only the final track must be active
+      expect(engine.getCurrentTrack()?.id).toBe(DEFAULT_TRACKS[2].id);
+      expect(engine.isPlaying()).toBe(true);
+    });
+
+    it('pausing during an active crossfade immediately resolves in-flight crossfade and pauses all tracks', async () => {
+      await engine.unlockAudio();
+      await engine.play(DEFAULT_TRACKS[0].id);
+
+      // Start a longer crossfade
+      const p = engine.crossfade(DEFAULT_TRACKS[1].id, 0.5);
+
+      // Pause mid-crossfade
+      engine.pause();
+
+      // In-flight crossfade promise must resolve cleanly without hanging
+      await expect(p).resolves.toBeUndefined();
+
+      // All audio must be paused
+      expect(engine.isPlaying()).toBe(false);
+      expect(engine.getCurrentTrack()?.id).toBe(DEFAULT_TRACKS[1].id);
     });
   });
 
