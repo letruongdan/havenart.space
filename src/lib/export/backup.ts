@@ -95,6 +95,13 @@ export class BackupManager {
   }
 
   /**
+   * Validates an import backup payload against the strict schema.
+   */
+  public validateImportPayload(jsonString: string): ValidationResult {
+    return validateImportPayload(jsonString);
+  }
+
+  /**
    * Analyzes an import backup against the current local database without making mutations.
    * Throws an error immediately if the JSON format or schema is invalid.
    */

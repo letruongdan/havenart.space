@@ -152,6 +152,20 @@ export class CryptoVault {
   }
 
   /**
+   * Returns in-memory base key reference for test validation.
+   */
+  getBaseKey(): CryptoKey | null {
+    return this.baseKey;
+  }
+
+  /**
+   * Returns in-memory aes key reference for test validation.
+   */
+  getAesKey(): CryptoKey | null {
+    return this.aesKey;
+  }
+
+  /**
    * Derives a non-extractable 256-bit AES-GCM key from password and salt via PBKDF2-SHA256.
    */
   async deriveKey(
