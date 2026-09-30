@@ -1,5 +1,6 @@
 ---
-// Haven Art MVP Entry Point
+import '../styles/tokens.css';
+import HavenShell from '../components/HavenShell.svelte';
 ---
 <!doctype html>
 <html lang="vi">
@@ -7,11 +8,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>Haven Art</title>
+    <title>Haven Art — Góc tĩnh lặng cho tâm hồn</title>
+    <meta
+      name="description"
+      content="Haven Art — Không gian tĩnh lặng, âm nhạc thiền định và nhật ký an yên cho tâm hồn."
+    />
   </head>
-  <body class="bg-[#121214] text-slate-100 min-h-screen">
-    <main class="flex items-center justify-center min-h-screen">
-      <h1 class="text-2xl font-light tracking-wide">Haven Art</h1>
-    </main>
+  <body class="bg-[#fbf9f5] dark:bg-[#121316] text-[#1c1917] dark:text-[#f5f5f4] min-h-screen antialiased selection:bg-amber-200 dark:selection:bg-amber-900/60">
+    <HavenShell client:load />
   </body>
 </html>
