@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AgentReviewContract",
+  "description": "Schema defining a review report submitted by a reviewer or red-team agent",
+  "type": "object",
+  "required": [
+    "task",
+    "reviewer",
+    "verdict",
+    "summary",
+    "checklist",
+    "findings",
+    "followups"
+  ],
+  "properties": {
+    "task": {
+      "type": "string",
+      "pattern": "^[A-Z0-9_.-]+$",
+      "description": "Task identifier evaluated"
+    },
+    "reviewer": {
+      "type": "string",
+      "enum": [
+        "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11", "A12", "A13"
+      ],
+      "description": "Agent performing review"
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["PASS", "PASS_WITH_FOLLOWUPS", "BLOCK"],
+      "description": "Concrete evaluation verdict - no ambiguous approvals"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 5,
+      "description": "Concise review rationale explaining the verdict"
+    },
+    "checklist": {
+      "type": "object",
+      "description": "Dictionary of specific verification checks and boolean/string pass status",
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["severity", "description"],
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": ["info", "minor", "major", "blocker"]
+          },
+          "file": {
+            "type": "string"
+          },
+          "line": {
+            "type": "integer"
+          },
+          "description": {
+            "type": "string"
+          },
+          "recommendation": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "List of issues, defects, or observations discovered during review"
+    },
+    "followups": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Action items or technical debt tickets resulting from review"
+    }
+  },
+  "additionalProperties": false
+}

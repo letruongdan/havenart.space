@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AgentTaskContract",
+  "description": "Schema defining a task specification within the Haven Art multi-agent system",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "owner",
+    "reviewers",
+    "depends_on",
+    "inputs",
+    "outputs",
+    "acceptance",
+    "tests",
+    "risk",
+    "status"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Z0-9_.-]+$",
+      "description": "Unique task identifier (e.g. E3.2, T1)"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "description": "Short descriptive title of the task"
+    },
+    "owner": {
+      "type": "string",
+      "enum": [
+        "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11", "A12", "A13"
+      ],
+      "description": "Responsible agent role assigned to execute this task"
+    },
+    "reviewers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11", "A12", "A13"
+        ]
+      },
+      "uniqueItems": true,
+      "description": "Reviewer agents responsible for evaluating acceptance"
+    },
+    "depends_on": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs of tasks that must complete before this task starts"
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Artifacts, documents, or files consumed by this task"
+    },
+    "outputs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Artifacts, documents, or source code files produced by this task"
+    },
+    "acceptance": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "description": "Specific, unambiguous criteria required to pass definition of done"
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "description": "Test file paths or commands verifying this task"
+    },
+    "risk": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"],
+      "description": "Assessed risk level of task execution"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "ready", "in_progress", "review", "blocked", "done"],
+      "description": "Lifecycle state of the task"
+    }
+  },
+  "additionalProperties": false
+}

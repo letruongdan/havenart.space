@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AgentHandoffContract",
+  "description": "Schema defining a handoff payload passed between agents upon task completion or review transfer",
+  "type": "object",
+  "required": [
+    "task",
+    "from",
+    "to",
+    "summary",
+    "changed",
+    "known_limits",
+    "test_command",
+    "evidence",
+    "questions"
+  ],
+  "properties": {
+    "task": {
+      "type": "string",
+      "pattern": "^[A-Z0-9_.-]+$",
+      "description": "Task identifier being handed off"
+    },
+    "from": {
+      "type": "string",
+      "enum": [
+        "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11", "A12", "A13"
+      ],
+      "description": "Agent initiating handoff"
+    },
+    "to": {
+      "type": "string",
+      "enum": [
+        "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "A11", "A12", "A13"
+      ],
+      "description": "Recipient agent for review or downstream execution"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 5,
+      "description": "High-level summary of work completed"
+    },
+    "changed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "description": "List of files created or modified"
+    },
+    "known_limits": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Known boundaries, edge cases, or pending improvements"
+    },
+    "test_command": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "description": "Commands to execute to reproduce and verify test results"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "description": "Paths to test logs, traces, or artifacts proving acceptance"
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Specific questions or verification focus areas for reviewer"
+    }
+  },
+  "additionalProperties": false
+}
