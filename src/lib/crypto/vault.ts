@@ -339,6 +339,7 @@ export class CryptoVault {
 
     const subtle = getSubtleCrypto();
     const plaintexts: string[] = [];
+    const derivedKeysBySalt = new Map<string, CryptoKey>();
 
     // Phase 1: Decrypt and verify all records atomically
     for (const rec of records) {
@@ -353,7 +354,13 @@ export class CryptoVault {
           };
 
       try {
-        const oldKey = await this.deriveKey(oldPassword, norm.salt, this.iterations);
+        const saltB64 = uint8ArrayToBase64(norm.salt);
+        let oldKey = derivedKeysBySalt.get(saltB64);
+        if (!oldKey) {
+          oldKey = await this.deriveKey(oldPassword, norm.salt, this.iterations);
+          derivedKeysBySalt.set(saltB64, oldKey);
+        }
+
         const decryptedBuf = await subtle.decrypt(
           { name: 'AES-GCM', iv: norm.iv },
           oldKey,
