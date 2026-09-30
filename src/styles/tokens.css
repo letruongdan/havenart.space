@@ -1,0 +1,95 @@
+/**
+ * Haven Art — Calm Design Tokens & CSS Custom Properties
+ * Aesthetic: Calm, serene, non-intrusive aesthetic with WCAG AA compliance.
+ */
+
+:root {
+  /* Color Palette — Light / Serene Sand */
+  --color-bg: #fbf9f5;
+  --color-surface: #f2efe9;
+  --color-text: #1c1917;
+  --color-text-primary: #1c1917;
+  --color-text-muted: #57534e;
+  --color-border: #e7e5e4;
+  --color-accent: #92400e;
+
+  /* Spacing Scale */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  --spacing-3xl: 64px;
+
+  /* Radii */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-haven: 16px;
+  --radius-lg: 24px;
+  --radius-full: 9999px;
+
+  /* Motion Tokens (Safe Durations) */
+  --motion-safe-duration-fast: 150ms;
+  --motion-safe-duration: 350ms;
+  --motion-safe-duration-slow: 600ms;
+  --motion-ease-haven: cubic-bezier(0.25, 1, 0.5, 1);
+
+  /* Typography */
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+  --line-height-relaxed: 1.75;
+}
+
+/* Dark Theme Support via Media Query */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #121316;
+    --color-surface: #1a1d24;
+    --color-text: #f5f5f4;
+    --color-text-primary: #f5f5f4;
+    --color-text-muted: #a8a29e;
+    --color-border: #292524;
+    --color-accent: #fbbf24;
+  }
+}
+
+/* Explicit Dark Theme Attribute Override */
+[data-theme="dark"] {
+  --color-bg: #121316;
+  --color-surface: #1a1d24;
+  --color-text: #f5f5f4;
+  --color-text-primary: #f5f5f4;
+  --color-text-muted: #a8a29e;
+  --color-border: #292524;
+  --color-accent: #fbbf24;
+}
+
+/* Explicit Light Theme Attribute Override */
+[data-theme="light"] {
+  --color-bg: #fbf9f5;
+  --color-surface: #f2efe9;
+  --color-text: #1c1917;
+  --color-text-primary: #1c1917;
+  --color-text-muted: #57534e;
+  --color-border: #e7e5e4;
+  --color-accent: #92400e;
+}
+
+/* Strict prefers-reduced-motion Overrides */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-safe-duration-fast: 0s;
+    --motion-safe-duration: 0s;
+    --motion-safe-duration-slow: 0s;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
