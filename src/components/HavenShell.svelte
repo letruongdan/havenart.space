@@ -27,6 +27,7 @@
   let journalRepo = $state<JournalRepository | null>(null);
   let journalRefreshTrigger = $state(0);
   let isZenMode = $state(false);
+  let editingEntry = $state<JournalEntry | null>(null);
 
   // Audio state
   let isPlaying = $state(false);
@@ -335,7 +336,13 @@
 
   function handleOpenJournalWrite() {
     handleUserActivity();
-    activeModal = activeModal === 'write' ? null : 'write';
+    if (activeModal === 'write') {
+      activeModal = null;
+      editingEntry = null;
+    } else {
+      editingEntry = null;
+      activeModal = 'write';
+    }
     if (isZenMode) isZenMode = false;
   }
 
@@ -348,6 +355,7 @@
   function handleCloseModal() {
     handleUserActivity();
     activeModal = null;
+    editingEntry = null;
   }
 
   function handleJournalSaved(savedEntry: JournalEntry) {
@@ -478,13 +486,13 @@
       aria-labelledby="haven-modal-title"
     >
       <div
-        class="relative w-full max-w-2xl bg-black/40 sm:bg-black/35 text-stone-100 border border-white/15 rounded-3xl p-6 sm:p-8 shadow-[0_25px_60px_rgba(0,0,0,0.5)] backdrop-blur-2xl max-h-[90vh] overflow-y-auto select-text font-sans ring-1 ring-white/10"
+        class="relative w-full max-w-3xl bg-black/40 sm:bg-black/35 text-stone-100 border border-white/15 rounded-3xl p-6 sm:p-8 shadow-[0_25px_60px_rgba(0,0,0,0.5)] backdrop-blur-2xl max-h-[90vh] overflow-y-auto select-text font-sans ring-1 ring-white/10"
       >
         <!-- Modal Header -->
         <div class="flex items-center justify-between pb-4 border-b border-white/10">
           <h2 id="haven-modal-title" class="text-xl sm:text-2xl font-serif font-medium text-white flex items-center gap-2.5 drop-shadow-sm">
             <span class="w-2 h-2 rounded-full bg-amber-300/90 shadow-[0_0_8px_#fbbf24]"></span>
-            <span>{activeModal === 'write' ? 'Góc viết nhật ký' : 'Danh sách bài viết'}</span>
+            <span>{activeModal === 'write' ? (editingEntry ? 'Chỉnh sửa nhật ký' : 'Góc viết nhật ký') : 'Danh sách bài viết'}</span>
           </h2>
           <button
             type="button"
@@ -508,13 +516,28 @@
             <div id="journal-write-container">
               <WritePanel
                 repository={journalRepo}
-                onSaved={handleJournalSaved}
+                editingEntry={editingEntry}
+                onSaved={(savedEntry) => {
+                  editingEntry = null;
+                  handleJournalSaved(savedEntry);
+                }}
+                onCancelEdit={() => {
+                  editingEntry = null;
+                  activeModal = 'list';
+                }}
                 onMoodChange={handleMoodChange}
               />
             </div>
           {:else if activeModal === 'list'}
             <div id="journal-list-container">
-              <JournalList repository={journalRepo} refreshTrigger={journalRefreshTrigger} />
+              <JournalList
+                repository={journalRepo}
+                refreshTrigger={journalRefreshTrigger}
+                onEditEntry={(entry) => {
+                  editingEntry = entry;
+                  activeModal = 'write';
+                }}
+              />
             </div>
           {/if}
         </div>

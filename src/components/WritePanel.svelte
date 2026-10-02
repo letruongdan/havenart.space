@@ -13,9 +13,11 @@
     onSave?: (entry: JournalEntry) => void;
     onSaved?: (entry: JournalEntry) => void;
     onMoodChange?: (mood: string) => void;
+    onCancelEdit?: () => void;
     initialTitle?: string;
     initialBody?: string;
     initialMood?: string;
+    editingEntry?: JournalEntry | null;
   }
 
   let props: Props = $props();
@@ -23,11 +25,19 @@
   let title = $state('');
   let body = $state('');
   let mood = $state('calm');
+  let editingId = $state<string | null>(null);
 
   $effect(() => {
-    if (props.initialTitle && !title) title = props.initialTitle;
-    if (props.initialBody && !body) body = props.initialBody;
-    if (props.initialMood && mood === 'calm') mood = props.initialMood;
+    if (props.editingEntry) {
+      editingId = props.editingEntry.id;
+      title = props.editingEntry.title || '';
+      body = props.editingEntry.body || '';
+      mood = props.editingEntry.mood || 'calm';
+    } else {
+      if (props.initialTitle && !title) title = props.initialTitle;
+      if (props.initialBody && !body) body = props.initialBody;
+      if (props.initialMood && mood === 'calm') mood = props.initialMood;
+    }
   });
 
   let saveStatus = $state<'idle' | 'saving' | 'saved'>('idle');
@@ -136,6 +146,16 @@
     triggerAutosave();
   }
 
+  function handleCancelEdit() {
+    editingId = null;
+    title = '';
+    body = '';
+    mood = 'calm';
+    saveStatus = 'idle';
+    statusMessage = '';
+    props.onCancelEdit?.();
+  }
+
   async function handleSaveEntry() {
     if (isSavingEntry) return;
     const trimmedTitle = title.trim();
@@ -155,26 +175,38 @@
       const targetRepo = activeRepo;
       if (!targetRepo) throw new Error('Repository not ready');
 
-      const entry = await targetRepo.createEntry({
-        title: trimmedTitle || 'Không tiêu đề',
-        body: trimmedBody,
-        mood,
-      });
+      let entry: JournalEntry;
+      if (editingId) {
+        entry = await targetRepo.updateEntry(editingId, {
+          title: trimmedTitle || 'Không tiêu đề',
+          body: trimmedBody,
+          mood,
+        });
+        saveStatus = 'saved';
+        statusMessage = 'Đã cập nhật bài viết';
+      } else {
+        entry = await targetRepo.createEntry({
+          title: trimmedTitle || 'Không tiêu đề',
+          body: trimmedBody,
+          mood,
+        });
 
-      // Clear draft upon successful save
-      await targetRepo.clearDraft(DEFAULT_DRAFT_ID);
+        // Clear draft upon successful save
+        await targetRepo.clearDraft(DEFAULT_DRAFT_ID);
+        saveStatus = 'idle';
+        statusMessage = '';
+      }
 
       // Reset form state
       title = '';
       body = '';
       mood = 'calm';
-      saveStatus = 'idle';
-      statusMessage = '';
+      editingId = null;
 
       props.onSave?.(entry);
       props.onSaved?.(entry);
     } catch (err) {
-      console.error('Error creating journal entry:', err);
+      console.error('Error saving journal entry:', err);
     } finally {
       isSavingEntry = false;
     }
@@ -254,13 +286,25 @@
       {/if}
     </div>
 
-    <button
-      type="button"
-      onclick={handleSaveEntry}
-      disabled={isSavingEntry || (!title.trim() && !body.trim())}
-      class="px-5 py-2.5 rounded-full bg-white/15 hover:bg-white/25 border border-white/25 hover:border-white/40 text-white font-medium text-xs tracking-wide shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-    >
-      {isSavingEntry ? 'Đang lưu...' : 'Lưu bài viết'}
-    </button>
+    <div class="flex items-center gap-2">
+      {#if editingId}
+        <button
+          type="button"
+          onclick={handleCancelEdit}
+          class="px-4 py-2.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/15 text-white/70 hover:text-white font-light text-xs tracking-wide transition-all cursor-pointer"
+        >
+          Hủy sửa
+        </button>
+      {/if}
+
+      <button
+        type="button"
+        onclick={handleSaveEntry}
+        disabled={isSavingEntry || (!title.trim() && !body.trim())}
+        class="px-5 py-2.5 rounded-full bg-white/15 hover:bg-white/25 border border-white/25 hover:border-white/40 text-white font-medium text-xs tracking-wide shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+      >
+        {isSavingEntry ? 'Đang lưu...' : editingId ? 'Cập nhật bài viết' : 'Lưu bài viết'}
+      </button>
+    </div>
   </div>
 </div>
