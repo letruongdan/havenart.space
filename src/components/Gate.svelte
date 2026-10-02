@@ -50,10 +50,10 @@
     </div>
 
     <!-- Title and Serene Subtitle -->
-    <h1 class="text-3xl sm:text-4xl font-serif font-light tracking-wide text-white mb-2 drop-shadow-md">
+    <h1 class="text-4xl sm:text-5xl font-serif font-light tracking-wider text-white mb-2 drop-shadow-md">
       Haven Art
     </h1>
-    <p class="text-xs sm:text-sm font-light text-stone-200/90 tracking-wide mb-8 font-sans">
+    <p class="text-xs sm:text-sm font-light text-stone-200/90 tracking-widest uppercase mb-8 font-sans">
       Góc tĩnh lặng cho tâm hồn
     </p>
 
@@ -65,7 +65,7 @@
       class="group relative inline-flex items-center justify-center gap-3 w-full py-3.5 px-6 rounded-full text-sm font-medium tracking-wide text-white bg-gradient-to-r from-amber-500/80 to-amber-600/80 hover:from-amber-400/90 hover:to-amber-500/90 border border-amber-300/60 shadow-[0_0_25px_rgba(245,158,11,0.35)] hover:shadow-[0_0_35px_rgba(245,158,11,0.55)] transition-all duration-300 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 active:scale-98 cursor-pointer"
       aria-label="Bước vào không gian Haven Art"
     >
-      <span class="relative z-10 font-serif tracking-widest text-base">Bước vào</span>
+      <span class="relative z-10 font-sans font-medium tracking-widest text-sm">Bước vào</span>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         fill="none"
