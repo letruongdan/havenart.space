@@ -11,6 +11,7 @@
     isZenMode?: boolean;
     weatherLabel?: string;
     selectionReason?: string;
+    audioReason?: string;
     onTogglePlay?: () => void;
     onVolumeChange?: (volume: number) => void;
     onNextTrack?: () => void;
@@ -34,6 +35,7 @@
     isZenMode = false,
     weatherLabel = '',
     selectionReason = '',
+    audioReason = '',
     onTogglePlay,
     onVolumeChange,
     onNextTrack,
@@ -109,14 +111,12 @@
         {/if}
         {#if trackTitle}
           <div class="flex flex-col text-left leading-tight">
-            <span class="text-xs text-white/95 font-medium truncate max-w-[130px]" title={trackTitle}>
+            <span class="text-xs text-white/95 font-medium truncate max-w-[130px]" title={audioReason ? `${trackTitle} • ${audioReason}` : trackTitle}>
               {trackTitle}
             </span>
-            {#if trackArtist}
-              <span class="text-[10px] text-stone-300/80 font-light truncate max-w-[130px]">
-                {trackArtist}
-              </span>
-            {/if}
+            <span class="text-[10px] text-stone-300/80 font-light truncate max-w-[130px]" title={audioReason || trackArtist}>
+              {audioReason || trackArtist}
+            </span>
           </div>
         {/if}
       </div>

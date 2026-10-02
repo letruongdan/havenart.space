@@ -342,6 +342,28 @@ export class AudioEngine {
     return this.play(trackId);
   }
 
+  /**
+   * Registers a track into the engine track list if not already present.
+   */
+  public registerTrack(track: AudioTrack): void {
+    if (!this.tracks.some((t) => t.id === track.id)) {
+      this.tracks.push(track);
+    }
+  }
+
+  /**
+   * Sets current track to be played on next play() or smoothly crossfades immediately if already playing.
+   */
+  public async setTrack(track: AudioTrack, crossfadeSec?: number): Promise<void> {
+    this.registerTrack(track);
+    if (this.isPlayingState) {
+      await this.crossfade(track.id, crossfadeSec);
+    } else {
+      this.currentTrack = track;
+      this.updateMediaSession();
+    }
+  }
+
   public pause(): void {
     if (this.activeCrossfade) {
       this.finishActiveCrossfade();

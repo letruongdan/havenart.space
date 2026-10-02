@@ -3,6 +3,7 @@
   import Gate from './Gate.svelte';
   import Dock from './Dock.svelte';
   import { AudioEngine } from '../lib/audio/engine';
+  import type { AudioTrack } from '../lib/audio/tracks';
   import { VisualController, type VisualMode, type Artwork } from '../lib/visuals/controller';
   import WritePanel from './WritePanel.svelte';
   import JournalList from './JournalList.svelte';
@@ -13,6 +14,11 @@
     selectArtworkForSession,
     selectNextArtwork,
   } from '../lib/visuals/artwork-selector';
+  import {
+    selectTrackForSession,
+    selectNextTrack,
+  } from '../lib/audio/track-selector';
+  import { ALL_HAVEN_AUDIO_TRACKS } from '../lib/audio/ambient-catalog';
 
   let experienceState = $state<'gate' | 'haven'>('gate');
   let activeModal = $state<'write' | 'list' | null>(null);
@@ -25,6 +31,8 @@
   let volume = $state(0.4);
   let currentTrackTitle = $state('');
   let currentTrackArtist = $state('');
+  let currentTrack = $state<AudioTrack | null>(null);
+  let audioReason = $state<string>('');
 
   // Visual state: Start with static artwork for full-screen immersive painting experience
   let visualMode = $state<VisualMode>('static');
@@ -41,15 +49,19 @@
   let canvasElement: HTMLCanvasElement | null = $state(null);
 
   onMount(() => {
-    // 1. Initialize Audio Engine
+    // 1. Initialize Audio Engine & Select Unique Ambient Track for this Visit
     try {
-      audioEngine = new AudioEngine();
+      const initialTrackSelection = selectTrackForSession();
+      currentTrack = initialTrackSelection.track;
+      audioReason = initialTrackSelection.reason;
+      currentTrackTitle = initialTrackSelection.track.title;
+      currentTrackArtist = initialTrackSelection.track.artist;
+
+      audioEngine = new AudioEngine({
+        tracks: ALL_HAVEN_AUDIO_TRACKS,
+      });
       volume = audioEngine.getVolume();
-      const track = audioEngine.getCurrentTrack();
-      if (track) {
-        currentTrackTitle = track.title;
-        currentTrackArtist = track.artist;
-      }
+      audioEngine.setTrack(initialTrackSelection.track);
     } catch (e) {
       console.warn('AudioEngine init warning:', e);
     }
@@ -89,14 +101,28 @@
           const entries = await journalRepo.listActiveEntries();
           if (entries.length > 0 && entries[0].mood) {
             activeMood = entries[0].mood;
-            const moodSelection = selectArtworkForSession({
+
+            // Adapt artwork to mood
+            const moodArtSelection = selectArtworkForSession({
               mood: activeMood,
               weather: weatherInfo?.condition,
               timeOfDay: weatherInfo?.timeOfDay,
             });
-            currentArtwork = moodSelection.artwork;
-            selectionReason = moodSelection.reason;
-            visualController?.setArtwork(moodSelection.artwork);
+            currentArtwork = moodArtSelection.artwork;
+            selectionReason = moodArtSelection.reason;
+            visualController?.setArtwork(moodArtSelection.artwork);
+
+            // Adapt audio track to mood
+            const moodTrackSelection = selectTrackForSession({
+              mood: activeMood,
+              weather: weatherInfo?.condition,
+              timeOfDay: weatherInfo?.timeOfDay,
+            });
+            currentTrack = moodTrackSelection.track;
+            audioReason = moodTrackSelection.reason;
+            currentTrackTitle = moodTrackSelection.track.title;
+            currentTrackArtist = moodTrackSelection.track.artist;
+            audioEngine?.setTrack(moodTrackSelection.track);
           }
         })
         .catch((e) => {
@@ -106,7 +132,7 @@
       console.warn('JournalRepository init warning:', e);
     }
 
-    // 4. Detect Local Weather in Background & Adapt Image
+    // 4. Detect Local Weather in Background & Adapt Image and Audio
     detectWeather()
       .then((info) => {
         weatherInfo = info;
@@ -118,6 +144,7 @@
 
         // If no explicit journal mood is prioritized, adapt to local weather & time of day
         if (!activeMood) {
+          // Adapt Artwork
           const weatherSelection = selectArtworkForSession({
             weather: info.condition,
             timeOfDay: info.timeOfDay,
@@ -125,6 +152,17 @@
           currentArtwork = weatherSelection.artwork;
           selectionReason = weatherSelection.reason;
           visualController?.setArtwork(weatherSelection.artwork);
+
+          // Adapt Audio
+          const weatherTrackSelection = selectTrackForSession({
+            weather: info.condition,
+            timeOfDay: info.timeOfDay,
+          });
+          currentTrack = weatherTrackSelection.track;
+          audioReason = weatherTrackSelection.reason;
+          currentTrackTitle = weatherTrackSelection.track.title;
+          currentTrackArtist = weatherTrackSelection.track.artist;
+          audioEngine?.setTrack(weatherTrackSelection.track);
         }
       })
       .catch((err) => {
@@ -192,12 +230,17 @@
   async function handleNextTrack() {
     if (!audioEngine) return;
     try {
-      await audioEngine.nextTrack();
-      const track = audioEngine.getCurrentTrack();
-      if (track) {
-        currentTrackTitle = track.title;
-        currentTrackArtist = track.artist;
-      }
+      const result = selectNextTrack({
+        currentId: currentTrack?.id,
+        weather: weatherInfo?.condition,
+        timeOfDay: weatherInfo?.timeOfDay,
+        mood: activeMood || undefined,
+      });
+      currentTrack = result.track;
+      audioReason = result.reason;
+      currentTrackTitle = result.track.title;
+      currentTrackArtist = result.track.artist;
+      await audioEngine.setTrack(result.track);
       isPlaying = audioEngine.isPlaying();
     } catch (err) {
       console.warn('Next track error:', err);
@@ -225,14 +268,28 @@
 
   function handleMoodChange(newMood: string) {
     activeMood = newMood;
-    const result = selectArtworkForSession({
+
+    // Adapt visual artwork to selected mood
+    const artResult = selectArtworkForSession({
       mood: newMood,
       weather: weatherInfo?.condition,
       timeOfDay: weatherInfo?.timeOfDay,
     });
-    currentArtwork = result.artwork;
-    selectionReason = result.reason;
-    visualController?.setArtwork(result.artwork);
+    currentArtwork = artResult.artwork;
+    selectionReason = artResult.reason;
+    visualController?.setArtwork(artResult.artwork);
+
+    // Adapt audio soundscape to selected mood
+    const trackResult = selectTrackForSession({
+      mood: newMood,
+      weather: weatherInfo?.condition,
+      timeOfDay: weatherInfo?.timeOfDay,
+    });
+    currentTrack = trackResult.track;
+    audioReason = trackResult.reason;
+    currentTrackTitle = trackResult.track.title;
+    currentTrackArtist = trackResult.track.artist;
+    audioEngine?.setTrack(trackResult.track);
   }
 
   function handleOpenJournalWrite() {
@@ -349,6 +406,7 @@
           {volume}
           trackTitle={currentTrackTitle}
           trackArtist={currentTrackArtist}
+          {audioReason}
           {visualMode}
           artworkTitle={currentArtwork?.title}
           artworkArtist={currentArtwork?.artist}
