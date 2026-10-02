@@ -2,6 +2,10 @@ import type { JournalRepository } from '../db/repository';
 import { DEFAULT_DRAFT_ID } from '../db/schema';
 import { ALL_HAVEN_AUDIO_TRACKS } from '../audio/ambient-catalog';
 import { CURATED_ARTWORKS } from '../visuals/artworks';
+import {
+  getUserAnalyticsSummary,
+  type UserAnalyticsSummary,
+} from './user-analytics';
 
 export interface SystemEvent {
   id: string;
@@ -82,6 +86,7 @@ export interface SystemTelemetry {
     isCached?: boolean;
   };
   events: SystemEvent[];
+  userAnalytics?: UserAnalyticsSummary;
 }
 
 const appSessionStart = Date.now();
@@ -378,6 +383,9 @@ export async function getSystemTelemetry(options?: {
     }
   }
 
+  // 8. User Analytics & Feedback
+  const userAnalytics = await getUserAnalyticsSummary({ repo: options?.repo });
+
   return {
     timestamp: now,
     uptimeSeconds,
@@ -434,6 +442,7 @@ export async function getSystemTelemetry(options?: {
       isCached: isCachedWeather,
     },
     events: getRecentEvents(25),
+    userAnalytics,
   };
 }
 

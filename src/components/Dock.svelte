@@ -13,6 +13,7 @@
     BookOpen,
     Eye,
     EyeOff,
+    Heart,
   } from 'lucide';
   import { t } from '../lib/i18n/store';
   import { DEFAULT_LANGUAGE, type SupportedLanguage } from '../lib/i18n/types';
@@ -25,7 +26,7 @@
     visualMode?: 'shader' | 'static';
     artworkTitle?: string;
     artworkArtist?: string;
-    activeModal?: 'write' | 'list' | null;
+    activeModal?: 'write' | 'list' | 'feedback' | null;
     isZenMode?: boolean;
     weatherLabel?: string;
     selectionReason?: string;
@@ -40,6 +41,7 @@
     onNextArtwork?: () => void;
     onOpenJournalWrite?: () => void;
     onOpenJournalList?: () => void;
+    onOpenFeedback?: () => void;
     onToggleZenMode?: () => void;
     onToggleSoundCategory?: () => void;
   }
@@ -249,6 +251,27 @@
         />
         <span class="hidden sm:inline">{t('dock.journalList', activeLang)}</span>
       </button>
+
+      <!-- Feedback / Cảm nhận Button with MorphIcon -->
+      {#if props.onOpenFeedback}
+        <button
+          type="button"
+          onclick={props.onOpenFeedback}
+          class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-light text-white/85 hover:text-white hover:bg-white/10 transition-all focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 cursor-pointer {props.activeModal === 'feedback' ? 'bg-white/20 text-white shadow-[0_0_12px_rgba(255,255,255,0.2)]' : ''}"
+          aria-label="{activeLang === 'vi' ? 'Gửi cảm nhận & Đánh giá' : 'Send Feedback'}"
+          title="{activeLang === 'vi' ? 'Gửi cảm nhận & Đánh giá' : 'Send Feedback'}"
+        >
+          <MorphIcon
+            icon={Heart}
+            size={13}
+            strokeWidth={2}
+            spring="smooth"
+            reducedMotion="user"
+            class={props.activeModal === 'feedback' ? 'text-rose-300 fill-rose-300/40' : 'text-rose-300/80'}
+          />
+          <span class="hidden lg:inline">{activeLang === 'vi' ? 'Cảm nhận' : 'Feedback'}</span>
+        </button>
+      {/if}
 
       <!-- Zen Immersion Toggle Button with MorphIcon -->
       <button

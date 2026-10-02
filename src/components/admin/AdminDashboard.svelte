@@ -18,6 +18,13 @@
     type SystemEvent,
   } from '../../lib/telemetry/system-monitor';
   import { BackupManager } from '../../lib/export/backup';
+  import {
+    isAdminAuthenticated,
+    logoutAdmin,
+    changeAdminPassword,
+  } from '../../lib/admin/auth';
+  import AdminLoginGate from './AdminLoginGate.svelte';
+  import { deleteUserFeedback } from '../../lib/telemetry/user-analytics';
   import { MorphIcon } from 'morphicons/svelte';
   import {
     Activity,
@@ -42,16 +49,34 @@
     Play,
     Pause,
     Layers,
+    Users,
+    Star,
+    Heart,
+    MessageSquare,
+    KeyRound,
+    LogOut,
+    X,
+    Lock,
   } from 'lucide';
 
   let repo = $state<JournalRepository | null>(null);
   let telemetry = $state<SystemTelemetry | null>(null);
-  let activeTab = $state<'overview' | 'database' | 'catalog' | 'diagnostics'>('overview');
+  let activeTab = $state<'overview' | 'users' | 'database' | 'catalog' | 'diagnostics'>('overview');
   let autoRefresh = $state(true);
   let refreshInterval = $state(3); // seconds
   let timerId: ReturnType<typeof setInterval> | null = null;
   let statusNotice = $state<{ text: string; type: 'success' | 'warn' | 'error' } | null>(null);
   let noticeTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  // Authentication & Security State
+  let isAuthenticated = $state(false);
+  let showChangePasswordModal = $state(false);
+  let currentPasswordInput = $state('');
+  let newPasswordInput = $state('');
+  let confirmPasswordInput = $state('');
+  let changePasswordError = $state<string | null>(null);
+  let changePasswordSuccess = $state<string | null>(null);
+  let changePasswordLoading = $state(false);
 
   // Audio preview state inside admin
   let activePreviewTrackId = $state<string | null>(null);
@@ -76,15 +101,17 @@
     }
   }
 
-  onMount(async () => {
+  async function initAdminData() {
     try {
-      repo = new JournalRepository();
-      await repo.init();
-      logSystemEvent({
-        level: 'success',
-        category: 'db',
-        message: 'Khởi tạo kết nối IndexedDB Quản trị thành công',
-      });
+      if (!repo) {
+        repo = new JournalRepository();
+        await repo.init();
+        logSystemEvent({
+          level: 'success',
+          category: 'db',
+          message: 'Khởi tạo kết nối IndexedDB Quản trị thành công',
+        });
+      }
     } catch (err: any) {
       logSystemEvent({
         level: 'warn',
@@ -101,13 +128,83 @@
       message: 'Mở trang Bảng điều khiển Quản trị Haven Art',
     });
 
-    // Start auto-refresh interval
-    timerId = setInterval(() => {
-      if (autoRefresh) {
-        refreshTelemetry();
-      }
-    }, refreshInterval * 1000);
+    if (!timerId) {
+      timerId = setInterval(() => {
+        if (autoRefresh && isAuthenticated) {
+          refreshTelemetry();
+        }
+      }, refreshInterval * 1000);
+    }
+  }
+
+  onMount(async () => {
+    isAuthenticated = isAdminAuthenticated();
+    if (isAuthenticated) {
+      await initAdminData();
+    }
   });
+
+  async function handleAuthenticated() {
+    isAuthenticated = true;
+    await initAdminData();
+    showNotice('Đăng nhập quản trị viên thành công', 'success');
+  }
+
+  function handleLogout() {
+    logoutAdmin();
+    isAuthenticated = false;
+    if (timerId) {
+      clearInterval(timerId);
+      timerId = null;
+    }
+    showNotice('Đã đăng xuất khỏi phiên quản trị viên.', 'info');
+  }
+
+  async function handleChangePassword(e?: Event) {
+    if (e) e.preventDefault();
+    if (changePasswordLoading) return;
+    changePasswordError = null;
+    changePasswordSuccess = null;
+
+    if (!newPasswordInput || newPasswordInput.length < 6) {
+      changePasswordError = 'Mật khẩu mới phải có ít nhất 6 ký tự.';
+      return;
+    }
+    if (newPasswordInput !== confirmPasswordInput) {
+      changePasswordError = 'Xác nhận mật khẩu mới không trùng khớp.';
+      return;
+    }
+
+    changePasswordLoading = true;
+    try {
+      const res = await changeAdminPassword(currentPasswordInput, newPasswordInput);
+      if (res.success) {
+        changePasswordSuccess = 'Đổi mật khẩu thành công!';
+        showNotice('Đổi mật khẩu quản trị viên thành công!', 'success');
+        currentPasswordInput = '';
+        newPasswordInput = '';
+        confirmPasswordInput = '';
+        setTimeout(() => {
+          showChangePasswordModal = false;
+          changePasswordSuccess = null;
+        }, 1500);
+      } else {
+        changePasswordError = res.error || 'Đổi mật khẩu thất bại.';
+      }
+    } catch (err: any) {
+      changePasswordError = err?.message || 'Lỗi khi đổi mật khẩu.';
+    } finally {
+      changePasswordLoading = false;
+    }
+  }
+
+  async function handleDeleteFeedback(id: string) {
+    if (typeof window !== 'undefined' && window.confirm('Bạn có chắc chắn muốn xóa phản hồi này?')) {
+      deleteUserFeedback(id);
+      await refreshTelemetry();
+      showNotice('Đã xóa đánh giá của người dùng', 'info');
+    }
+  }
 
   onDestroy(() => {
     if (timerId) clearInterval(timerId);
@@ -271,8 +368,19 @@
     peaceful: { label: 'Tĩnh lặng', icon: '🕊️', color: 'bg-cyan-400' },
     hopeful: { label: 'Hy vọng', icon: '☀️', color: 'bg-yellow-400' },
   };
+
+  const FEEDBACK_CATEGORY_META: Record<string, { label: string; icon: string }> = {
+    peace: { label: 'Sự an yên', icon: '🕊️' },
+    music: { label: 'Âm thanh', icon: '🎵' },
+    visuals: { label: 'Hội họa', icon: '🎨' },
+    journal: { label: 'Nhật ký', icon: '📖' },
+    general: { label: 'Tổng quan', icon: '✨' },
+  };
 </script>
 
+{#if !isAuthenticated}
+  <AdminLoginGate onAuthenticated={handleAuthenticated} />
+{:else}
 <div class="min-h-screen bg-[#090a0d] text-stone-200 font-sans selection:bg-amber-500/25 selection:text-white pb-16">
   <!-- Top Navigation & System Status Header -->
   <header class="sticky top-0 z-40 bg-[#0d0e12]/80 backdrop-blur-xl border-b border-white/10 shadow-lg">
@@ -345,6 +453,28 @@
         >
           <MorphIcon icon={Download} size={13} strokeWidth={2} spring="smooth" reducedMotion="user" />
           <span>Xuất JSON</span>
+        </button>
+
+        <!-- Change Password Button -->
+        <button
+          type="button"
+          onclick={() => { showChangePasswordModal = true; changePasswordError = null; changePasswordSuccess = null; }}
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-xs text-white/80 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
+          title="Thay đổi mật khẩu đăng nhập quản trị viên"
+        >
+          <MorphIcon icon={KeyRound} size={13} strokeWidth={2} spring="smooth" reducedMotion="user" />
+          <span>Đổi mật khẩu</span>
+        </button>
+
+        <!-- Logout Button -->
+        <button
+          type="button"
+          onclick={handleLogout}
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-xs text-rose-300 hover:text-rose-100 transition-all cursor-pointer shadow-sm active:scale-95"
+          title="Đăng xuất khỏi phiên quản trị viên"
+        >
+          <MorphIcon icon={LogOut} size={13} strokeWidth={2} spring="smooth" reducedMotion="user" />
+          <span>Đăng xuất</span>
         </button>
       </div>
     </div>
@@ -506,6 +636,20 @@
       >
         <MorphIcon icon={BarChart2} size={15} strokeWidth={2} spring="smooth" reducedMotion="user" />
         <span>Hiệu Năng & Thiết Bị</span>
+      </button>
+
+      <button
+        type="button"
+        onclick={() => { activeTab = 'users'; }}
+        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer whitespace-nowrap {activeTab === 'users' ? 'bg-amber-400/20 text-amber-200 border border-amber-400/30' : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'}"
+      >
+        <MorphIcon icon={Users} size={15} strokeWidth={2} spring="smooth" reducedMotion="user" />
+        <span>Người Dùng & Đánh Giá</span>
+        {#if (telemetry?.userAnalytics?.feedback.totalCount || 0) > 0}
+          <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-400/20 text-amber-300 font-mono font-medium">
+            {telemetry?.userAnalytics?.feedback.totalCount}
+          </span>
+        {/if}
       </button>
 
       <button
@@ -703,6 +847,319 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    {/if}
+
+    <!-- TAB: USER ANALYTICS & FEEDBACK -->
+    {#if activeTab === 'users'}
+      <div class="space-y-6">
+        <!-- 4 KPI Cards for Users -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <!-- 1. Lượt Truy Cập & Phiên -->
+          <div class="p-5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/10 backdrop-blur-xl shadow-lg transition-all duration-200">
+            <div class="flex items-center justify-between text-white/50 text-xs font-medium uppercase tracking-wider mb-2">
+              <span class="flex items-center gap-1.5">
+                <MorphIcon icon={Users} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                <span>Truy Cập & Phiên</span>
+              </span>
+              <span class="text-amber-400 font-mono">Lưu lượng</span>
+            </div>
+            <div class="mt-1">
+              <div class="text-xl sm:text-2xl font-serif font-medium text-white">
+                {telemetry?.userAnalytics?.visits.total || 0} <span class="text-xs font-sans text-white/50 font-normal">lượt</span>
+              </div>
+              <p class="text-xs text-white/50 mt-1 truncate">
+                {telemetry?.userAnalytics?.visits.uniqueSessions || 0} phiên duy nhất
+              </p>
+            </div>
+            <div class="w-full bg-white/10 rounded-full h-1.5 mt-3 overflow-hidden">
+              <div class="bg-amber-400 h-full rounded-full w-full"></div>
+            </div>
+            <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
+              <span>Hôm nay: <strong class="text-white font-mono">{telemetry?.userAnalytics?.visits.today || 0}</strong></span>
+              <span>7 ngày qua: <strong class="text-amber-300 font-mono">{telemetry?.userAnalytics?.visits.thisWeek || 0}</strong></span>
+            </div>
+          </div>
+
+          <!-- 2. Thời Lượng Trải Nghiệm -->
+          <div class="p-5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/10 backdrop-blur-xl shadow-lg transition-all duration-200">
+            <div class="flex items-center justify-between text-white/50 text-xs font-medium uppercase tracking-wider mb-2">
+              <span class="flex items-center gap-1.5">
+                <MorphIcon icon={Clock} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                <span>Thời Lượng Gắn Kết</span>
+              </span>
+              <span class="text-emerald-400 font-mono">Thời gian</span>
+            </div>
+            <div class="mt-1">
+              <div class="text-xl sm:text-2xl font-serif font-medium text-white">
+                {formatDuration(telemetry?.userAnalytics?.duration.totalDurationSeconds || 0)}
+              </div>
+              <p class="text-xs text-white/50 mt-1 truncate">
+                Phiên này: {formatDuration(telemetry?.userAnalytics?.duration.currentSessionSeconds || 0)}
+              </p>
+            </div>
+            <div class="w-full bg-white/10 rounded-full h-1.5 mt-3 overflow-hidden">
+              <div class="bg-emerald-400 h-full rounded-full w-full"></div>
+            </div>
+            <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
+              <span>TB/phiên: <strong class="text-white font-mono">{formatDuration(telemetry?.userAnalytics?.duration.averageSessionSeconds || 0)}</strong></span>
+              <span>Nghe nhạc: <strong class="text-emerald-300 font-mono">{formatDuration(telemetry?.userAnalytics?.duration.musicListeningSeconds || 0)}</strong></span>
+            </div>
+          </div>
+
+          <!-- 3. Viết Nhật Ký -->
+          <div class="p-5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/10 backdrop-blur-xl shadow-lg transition-all duration-200">
+            <div class="flex items-center justify-between text-white/50 text-xs font-medium uppercase tracking-wider mb-2">
+              <span class="flex items-center gap-1.5">
+                <MorphIcon icon={Database} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                <span>Hoạt Động Nhật Ký</span>
+              </span>
+              <span class="text-cyan-400 font-mono">Tự sự</span>
+            </div>
+            <div class="mt-1">
+              <div class="text-xl sm:text-2xl font-serif font-medium text-white">
+                {telemetry?.userAnalytics?.journaling.totalEntries || 0} <span class="text-xs font-sans text-white/50 font-normal">bài viết</span>
+              </div>
+              <p class="text-xs text-white/50 mt-1 truncate">
+                {telemetry?.userAnalytics?.journaling.totalWords || 0} từ tích lũy
+              </p>
+            </div>
+            <div class="w-full bg-white/10 rounded-full h-1.5 mt-3 overflow-hidden">
+              <div class="bg-cyan-400 h-full rounded-full w-full"></div>
+            </div>
+            <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
+              <span>Hôm nay: <strong class="text-white font-mono">{telemetry?.userAnalytics?.journaling.entriesToday || 0}</strong> bài</span>
+              <span>TB: <strong class="text-cyan-300 font-mono">{telemetry?.userAnalytics?.journaling.averageWordsPerEntry || 0}</strong> từ/bài</span>
+            </div>
+          </div>
+
+          <!-- 4. Đánh Giá & Cảm Nhận -->
+          <div class="p-5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/10 backdrop-blur-xl shadow-lg transition-all duration-200">
+            <div class="flex items-center justify-between text-white/50 text-xs font-medium uppercase tracking-wider mb-2">
+              <span class="flex items-center gap-1.5">
+                <MorphIcon icon={Star} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                <span>Đánh Giá Hài Lòng</span>
+              </span>
+              <span class="text-amber-400 font-mono">CSAT</span>
+            </div>
+            <div class="mt-1">
+              <div class="text-xl sm:text-2xl font-serif font-medium text-white flex items-center gap-2">
+                <span>{telemetry?.userAnalytics?.feedback.averageRating?.toFixed(1) || '5.0'}</span>
+                <span class="text-amber-400 text-lg">★</span>
+                <span class="text-xs font-sans text-white/50 font-normal">/ 5.0</span>
+              </div>
+              <p class="text-xs text-white/50 mt-1 truncate">
+                {telemetry?.userAnalytics?.feedback.totalCount || 0} lượt gửi cảm nhận
+              </p>
+            </div>
+            <div class="w-full bg-white/10 rounded-full h-1.5 mt-3 overflow-hidden">
+              <div class="bg-amber-400 h-full rounded-full w-full"></div>
+            </div>
+            <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
+              <span>5 sao: <strong class="text-white font-mono">{telemetry?.userAnalytics?.feedback.distribution[5] || 0}</strong></span>
+              <span class="text-amber-300">Rất hài lòng</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2 Column Charts: 7-Day Visits & Rating Breakdown -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Left: 7-Day Visits History & Journal Moods -->
+          <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl space-y-6">
+            <div>
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="text-base sm:text-lg font-serif font-medium text-white flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                  <span>Lịch Sử Lượt Truy Cập (7 Ngày Qua)</span>
+                </h2>
+                <span class="text-xs text-white/50 font-mono">
+                  Tổng 7 ngày: {telemetry?.userAnalytics?.visits.thisWeek || 0}
+                </span>
+              </div>
+
+              <!-- Bar Chart Representation -->
+              <div class="space-y-2.5 pt-2">
+                {#if (telemetry?.userAnalytics?.visits.dailyHistory || []).length === 0}
+                  <div class="text-center py-6 text-white/40 text-xs">
+                    Chưa có đủ dữ liệu lịch sử truy cập.
+                  </div>
+                {:else}
+                  {@const maxVisits = Math.max(1, ...(telemetry?.userAnalytics?.visits.dailyHistory.map(d => d.count) || [1]))}
+                  {#each (telemetry?.userAnalytics?.visits.dailyHistory || []) as day}
+                    {@const pct = Math.round((day.count / maxVisits) * 100)}
+                    <div class="flex items-center gap-3 text-xs">
+                      <span class="w-20 font-mono text-white/60 truncate shrink-0">{day.date}</span>
+                      <div class="flex-1 bg-white/5 rounded-full h-3 overflow-hidden border border-white/5 relative">
+                        <div
+                          class="bg-gradient-to-r from-amber-500/80 to-amber-300 h-full rounded-full transition-all duration-500"
+                          style="width: {Math.max(4, pct)}%"
+                        ></div>
+                      </div>
+                      <span class="w-12 text-right font-mono text-white/90 shrink-0 font-medium">
+                        {day.count} <span class="text-[10px] text-white/40">lượt</span>
+                      </span>
+                    </div>
+                  {/each}
+                {/if}
+              </div>
+            </div>
+
+            <!-- Mood Breakdown mini section -->
+            <div class="pt-4 border-t border-white/10">
+              <h3 class="text-sm font-medium text-white mb-3 flex items-center justify-between">
+                <span>Tâm Trạng Khi Viết Nhật Ký</span>
+                <span class="text-xs text-white/40 font-normal">
+                  {telemetry?.userAnalytics?.journaling.totalEntries || 0} bài
+                </span>
+              </h3>
+
+              <div class="grid grid-cols-5 gap-2 text-center">
+                {#each Object.entries(MOOD_META) as [key, meta]}
+                  {@const count = telemetry?.userAnalytics?.journaling.moodBreakdown[key] || 0}
+                  {@const total = telemetry?.userAnalytics?.journaling.totalEntries || 1}
+                  {@const pct = total > 0 ? Math.round((count / total) * 100) : 0}
+                  <div class="p-2.5 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col items-center">
+                    <span class="text-lg">{meta.icon}</span>
+                    <span class="text-[11px] text-white/80 mt-1">{meta.label}</span>
+                    <span class="text-xs font-mono font-medium text-amber-300 mt-0.5">{count}</span>
+                    <span class="text-[10px] text-white/40">{pct}%</span>
+                  </div>
+                {/each}
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Star Rating Distribution & Satisfaction Metric -->
+          <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl flex flex-col justify-between space-y-6">
+            <div>
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="text-base sm:text-lg font-serif font-medium text-white flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                  <span>Phân Bổ Xếp Hạng & Điểm Hài Lòng</span>
+                </h2>
+                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-400/10 border border-amber-400/20 text-amber-300 text-xs font-mono">
+                  <span>Trung bình:</span>
+                  <strong class="text-white">{telemetry?.userAnalytics?.feedback.averageRating?.toFixed(1) || '5.0'} ★</strong>
+                </div>
+              </div>
+
+              <!-- Rating 5 stars to 1 star bars -->
+              <div class="space-y-3 mt-4">
+                {#each [5, 4, 3, 2, 1] as star}
+                  {@const count = telemetry?.userAnalytics?.feedback.distribution[star] || 0}
+                  {@const total = telemetry?.userAnalytics?.feedback.totalCount || 1}
+                  {@const pct = total > 0 ? Math.round((count / total) * 100) : 0}
+                  <div class="flex items-center gap-3 text-xs">
+                    <div class="w-14 flex items-center gap-1 shrink-0 font-mono text-white/80">
+                      <span>{star}</span>
+                      <span class="text-amber-400 text-xs">★</span>
+                    </div>
+                    <div class="flex-1 bg-white/5 rounded-full h-3 overflow-hidden border border-white/5">
+                      <div
+                        class="h-full rounded-full transition-all duration-500 {star >= 4 ? 'bg-amber-400' : star === 3 ? 'bg-amber-500/70' : 'bg-stone-500'}"
+                        style="width: {pct}%"
+                      ></div>
+                    </div>
+                    <div class="w-16 text-right font-mono text-white/70 shrink-0">
+                      {count} <span class="text-white/40">({pct}%)</span>
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            </div>
+
+            <!-- Satisfaction Index Box -->
+            <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs space-y-2">
+              <div class="flex items-center gap-2 text-amber-300 font-medium">
+                <MorphIcon icon={Heart} size={15} strokeWidth={2} />
+                <span>Chỉ Số Trải Nghiệm & Bình An (CSAT Index)</span>
+              </div>
+              <p class="text-white/70 leading-relaxed">
+                Người dùng đánh giá rất tích cực về độ êm dịu, không gian âm nhạc không lời và tính năng viết nhật ký bảo mật hoàn toàn trong máy (Local-First).
+              </p>
+              <div class="pt-1 flex items-center justify-between text-[11px] text-white/50 border-t border-white/10">
+                <span>Bảo mật 100% không gửi về máy chủ</span>
+                <span class="text-emerald-300">Minh bạch</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- User Feedback List Section -->
+        <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+            <div>
+              <h2 class="text-base sm:text-lg font-serif font-medium text-white flex items-center gap-2">
+                <MorphIcon icon={MessageSquare} size={18} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                <span>Cảm Nhận & Góp Ý Từ Người Dùng ({telemetry?.userAnalytics?.feedback.totalCount || 0})</span>
+              </h2>
+              <p class="text-xs text-white/50 mt-0.5">
+                Các nhận xét được lưu trữ cục bộ, phản ánh chân thực cảm xúc và mong muốn của người dùng
+              </p>
+            </div>
+          </div>
+
+          {#if (telemetry?.userAnalytics?.feedback.recentFeedbacks || []).length === 0}
+            <div class="text-center py-12 text-white/40 text-xs sm:text-sm">
+              <div class="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3 text-white/30">
+                <MorphIcon icon={MessageSquare} size={20} />
+              </div>
+              <span>Chưa có cảm nhận nào được gửi từ người dùng.</span>
+            </div>
+          {:else}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {#each (telemetry?.userAnalytics?.feedback.recentFeedbacks || []) as fb (fb.id)}
+                <div class="p-4 rounded-2xl bg-white/[0.02] hover:bg-white/[0.04] border border-white/10 transition-all flex flex-col justify-between gap-3 group">
+                  <!-- Header: Stars + Category + Date -->
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                      <!-- Star rating representation -->
+                      <div class="flex items-center text-amber-400 text-xs">
+                        {#each Array(fb.rating) as _}
+                          <span>★</span>
+                        {/each}
+                        {#each Array(5 - fb.rating) as _}
+                          <span class="text-white/20">★</span>
+                        {/each}
+                      </div>
+
+                      <!-- Category Badge -->
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] bg-white/5 border border-white/10 text-white/80">
+                        <span>{FEEDBACK_CATEGORY_META[fb.category]?.icon || '✨'}</span>
+                        <span>{FEEDBACK_CATEGORY_META[fb.category]?.label || 'Chung'}</span>
+                      </span>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                      <span class="text-[11px] text-white/40 font-mono">
+                        {new Date(fb.createdAt).toLocaleDateString('vi-VN')}
+                      </span>
+                      <!-- Delete feedback button -->
+                      <button
+                        type="button"
+                        onclick={() => handleDeleteFeedback(fb.id)}
+                        class="p-1 rounded-lg text-white/30 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                        title="Xóa phản hồi này"
+                      >
+                        <MorphIcon icon={Trash2} size={13} strokeWidth={1.75} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Comment Body -->
+                  <div class="text-xs sm:text-sm text-stone-300 font-serif italic leading-relaxed pl-3 border-l-2 border-amber-400/40">
+                    "{fb.comment}"
+                  </div>
+
+                  <!-- Footer note -->
+                  <div class="text-[10px] text-white/30 font-mono text-right">
+                    ID: {fb.id.slice(0, 10)}...
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
         </div>
       </div>
     {/if}
@@ -1066,4 +1523,98 @@
       </div>
     {/if}
   </main>
+
+  <!-- Change Password Modal Dialog -->
+  {#if showChangePasswordModal}
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+      <div class="bg-[#121318] border border-white/15 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 relative">
+        <div class="flex items-center justify-between border-b border-white/10 pb-4">
+          <div class="flex items-center gap-2.5">
+            <div class="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300">
+              <MorphIcon icon={KeyRound} size={18} strokeWidth={2} />
+            </div>
+            <h3 class="text-base font-serif font-medium text-white">Đổi Mật Khẩu Quản Trị</h3>
+          </div>
+          <button
+            type="button"
+            onclick={() => { showChangePasswordModal = false; }}
+            class="p-1.5 rounded-xl hover:bg-white/10 text-white/60 hover:text-white cursor-pointer transition-colors"
+          >
+            <MorphIcon icon={X} size={18} />
+          </button>
+        </div>
+
+        {#if changePasswordError}
+          <div class="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-200 text-xs">
+            {changePasswordError}
+          </div>
+        {/if}
+
+        {#if changePasswordSuccess}
+          <div class="p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-200 text-xs flex items-center gap-2">
+            <MorphIcon icon={CheckCircle2} size={16} />
+            <span>{changePasswordSuccess}</span>
+          </div>
+        {/if}
+
+        <form onsubmit={handleChangePassword} class="space-y-4 text-xs">
+          <div class="space-y-1">
+            <label for="current-pwd" class="text-white/70 block">Mật khẩu hiện tại</label>
+            <input
+              id="current-pwd"
+              type="password"
+              bind:value={currentPasswordInput}
+              required
+              class="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white focus:outline-none focus:ring-1 focus:ring-amber-400 placeholder:text-white/30"
+              placeholder="Nhập mật khẩu hiện tại"
+            />
+          </div>
+
+          <div class="space-y-1">
+            <label for="new-pwd" class="text-white/70 block">Mật khẩu mới (tối thiểu 6 ký tự)</label>
+            <input
+              id="new-pwd"
+              type="password"
+              bind:value={newPasswordInput}
+              required
+              minlength="6"
+              class="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white focus:outline-none focus:ring-1 focus:ring-amber-400 placeholder:text-white/30"
+              placeholder="Nhập mật khẩu mới"
+            />
+          </div>
+
+          <div class="space-y-1">
+            <label for="confirm-pwd" class="text-white/70 block">Xác nhận mật khẩu mới</label>
+            <input
+              id="confirm-pwd"
+              type="password"
+              bind:value={confirmPasswordInput}
+              required
+              minlength="6"
+              class="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white focus:outline-none focus:ring-1 focus:ring-amber-400 placeholder:text-white/30"
+              placeholder="Xác nhận lại mật khẩu mới"
+            />
+          </div>
+
+          <div class="flex items-center justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onclick={() => { showChangePasswordModal = false; }}
+              class="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white cursor-pointer transition-colors"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              disabled={changePasswordLoading}
+              class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-medium cursor-pointer transition-all disabled:opacity-50"
+            >
+              {changePasswordLoading ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  {/if}
 </div>
+{/if}

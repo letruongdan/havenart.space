@@ -20,8 +20,10 @@
   } from '../lib/audio/track-selector';
   import { ALL_HAVEN_AUDIO_TRACKS } from '../lib/audio/ambient-catalog';
   import { MorphIcon } from 'morphicons/svelte';
-  import { X, Activity } from 'lucide';
+  import { X } from 'lucide';
   import LanguagePicker from './LanguagePicker.svelte';
+  import FeedbackModal from './FeedbackModal.svelte';
+  import { recordVisit, updateActiveDuration } from '../lib/telemetry/user-analytics';
   import { detectUserLanguage, t } from '../lib/i18n/store';
   import type { SupportedLanguage } from '../lib/i18n/types';
 
@@ -39,11 +41,12 @@
     }
   });
   let experienceState = $state<'gate' | 'haven'>('gate');
-  let activeModal = $state<'write' | 'list' | null>(null);
+  let activeModal = $state<'write' | 'list' | 'feedback' | null>(null);
   let journalRepo = $state<JournalRepository | null>(null);
   let journalRefreshTrigger = $state(0);
   let isZenMode = $state(false);
   let editingEntry = $state<JournalEntry | null>(null);
+  let durationTimerId: ReturnType<typeof setInterval> | null = null;
 
   // Audio state
   let isPlaying = $state(false);
@@ -192,6 +195,14 @@
         console.warn('Weather detection notice:', err);
       });
 
+    recordVisit();
+
+    durationTimerId = setInterval(() => {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        updateActiveDuration(5, isPlaying);
+      }
+    }, 5000);
+
     function onLanguageChangeEvent(event: Event) {
       const customEvent = event as CustomEvent<{ lang: SupportedLanguage }>;
       if (customEvent.detail?.lang) {
@@ -223,6 +234,7 @@
 
   onDestroy(() => {
     if (idleTimer) clearTimeout(idleTimer);
+    if (durationTimerId) clearInterval(durationTimerId);
     audioEngine?.destroy();
     visualController?.destroy();
     journalRepo?.close().catch(() => {});
@@ -402,8 +414,22 @@
     isZenMode = !isZenMode;
   }
 
+  function handleOpenFeedback() {
+    handleUserActivity();
+    activeModal = activeModal === 'feedback' ? null : 'feedback';
+    if (isZenMode) isZenMode = false;
+  }
+
   function handleWindowKeyDown(event: KeyboardEvent) {
     handleUserActivity();
+
+    // Secret shortcut for administrator: Ctrl + Shift + A (or Cmd + Shift + A)
+    if ((event.ctrlKey || event.metaKey) && event.shiftKey && (event.key === 'A' || event.key === 'a')) {
+      event.preventDefault();
+      window.location.href = '/admin';
+      return;
+    }
+
     if (event.key === 'Escape') {
       if (activeModal !== null) {
         handleCloseModal();
@@ -468,7 +494,7 @@
           <span class="text-xs sm:text-sm font-sans tracking-[0.2em] uppercase font-medium text-white drop-shadow-sm">Haven Art</span>
         </div>
 
-        <!-- Header Controls: Weather Whisper, Language Picker & Admin Portal Link -->
+        <!-- Header Controls: Weather Whisper & Language Picker -->
         <div class="flex items-center gap-2">
           {#if weatherDisplay}
             <div class="hidden sm:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/25 hover:bg-black/40 border border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.25)] backdrop-blur-md select-none transition-all duration-300 font-sans">
@@ -483,15 +509,6 @@
               currentLang = l;
             }}
           />
-
-          <a
-            href="/admin"
-            class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-black/25 hover:bg-black/45 border border-white/20 hover:border-white/40 text-white/70 hover:text-white shadow-[0_4px_20px_rgba(0,0,0,0.25)] backdrop-blur-md transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60"
-            title="{t('brand.adminPortal', currentLang)} (Admin)"
-            aria-label="{t('brand.adminPortal', currentLang)} / Bảng điều khiển hệ thống"
-          >
-            <MorphIcon icon={Activity} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
-          </a>
         </div>
       </header>
 
@@ -523,6 +540,7 @@
           onNextArtwork={handleNextArtwork}
           onOpenJournalWrite={handleOpenJournalWrite}
           onOpenJournalList={handleOpenJournalList}
+          onOpenFeedback={handleOpenFeedback}
           onToggleZenMode={handleToggleZenMode}
         />
       </div>
@@ -530,7 +548,9 @@
   {/if}
 
   <!-- Modals / Overlays: Styled as Translucent Frosted Glass Over the Artwork -->
-  {#if activeModal !== null}
+  {#if activeModal === 'feedback'}
+    <FeedbackModal lang={currentLang} onClose={handleCloseModal} />
+  {:else if activeModal !== null}
     <div
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md transition-opacity duration-300"
       role="dialog"
