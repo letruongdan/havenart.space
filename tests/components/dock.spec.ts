@@ -33,6 +33,36 @@ describe('Dock Component', () => {
     expect(changedVolume).toBe(0.8);
   });
 
+  it('toggles mute when clicking the speaker icon button', async () => {
+    let changedVolume = -1;
+    const { getByRole } = render(Dock, {
+      volume: 0.6,
+      onVolumeChange: (val: number) => {
+        changedVolume = val;
+      },
+    });
+
+    const muteBtn = getByRole('button', { name: /tắt tiếng|bật tiếng|mute/i });
+    expect(muteBtn).toBeDefined();
+    await fireEvent.click(muteBtn);
+    expect(changedVolume).toBe(0);
+  });
+
+  it('restores volume when clicking speaker icon when muted', async () => {
+    let changedVolume = -1;
+    const { getByRole } = render(Dock, {
+      volume: 0,
+      onVolumeChange: (val: number) => {
+        changedVolume = val;
+      },
+    });
+
+    const unmuteBtn = getByRole('button', { name: /tắt tiếng|bật tiếng|unmute/i });
+    expect(unmuteBtn).toBeDefined();
+    await fireEvent.click(unmuteBtn);
+    expect(changedVolume).toBeGreaterThan(0);
+  });
+
   it('toggles visual mode between shader and static', async () => {
     let modeToggled = false;
     const { getByRole } = render(Dock, {

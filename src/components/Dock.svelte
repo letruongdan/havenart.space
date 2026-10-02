@@ -49,12 +49,27 @@
   let props: Props = $props();
 
   let activeLang = $derived(props.lang || DEFAULT_LANGUAGE);
+  let lastNonZeroVolume = $state(0.4);
 
   function handleVolumeInput(event: Event) {
     const target = event.target as HTMLInputElement;
     const val = parseFloat(target.value);
     if (!Number.isNaN(val)) {
+      if (val > 0.01) {
+        lastNonZeroVolume = val;
+      }
       props.onVolumeChange?.(val);
+    }
+  }
+
+  function handleToggleMute() {
+    const currentVol = props.volume ?? 0.4;
+    if (currentVol > 0.01) {
+      lastNonZeroVolume = currentVol;
+      props.onVolumeChange?.(0);
+    } else {
+      const restored = lastNonZeroVolume > 0.05 ? lastNonZeroVolume : 0.4;
+      props.onVolumeChange?.(restored);
     }
   }
 </script>
@@ -142,9 +157,15 @@
         </div>
       {/if}
 
-      <!-- Volume Slider with MorphIcon -->
-      <div class="flex items-center gap-1.5 ml-0.5">
-        <label for="haven-dock-volume" class="text-white/60 hover:text-white flex items-center cursor-pointer">
+      <!-- Volume Slider with MorphIcon Mute/Unmute Button -->
+      <div class="flex items-center gap-1 sm:gap-1.5 ml-0.5">
+        <button
+          type="button"
+          onclick={handleToggleMute}
+          class="w-7 h-7 rounded-full text-white/70 hover:text-white hover:bg-white/10 flex items-center justify-center transition-all cursor-pointer active:scale-95 focus:outline-none focus-visible:ring-1 focus-visible:ring-white/40"
+          aria-label={(props.volume ?? 0.4) <= 0.01 ? 'Bật tiếng / Unmute' : 'Tắt tiếng / Mute'}
+          title={(props.volume ?? 0.4) <= 0.01 ? 'Bật tiếng' : 'Tắt tiếng'}
+        >
           <MorphIcon
             icon={(props.volume ?? 0.4) <= 0.01 ? VolumeX : Volume2}
             size={14}
@@ -152,7 +173,7 @@
             spring="smooth"
             reducedMotion="user"
           />
-        </label>
+        </button>
         <input
           id="haven-dock-volume"
           type="range"
