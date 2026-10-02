@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { verifyAdminLogin, DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD } from '../../lib/admin/auth';
+  import { verifyAdminLogin, setAdminToken, DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD } from '../../lib/admin/auth';
   import { MorphIcon } from 'morphicons/svelte';
   import { ShieldCheck, Lock, User, Eye, EyeOff, ArrowLeft, AlertTriangle } from 'lucide';
 
@@ -27,14 +27,13 @@
       const res = await fetch('/api/admin/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({ username, password }),
       });
       const data = await res.json();
 
       if (res.ok && data.success) {
-        if (typeof window !== 'undefined' && window.sessionStorage) {
-          window.sessionStorage.setItem('haven_admin_token', data.token);
-        }
+        setAdminToken(data.token);
         props.onAuthenticated();
         return;
       }

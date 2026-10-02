@@ -231,40 +231,70 @@ export async function verifyAdminLogin(
 }
 
 /**
- * Store authenticated admin session in sessionStorage.
+ * Store authenticated admin session in sessionStorage and localStorage.
  */
-export function setAdminSession(username: string): void {
-  if (typeof window === 'undefined' || !window.sessionStorage) return;
+export function setAdminSession(username: string, serverToken?: string): void {
+  if (typeof window === 'undefined') return;
 
+  const token = serverToken || `hav_adm_${Date.now()}_${generateSalt(8)}`;
   const session: AdminSession = {
     username,
-    token: `hav_adm_${Date.now()}_${generateSalt(8)}`,
+    token,
     expiresAt: Date.now() + SESSION_EXPIRATION_MS,
   };
 
   try {
-    window.sessionStorage.setItem(SESSION_KEY_AUTH, JSON.stringify(session));
+    window.sessionStorage?.setItem(SESSION_KEY_AUTH, JSON.stringify(session));
+    window.sessionStorage?.setItem('haven_admin_token', token);
+    window.localStorage?.setItem('haven_admin_token', token);
   } catch {
     // Ignore
   }
 }
 
 /**
+ * Get active admin token from session or local storage.
+ */
+export function getAdminToken(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    const sessToken = window.sessionStorage?.getItem('haven_admin_token');
+    if (sessToken && sessToken.trim().length > 5) return sessToken.trim();
+
+    const localToken = window.localStorage?.getItem('haven_admin_token');
+    if (localToken && localToken.trim().length > 5) return localToken.trim();
+
+    const userSessionRaw = window.localStorage?.getItem('haven_user_session');
+    if (userSessionRaw) {
+      const parsed = JSON.parse(userSessionRaw);
+      if (parsed?.token && (parsed.user?.email === 'admin@havenart.space' || parsed.user?.role === 'admin')) {
+        return parsed.token;
+      }
+    }
+  } catch {}
+  return '';
+}
+
+/**
+ * Save admin token to storage.
+ */
+export function setAdminToken(token: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage?.setItem('haven_admin_token', token);
+    window.localStorage?.setItem('haven_admin_token', token);
+  } catch {}
+}
+
+/**
  * Check if the active session is valid and not expired.
  */
 export function isAdminAuthenticated(): boolean {
-  if (typeof window === 'undefined' || !window.sessionStorage) return false;
+  if (typeof window === 'undefined') return false;
 
   try {
-    const serverToken = window.sessionStorage.getItem('haven_admin_token');
-    if (serverToken && serverToken.length > 10) {
-      return true;
-    }
-
-    const raw = window.sessionStorage.getItem(SESSION_KEY_AUTH);
-    if (!raw) return false;
-    const session: AdminSession = JSON.parse(raw);
-    if (session.expiresAt && session.expiresAt > Date.now()) {
+    const token = getAdminToken();
+    if (token && token.length > 5) {
       return true;
     }
   } catch {
@@ -278,18 +308,19 @@ export function isAdminAuthenticated(): boolean {
  * Logout admin and clear active session.
  */
 export function logoutAdmin(): void {
-  if (typeof window === 'undefined' || !window.sessionStorage) return;
+  if (typeof window === 'undefined') return;
 
   try {
-    window.sessionStorage.removeItem(SESSION_KEY_AUTH);
-    window.sessionStorage.removeItem('haven_admin_token');
+    window.sessionStorage?.removeItem(SESSION_KEY_AUTH);
+    window.sessionStorage?.removeItem('haven_admin_token');
+    window.localStorage?.removeItem('haven_admin_token');
   } catch {
     // Ignore
   }
 
   // Also notify server to invalidate session cookie/token if online
   try {
-    fetch('/api/admin/auth', { method: 'DELETE' }).catch(() => {});
+    fetch('/api/admin/auth', { method: 'DELETE', credentials: 'same-origin' }).catch(() => {});
   } catch {
     // Ignore
   }
@@ -338,6 +369,8 @@ export async function resetAdminAuthForTesting(): Promise<void> {
   if (typeof window !== 'undefined') {
     window.localStorage?.removeItem(STORAGE_KEY_CREDENTIALS);
     window.localStorage?.removeItem(STORAGE_KEY_ATTEMPTS);
+    window.localStorage?.removeItem('haven_admin_token');
     window.sessionStorage?.removeItem(SESSION_KEY_AUTH);
+    window.sessionStorage?.removeItem('haven_admin_token');
   }
 }

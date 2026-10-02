@@ -37,6 +37,8 @@
     isAdminAuthenticated,
     logoutAdmin,
     changeAdminPassword,
+    getAdminToken,
+    setAdminToken,
   } from '../../lib/admin/auth';
   import AdminLoginGate from './AdminLoginGate.svelte';
   import { deleteUserFeedback } from '../../lib/telemetry/user-analytics';
@@ -63,7 +65,6 @@
     ShieldCheck,
     Play,
     Pause,
-    Layers,
     Users,
     Star,
     Heart,
@@ -439,16 +440,27 @@
     }, 4000);
   }
 
-  function getAdminToken(): string {
-    return (typeof window !== 'undefined' && window.sessionStorage?.getItem('haven_admin_token')) || '';
+  function getAdminHeaders(): Record<string, string> {
+    const token = getAdminToken();
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  }
+
+  function handleAdminUnauthorized() {
+    logoutAdmin();
+    isAuthenticated = false;
+    showNotice('Phiên làm việc quản trị viên đã hết hạn hoặc không có quyền. Vui lòng đăng nhập lại.', 'error');
   }
 
   async function fetchServerStats() {
     try {
-      const token = getAdminToken();
       const res = await fetch('/api/admin/stats', {
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: getAdminHeaders(),
+        credentials: 'same-origin',
       });
+      if (res.status === 401) {
+        handleAdminUnauthorized();
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
@@ -462,10 +474,14 @@
 
   async function fetchServerUsers() {
     try {
-      const token = getAdminToken();
       const res = await fetch('/api/admin/users', {
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: getAdminHeaders(),
+        credentials: 'same-origin',
       });
+      if (res.status === 401) {
+        handleAdminUnauthorized();
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
@@ -479,10 +495,14 @@
 
   async function fetchServerEntries() {
     try {
-      const token = getAdminToken();
       const res = await fetch('/api/admin/entries', {
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: getAdminHeaders(),
+        credentials: 'same-origin',
       });
+      if (res.status === 401) {
+        handleAdminUnauthorized();
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
@@ -496,10 +516,14 @@
 
   async function fetchServerFeedbacks() {
     try {
-      const token = getAdminToken();
       const res = await fetch('/api/admin/feedback', {
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: getAdminHeaders(),
+        credentials: 'same-origin',
       });
+      if (res.status === 401) {
+        handleAdminUnauthorized();
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
@@ -528,19 +552,58 @@
     if (!confirm(`Bạn có chắc chắn muốn ${actionText} tài khoản "${u.email}"?`)) return;
 
     try {
-      const token = getAdminToken();
       const res = await fetch('/api/admin/users', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          ...getAdminHeaders(),
         },
+        credentials: 'same-origin',
         body: JSON.stringify({ id: u.id, status: newStatus }),
       });
+      if (res.status === 401) {
+        handleAdminUnauthorized();
+        return;
+      }
       const data = await res.json();
       if (res.ok && data.success) {
         serverUsers = data.users;
         showNotice(`Đã ${actionText} tài khoản thành công!`, 'success');
+      } else {
+        showNotice(data.error || 'Thao tác không thành công', 'error');
+      }
+    } catch {
+      showNotice('Lỗi kết nối máy chủ', 'error');
+    }
+  }
+
+  async function handleToggleUserRole(u: ServerUserItem) {
+    if (u.email === 'admin@havenart.space' || u.id === 'usr_admin_root') {
+      alert('Không thể thay đổi quyền của tài khoản Quản trị viên gốc.');
+      return;
+    }
+    const newRole = u.role === 'admin' ? 'user' : 'admin';
+    const roleText = newRole === 'admin' ? 'nâng cấp thành Quản trị viên' : 'chuyển thành Thành viên thường';
+    if (!confirm(`Bạn có chắc muốn ${roleText} cho tài khoản "${u.email}"?`)) return;
+
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAdminHeaders(),
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({ id: u.id, role: newRole }),
+      });
+      if (res.status === 401) {
+        handleAdminUnauthorized();
+        return;
+      }
+      const data = await res.json();
+      if (res.ok && data.success) {
+        serverUsers = data.users;
+        showNotice(`Đã ${roleText} thành công!`, 'success');
       } else {
         showNotice(data.error || 'Thao tác không thành công', 'error');
       }
@@ -558,15 +621,19 @@
     }
 
     try {
-      const token = getAdminToken();
       const res = await fetch('/api/admin/users', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          ...getAdminHeaders(),
         },
+        credentials: 'same-origin',
         body: JSON.stringify({ id: u.id, newPassword: newPass }),
       });
+      if (res.status === 401) {
+        handleAdminUnauthorized();
+        return;
+      }
       const data = await res.json();
       if (res.ok && data.success) {
         serverUsers = data.users;
@@ -583,15 +650,19 @@
     if (!confirm(`CẢNH BÁO: Bạn có chắc chắn muốn xóa tài khoản "${u.email}"? Toàn bộ bài viết của người dùng này trên server cũng sẽ bị xóa vĩnh viễn!`)) return;
 
     try {
-      const token = getAdminToken();
       const res = await fetch('/api/admin/users', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          ...getAdminHeaders(),
         },
+        credentials: 'same-origin',
         body: JSON.stringify({ id: u.id }),
       });
+      if (res.status === 401) {
+        handleAdminUnauthorized();
+        return;
+      }
       const data = await res.json();
       if (res.ok && data.success) {
         serverUsers = data.users;
@@ -610,15 +681,19 @@
     if (!confirm(`Xóa bài viết "${e.title || 'Không tiêu đề'}" khỏi máy chủ?`)) return;
 
     try {
-      const token = getAdminToken();
       const res = await fetch('/api/admin/entries', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          ...getAdminHeaders(),
         },
+        credentials: 'same-origin',
         body: JSON.stringify({ id: e.id }),
       });
+      if (res.status === 401) {
+        handleAdminUnauthorized();
+        return;
+      }
       const data = await res.json();
       if (res.ok && data.success) {
         serverEntries = serverEntries.filter((item) => item.id !== e.id);
@@ -635,15 +710,19 @@
   async function handlePurgeServerDeletedEntries() {
     if (!confirm('Dọn dẹp và xóa hoàn toàn tất cả bài viết đã xóa mềm trên máy chủ?')) return;
     try {
-      const token = getAdminToken();
       const res = await fetch('/api/admin/entries', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          ...getAdminHeaders(),
         },
+        credentials: 'same-origin',
         body: JSON.stringify({ purge: true }),
       });
+      if (res.status === 401) {
+        handleAdminUnauthorized();
+        return;
+      }
       const data = await res.json();
       if (res.ok && data.success) {
         await fetchServerEntries();
@@ -659,15 +738,19 @@
     if (!confirm(`Xóa đánh giá của "${fb.userName}"?`)) return;
 
     try {
-      const token = getAdminToken();
       const res = await fetch('/api/admin/feedback', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          ...getAdminHeaders(),
         },
+        credentials: 'same-origin',
         body: JSON.stringify({ id: fb.id }),
       });
+      if (res.status === 401) {
+        handleAdminUnauthorized();
+        return;
+      }
       const data = await res.json();
       if (res.ok && data.success) {
         serverFeedbacks = data.feedbacks;
@@ -683,10 +766,14 @@
 
   async function handleDownloadServerDbBackup() {
     try {
-      const token = getAdminToken();
       const res = await fetch('/api/admin/backup', {
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: getAdminHeaders(),
+        credentials: 'same-origin',
       });
+      if (res.status === 401) {
+        handleAdminUnauthorized();
+        return;
+      }
       if (!res.ok) {
         showNotice('Không thể xuất sao lưu máy chủ', 'error');
         return;
@@ -718,16 +805,20 @@
     try {
       const text = await file.text();
       const json = JSON.parse(text);
-      const token = getAdminToken();
 
       const res = await fetch('/api/admin/backup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          ...getAdminHeaders(),
         },
+        credentials: 'same-origin',
         body: JSON.stringify(json),
       });
+      if (res.status === 401) {
+        handleAdminUnauthorized();
+        return;
+      }
 
       const data = await res.json();
       if (res.ok && data.success) {
@@ -792,9 +883,32 @@
   }
 
   onMount(async () => {
-    isAuthenticated = isAdminAuthenticated();
-    if (isAuthenticated) {
+    const token = getAdminToken();
+    if (token) {
+      isAuthenticated = true;
       await initAdminData();
+      return;
+    }
+
+    // Fallback check server session cookie
+    try {
+      const verifyRes = await fetch('/api/admin/auth', { credentials: 'same-origin' });
+      if (verifyRes.ok) {
+        const verifyData = await verifyRes.json();
+        if (verifyData.authenticated) {
+          isAuthenticated = true;
+          await initAdminData();
+          return;
+        }
+      }
+    } catch {}
+
+    isAuthenticated = false;
+  });
+
+  $effect(() => {
+    if (isAuthenticated && (activeTab === 'users' || activeTab === 'overview')) {
+      fetchServerUsers();
     }
   });
 
@@ -1716,6 +1830,18 @@
                               title={u.status === 'active' ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
                             >
                               <MorphIcon icon={u.status === 'active' ? Lock : ShieldCheck} size={14} />
+                            </button>
+                          {/if}
+
+                          <!-- Toggle Role (Promote / Demote) -->
+                          {#if u.email !== 'admin@havenart.space' && u.id !== 'usr_admin_root'}
+                            <button
+                              type="button"
+                              onclick={() => handleToggleUserRole(u)}
+                              class="p-1.5 rounded-lg transition-colors cursor-pointer {u.role === 'admin' ? 'text-amber-300 hover:bg-amber-400/10' : 'text-white/40 hover:text-amber-300 hover:bg-amber-400/10'}"
+                              title={u.role === 'admin' ? 'Hạ quyền xuống Thành viên' : 'Nâng cấp lên Quản trị viên'}
+                            >
+                              <MorphIcon icon={ShieldCheck} size={14} />
                             </button>
                           {/if}
 

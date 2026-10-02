@@ -11,6 +11,7 @@ export interface ServerUser {
   passwordHash: string;
   salt: string;
   token?: string;
+  tokens?: string[];
   createdAt: number;
   lastLoginAt?: number;
   lastActiveAt?: number;
@@ -238,7 +239,11 @@ export function findUserByEmail(email: string): ServerUser | undefined {
 export function findUserByToken(token: string): ServerUser | undefined {
   if (!token) return undefined;
   const db = readServerDatabase();
-  return db.users.find((u) => u.token === token && u.status === 'active');
+  return db.users.find(
+    (u) =>
+      (u.token === token || (Array.isArray(u.tokens) && u.tokens.includes(token))) &&
+      u.status === 'active'
+  );
 }
 
 export function createServerUser(params: {
@@ -268,6 +273,7 @@ export function createServerUser(params: {
     passwordHash,
     salt,
     token,
+    tokens: [token],
     createdAt: Date.now(),
     lastLoginAt: Date.now(),
     lastActiveAt: Date.now(),
@@ -301,6 +307,12 @@ export function authenticateUser(
   if (crypto.timingSafeEqual(Buffer.from(user.passwordHash), Buffer.from(expectedHash))) {
     const newToken = generateToken();
     user.token = newToken;
+    const existingTokens = Array.isArray(user.tokens)
+      ? user.tokens
+      : user.token
+      ? [user.token]
+      : [];
+    user.tokens = [...existingTokens.filter((t) => t !== newToken), newToken].slice(-10);
     user.lastLoginAt = Date.now();
     user.lastActiveAt = Date.now();
     writeServerDatabase(db);
