@@ -23,7 +23,7 @@
   } from '../lib/audio/track-selector';
   import { ALL_HAVEN_AUDIO_TRACKS, type HavenAudioTrack } from '../lib/audio/ambient-catalog';
   import { MorphIcon } from 'morphicons/svelte';
-  import { X, Eye, Cloud, User } from 'lucide';
+  import { X, Eye, Cloud, User, Pen, BookOpen } from 'lucide';
   import LanguagePicker from './LanguagePicker.svelte';
   import FeedbackModal from './FeedbackModal.svelte';
   import MusicLibraryModal from './MusicLibraryModal.svelte';
@@ -51,9 +51,20 @@
   let authUser = $state<AuthUser | null>(getCurrentUser());
   let journalRepo = $state<JournalRepository | null>(null);
   let journalRefreshTrigger = $state(0);
+  let journalEntryCount = $state(0);
   let isZenMode = $state(false);
   let editingEntry = $state<JournalEntry | null>(null);
   let durationTimerId: ReturnType<typeof setInterval> | null = null;
+
+  async function updateJournalEntryCount() {
+    if (!journalRepo) return;
+    try {
+      const entries = await journalRepo.listActiveEntries();
+      journalEntryCount = entries.length;
+    } catch {
+      // Ignore
+    }
+  }
 
   // Audio state
   let isPlaying = $state(false);
@@ -153,6 +164,7 @@
         .then(async () => {
           if (!journalRepo) return;
           const entries = await journalRepo.listActiveEntries();
+          journalEntryCount = entries.length;
           if (entries.length > 0 && entries[0].mood) {
             activeMood = entries[0].mood;
 
@@ -456,12 +468,14 @@
     handleUserActivity();
     activeModal = activeModal === 'list' ? null : 'list';
     if (isZenMode) isZenMode = false;
+    updateJournalEntryCount();
   }
 
   function handleCloseModal() {
     handleUserActivity();
     activeModal = null;
     editingEntry = null;
+    updateJournalEntryCount();
   }
 
   function handleJournalSaved(savedEntry: JournalEntry) {
@@ -469,6 +483,7 @@
     if (savedEntry.mood) {
       handleMoodChange(savedEntry.mood);
     }
+    updateJournalEntryCount();
   }
 
   function handleToggleZenMode() {
@@ -624,7 +639,7 @@
         </div>
       {/if}
 
-      <!-- Bottom Floating Frosted Glass Dock (Audio Player & Controls) -->
+      <!-- Bottom Floating Frosted Glass Dock (Audio Player & Controls - No Journal in Menu) -->
       <div class="pointer-events-auto transition-all duration-700 {isIdle && activeModal === null ? 'opacity-0 translate-y-8 pointer-events-none' : 'opacity-100 translate-y-0'}">
         <Dock
           {isPlaying}
@@ -641,18 +656,56 @@
           weatherLabel={weatherDisplay}
           {selectionReason}
           lang={currentLang}
+          showJournalActions={false}
           onTogglePlay={handleTogglePlay}
           onVolumeChange={handleVolumeChange}
           onNextTrack={handleNextTrack}
           onToggleSoundCategory={handleToggleSoundCategory}
           onToggleVisualMode={handleToggleVisualMode}
           onNextArtwork={handleNextArtwork}
-          onOpenJournalWrite={handleOpenJournalWrite}
-          onOpenJournalList={handleOpenJournalList}
           onOpenFeedback={handleOpenFeedback}
           onOpenMusicLibrary={handleOpenMusicLibrary}
           onToggleZenMode={handleToggleZenMode}
         />
+      </div>
+
+      <!-- Dedicated Standalone Floating Journal Action Island (Nổi bật, tách biệt khỏi menu) -->
+      <div
+        class="fixed z-40 pointer-events-auto transition-all duration-700 ease-out bottom-20 right-4 sm:bottom-5 sm:right-6 lg:right-8 {isZenMode ? 'translate-y-24 opacity-0 pointer-events-none' : isIdle && activeModal === null ? 'opacity-70 hover:opacity-100' : 'opacity-100 translate-y-0'}"
+        aria-label="Khu vực viết nhật ký & bài viết cá nhân"
+      >
+        <div
+          class="flex items-center gap-1.5 p-1 rounded-full bg-black/45 hover:bg-black/65 border border-amber-400/35 hover:border-amber-400/60 shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_25px_rgba(251,191,36,0.2)] backdrop-blur-xl transition-all duration-300 ring-1 ring-white/10"
+        >
+          <!-- Nút Viết Nhật Ký Nổi Bật Chính -->
+          <button
+            type="button"
+            onclick={handleOpenJournalWrite}
+            class="inline-flex items-center gap-2 px-3.5 py-2 sm:px-4.5 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium tracking-wide transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 cursor-pointer shadow-md {activeModal === 'write' ? 'bg-amber-300 text-stone-950 shadow-[0_0_20px_rgba(251,191,36,0.6)] scale-105' : 'bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 text-stone-950 hover:from-amber-300 hover:to-amber-200 hover:shadow-[0_0_25px_rgba(251,191,36,0.5)] hover:scale-105 active:scale-95'}"
+            aria-label="{t('dock.writeJournal', currentLang)} - Viết nhật ký"
+            title="{t('dock.writeJournal', currentLang)}"
+          >
+            <MorphIcon icon={Pen} size={15} strokeWidth={2.2} spring="smooth" reducedMotion="user" />
+            <span class="font-medium drop-shadow-xs">{t('dock.writeJournal', currentLang)}</span>
+          </button>
+
+          <!-- Nút Lịch Sử Bài Viết Đồng Hành -->
+          <button
+            type="button"
+            onclick={handleOpenJournalList}
+            class="inline-flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-full text-xs font-light tracking-wide transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer {activeModal === 'list' ? 'bg-white/25 text-white border border-white/30 shadow-[0_0_15px_rgba(255,255,255,0.25)]' : 'bg-white/10 hover:bg-white/20 text-white/90 hover:text-white border border-white/15 hover:scale-105 active:scale-95'}"
+            aria-label="{t('dock.journalList', currentLang)} - Danh sách bài viết"
+            title="{t('dock.journalList', currentLang)}"
+          >
+            <MorphIcon icon={BookOpen} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+            <span>{currentLang === 'vi' ? 'Lịch sử' : 'History'}</span>
+            {#if journalEntryCount > 0}
+              <span class="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 text-white font-mono font-medium">
+                {journalEntryCount}
+              </span>
+            {/if}
+          </button>
+        </div>
       </div>
     </div>
   {/if}

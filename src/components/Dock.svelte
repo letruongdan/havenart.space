@@ -33,6 +33,7 @@
     selectionReason?: string;
     audioReason?: string;
     soundCategory?: 'all' | 'piano' | 'ambient';
+    showJournalActions?: boolean;
     lang?: SupportedLanguage;
     onTogglePlay?: () => void;
     onVolumeChange?: (volume: number) => void;
@@ -264,41 +265,45 @@
 
     <!-- 3. Action Buttons & Zen Mode -->
     <div class="flex items-center gap-1 sm:gap-1.5">
-      <!-- Viết nhật ký with MorphIcon -->
-      <button
-        type="button"
-        onclick={props.onOpenJournalWrite}
-        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-light tracking-wide text-white/85 hover:text-white hover:bg-white/10 transition-all focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 cursor-pointer {props.activeModal === 'write' ? 'bg-white/20 text-white shadow-[0_0_12px_rgba(255,255,255,0.2)]' : ''}"
-        aria-label="{t('dock.writeJournal', activeLang)} - Viết nhật ký"
-        title="{t('dock.writeJournal', activeLang)}"
-      >
-        <MorphIcon
-          icon={Pen}
-          size={13}
-          strokeWidth={2}
-          spring="smooth"
-          reducedMotion="user"
-        />
-        <span class="hidden sm:inline">{t('dock.writeJournal', activeLang)}</span>
-      </button>
+      <!-- Viết nhật ký with MorphIcon (Only if showJournalActions is enabled) -->
+      {#if (props.showJournalActions ?? true) && props.onOpenJournalWrite}
+        <button
+          type="button"
+          onclick={props.onOpenJournalWrite}
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-light tracking-wide text-white/85 hover:text-white hover:bg-white/10 transition-all focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 cursor-pointer {props.activeModal === 'write' ? 'bg-white/20 text-white shadow-[0_0_12px_rgba(255,255,255,0.2)]' : ''}"
+          aria-label="{t('dock.writeJournal', activeLang)} - Viết nhật ký"
+          title="{t('dock.writeJournal', activeLang)}"
+        >
+          <MorphIcon
+            icon={Pen}
+            size={13}
+            strokeWidth={2}
+            spring="smooth"
+            reducedMotion="user"
+          />
+          <span class="hidden sm:inline">{t('dock.writeJournal', activeLang)}</span>
+        </button>
+      {/if}
 
-      <!-- Danh sách bài viết with MorphIcon -->
-      <button
-        type="button"
-        onclick={props.onOpenJournalList}
-        class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-light text-white/85 hover:text-white hover:bg-white/10 transition-all focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 cursor-pointer {props.activeModal === 'list' ? 'bg-white/20 text-white shadow-[0_0_12px_rgba(255,255,255,0.2)]' : ''}"
-        aria-label="{t('dock.journalList', activeLang)} - Danh sách bài viết"
-        title="{t('dock.journalList', activeLang)}"
-      >
-        <MorphIcon
-          icon={BookOpen}
-          size={13}
-          strokeWidth={2}
-          spring="smooth"
-          reducedMotion="user"
-        />
-        <span class="hidden sm:inline">{t('dock.journalList', activeLang)}</span>
-      </button>
+      <!-- Danh sách bài viết with MorphIcon (Only if showJournalActions is enabled) -->
+      {#if (props.showJournalActions ?? true) && props.onOpenJournalList}
+        <button
+          type="button"
+          onclick={props.onOpenJournalList}
+          class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-light text-white/85 hover:text-white hover:bg-white/10 transition-all focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 cursor-pointer {props.activeModal === 'list' ? 'bg-white/20 text-white shadow-[0_0_12px_rgba(255,255,255,0.2)]' : ''}"
+          aria-label="{t('dock.journalList', activeLang)} - Danh sách bài viết"
+          title="{t('dock.journalList', activeLang)}"
+        >
+          <MorphIcon
+            icon={BookOpen}
+            size={13}
+            strokeWidth={2}
+            spring="smooth"
+            reducedMotion="user"
+          />
+          <span class="hidden sm:inline">{t('dock.journalList', activeLang)}</span>
+        </button>
+      {/if}
 
       <!-- Feedback / Cảm nhận Button with MorphIcon -->
       {#if props.onOpenFeedback}
