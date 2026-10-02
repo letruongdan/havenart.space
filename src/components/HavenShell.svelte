@@ -189,7 +189,7 @@
 <svelte:window onkeydown={handleWindowKeyDown} />
 
 <div
-  class="relative w-full min-h-screen overflow-hidden bg-[#0d0e12] text-white selection:bg-amber-400/30 select-none"
+  class="relative w-full min-h-screen overflow-hidden bg-[#0d0e12] text-white selection:bg-amber-400/30 font-sans"
 >
   <!-- Full-Screen Artwork & Visual Presentation -->
   <div class="fixed inset-0 w-full h-full pointer-events-none z-0" aria-hidden="true">
@@ -283,7 +283,7 @@
       aria-labelledby="haven-modal-title"
     >
       <div
-        class="relative w-full max-w-2xl bg-stone-950/75 text-stone-100 border border-white/20 rounded-3xl p-6 sm:p-8 shadow-[0_25px_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl max-h-[90vh] overflow-y-auto"
+        class="relative w-full max-w-2xl bg-stone-950/80 text-stone-100 border border-white/20 rounded-3xl p-6 sm:p-8 shadow-[0_25px_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl max-h-[90vh] overflow-y-auto select-text font-sans"
       >
         <!-- Modal Header -->
         <div class="flex items-center justify-between pb-4 border-b border-white/10">

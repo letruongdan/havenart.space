@@ -50,10 +50,10 @@
     </div>
 
     <!-- Title and Serene Subtitle -->
-    <h1 class="text-3xl sm:text-4xl font-serif font-light tracking-wider text-white mb-2 drop-shadow-md">
+    <h1 class="text-3xl sm:text-4xl font-serif font-light tracking-wide text-white mb-2 drop-shadow-md">
       Haven Art
     </h1>
-    <p class="text-xs sm:text-sm font-light text-stone-200/90 tracking-widest uppercase mb-8">
+    <p class="text-xs sm:text-sm font-light text-stone-200/90 tracking-wide mb-8 font-sans">
       Góc tĩnh lặng cho tâm hồn
     </p>
 
