@@ -43,6 +43,7 @@ export interface TranslationSchema {
     soundCategoryPiano: string;
     soundCategoryAmbient: string;
     toggleSoundCategory: string;
+    musicLibrary: string;
     toggleVisualMode: string;
     writeJournal: string;
     journalList: string;

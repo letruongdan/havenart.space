@@ -87,4 +87,22 @@ describe('HavenShell Experience State Machine', () => {
       expect(langBtn).toBeDefined();
     });
   });
+
+  it('opens and closes music library modal from dock', async () => {
+    const { getByRole, getAllByRole, queryByRole, getByText } = render(HavenShell, { initialLang: 'vi' });
+    const enterBtn = getByRole('button', { name: /bước vào/i });
+    await fireEvent.click(enterBtn);
+
+    const musicBtn = await waitFor(() => getAllByRole('button', { name: /thư viện âm nhạc|music.*library/i })[0]);
+    await fireEvent.click(musicBtn);
+
+    // Music modal dialog appears with title
+    expect(getByRole('dialog')).toBeDefined();
+    expect(getByText(/27 bản nhạc/i)).toBeDefined();
+
+    // Close button dismisses modal
+    const closeBtn = getByRole('button', { name: /đóng thư viện âm nhạc/i });
+    await fireEvent.click(closeBtn);
+    expect(queryByRole('dialog')).toBeNull();
+  });
 });

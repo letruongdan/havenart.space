@@ -87,6 +87,15 @@ async function run() {
   // 4. Hopeful Dawn (D major uplifting harmonic resonance)
   await synthesizeTrack('hopeful-dawn.mp3', [146.83, 220.0, 293.66, 369.99, 440.0, 587.33], 0.009, 0.09);
 
+  // 5. Ocean Whispers (Soothing ocean waves & rolling tide binaural wash)
+  await synthesizeTrack('ocean-whispers.mp3', [110.0, 164.81, 220.0, 329.63, 440.0], 0.045, 0.035);
+
+  // 6. Forest Canopy (Wind rustling through pine trees & serene natural chimes)
+  await synthesizeTrack('forest-canopy.mp3', [130.81, 196.0, 261.63, 392.0, 523.25, 659.25], 0.025, 0.06);
+
+  // 7. Starlight Lullaby (Nocturnal celestial drone & peaceful starlight harmonics)
+  await synthesizeTrack('starlight-lullaby.mp3', [82.41, 164.81, 246.94, 329.63, 493.88, 659.25], 0.008, 0.04);
+
   console.log('✓ All extended tracks successfully generated.');
 }
 

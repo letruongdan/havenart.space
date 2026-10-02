@@ -109,4 +109,24 @@ describe('Dock Component', () => {
     await fireEvent.click(listBtn);
     expect(listClicked).toBe(true);
   });
+
+  it('triggers onOpenMusicLibrary when clicking music library button or track title', async () => {
+    let musicClicked = false;
+    const { getByRole, getByText } = render(Dock, {
+      trackTitle: 'Kiss the Rain',
+      onOpenMusicLibrary: () => {
+        musicClicked = true;
+      },
+    });
+
+    const musicBtn = getByRole('button', { name: /thư viện âm nhạc & piano/i });
+    expect(musicBtn).toBeDefined();
+    await fireEvent.click(musicBtn);
+    expect(musicClicked).toBe(true);
+
+    musicClicked = false;
+    const titleBtn = getByText('Kiss the Rain');
+    await fireEvent.click(titleBtn);
+    expect(musicClicked).toBe(true);
+  });
 });

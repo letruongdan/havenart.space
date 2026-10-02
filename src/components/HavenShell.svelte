@@ -17,12 +17,14 @@
   import {
     selectTrackForSession,
     selectNextTrack,
+    recordPlayedTrack,
   } from '../lib/audio/track-selector';
-  import { ALL_HAVEN_AUDIO_TRACKS } from '../lib/audio/ambient-catalog';
+  import { ALL_HAVEN_AUDIO_TRACKS, type HavenAudioTrack } from '../lib/audio/ambient-catalog';
   import { MorphIcon } from 'morphicons/svelte';
   import { X } from 'lucide';
   import LanguagePicker from './LanguagePicker.svelte';
   import FeedbackModal from './FeedbackModal.svelte';
+  import MusicLibraryModal from './MusicLibraryModal.svelte';
   import { recordVisit, updateActiveDuration } from '../lib/telemetry/user-analytics';
   import { detectUserLanguage, t } from '../lib/i18n/store';
   import type { SupportedLanguage } from '../lib/i18n/types';
@@ -41,7 +43,7 @@
     }
   });
   let experienceState = $state<'gate' | 'haven'>('gate');
-  let activeModal = $state<'write' | 'list' | 'feedback' | null>(null);
+  let activeModal = $state<'write' | 'list' | 'feedback' | 'music' | null>(null);
   let journalRepo = $state<JournalRepository | null>(null);
   let journalRefreshTrigger = $state(0);
   let isZenMode = $state(false);
@@ -333,6 +335,28 @@
     }
   }
 
+  function handleOpenMusicLibrary() {
+    activeModal = activeModal === 'music' ? null : 'music';
+  }
+
+  async function handleSelectTrackFromLibrary(track: HavenAudioTrack) {
+    currentTrack = track;
+    currentTrackTitle = track.title;
+    currentTrackArtist = track.artist;
+    audioReason = track.category === 'piano'
+      ? `Độc tấu Piano • ${track.genreVi}`
+      : `Âm thanh tự nhiên • ${track.genreVi}`;
+
+    if (audioEngine) {
+      await audioEngine.setTrack(track);
+      if (!audioEngine.isPlaying()) {
+        await audioEngine.play();
+      }
+      isPlaying = audioEngine.isPlaying();
+    }
+    recordPlayedTrack(track.id);
+  }
+
   function handleToggleVisualMode() {
     if (!visualController) return;
     const targetMode: VisualMode = visualMode === 'shader' ? 'static' : 'shader';
@@ -541,6 +565,7 @@
           onOpenJournalWrite={handleOpenJournalWrite}
           onOpenJournalList={handleOpenJournalList}
           onOpenFeedback={handleOpenFeedback}
+          onOpenMusicLibrary={handleOpenMusicLibrary}
           onToggleZenMode={handleToggleZenMode}
         />
       </div>
@@ -550,6 +575,14 @@
   <!-- Modals / Overlays: Styled as Translucent Frosted Glass Over the Artwork -->
   {#if activeModal === 'feedback'}
     <FeedbackModal lang={currentLang} onClose={handleCloseModal} />
+  {:else if activeModal === 'music'}
+    <MusicLibraryModal
+      currentTrackId={currentTrack?.id}
+      {isPlaying}
+      lang={currentLang}
+      onSelectTrack={handleSelectTrackFromLibrary}
+      onClose={handleCloseModal}
+    />
   {:else if activeModal !== null}
     <div
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md transition-opacity duration-300"

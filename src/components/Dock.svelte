@@ -14,6 +14,7 @@
     Eye,
     EyeOff,
     Heart,
+    Music,
   } from 'lucide';
   import { t } from '../lib/i18n/store';
   import { DEFAULT_LANGUAGE, type SupportedLanguage } from '../lib/i18n/types';
@@ -26,7 +27,7 @@
     visualMode?: 'shader' | 'static';
     artworkTitle?: string;
     artworkArtist?: string;
-    activeModal?: 'write' | 'list' | 'feedback' | null;
+    activeModal?: 'write' | 'list' | 'feedback' | 'music' | null;
     isZenMode?: boolean;
     weatherLabel?: string;
     selectionReason?: string;
@@ -42,6 +43,7 @@
     onOpenJournalWrite?: () => void;
     onOpenJournalList?: () => void;
     onOpenFeedback?: () => void;
+    onOpenMusicLibrary?: () => void;
     onToggleZenMode?: () => void;
     onToggleSoundCategory?: () => void;
   }
@@ -120,6 +122,25 @@
         </button>
       {/if}
 
+      <!-- Open Music & Piano Library Button -->
+      {#if props.onOpenMusicLibrary}
+        <button
+          type="button"
+          onclick={props.onOpenMusicLibrary}
+          class="w-7 h-7 rounded-full text-white/70 hover:text-white hover:bg-white/10 flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 cursor-pointer {props.activeModal === 'music' ? 'bg-white/20 text-white' : ''}"
+          aria-label="{t('dock.musicLibrary', activeLang)} / Thư viện âm nhạc & Piano"
+          title="{t('dock.musicLibrary', activeLang)}"
+        >
+          <MorphIcon
+            icon={Music}
+            size={14}
+            strokeWidth={2}
+            spring="smooth"
+            reducedMotion="user"
+          />
+        </button>
+      {/if}
+
       <!-- Sound Category Toggle (All / Piano / Ambient) -->
       {#if props.onToggleSoundCategory}
         <button
@@ -141,20 +162,26 @@
         </button>
       {/if}
 
-      <!-- Track Title & Artwork Poetic Caption -->
+      <!-- Track Title & Artwork Poetic Caption (Clickable to open playlist) -->
       {#if props.trackTitle || props.artworkTitle}
-        <div class="hidden md:flex flex-col text-left leading-tight pl-1 pr-1 max-w-[130px] lg:max-w-[180px]">
+        <button
+          type="button"
+          onclick={props.onOpenMusicLibrary}
+          class="hidden md:flex flex-col text-left leading-tight pl-1 pr-1 max-w-[130px] lg:max-w-[180px] rounded hover:bg-white/5 transition-colors cursor-pointer group focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30"
+          title="{props.audioReason ? `${props.trackTitle} • ${props.audioReason}` : props.trackTitle} • {t('dock.musicLibrary', activeLang)}"
+          aria-label="{t('dock.musicLibrary', activeLang)}: {props.trackTitle}"
+        >
           {#if props.trackTitle}
-            <span class="text-xs text-white/95 font-light truncate drop-shadow-sm" title={props.audioReason ? `${props.trackTitle} • ${props.audioReason}` : props.trackTitle}>
+            <span class="text-xs text-white/95 font-light truncate drop-shadow-sm group-hover:text-amber-200 transition-colors">
               {props.trackTitle}
             </span>
           {/if}
           {#if props.artworkTitle}
-            <span class="text-[10px] text-white/60 font-serif italic truncate drop-shadow-sm" title="{props.artworkTitle} - {props.artworkArtist}">
+            <span class="text-[10px] text-white/60 font-serif italic truncate drop-shadow-sm">
               {props.artworkTitle}
             </span>
           {/if}
-        </div>
+        </button>
       {/if}
 
       <!-- Volume Slider with MorphIcon Mute/Unmute Button -->
