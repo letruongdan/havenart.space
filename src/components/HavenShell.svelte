@@ -33,6 +33,7 @@
   let currentTrackArtist = $state('');
   let currentTrack = $state<AudioTrack | null>(null);
   let audioReason = $state<string>('');
+  let soundCategory = $state<'all' | 'piano' | 'ambient'>('all');
 
   // Visual state: Start with static artwork for full-screen immersive painting experience
   let visualMode = $state<VisualMode>('static');
@@ -235,6 +236,7 @@
         weather: weatherInfo?.condition,
         timeOfDay: weatherInfo?.timeOfDay,
         mood: activeMood || undefined,
+        category: soundCategory,
       });
       currentTrack = result.track;
       audioReason = result.reason;
@@ -244,6 +246,27 @@
       isPlaying = audioEngine.isPlaying();
     } catch (err) {
       console.warn('Next track error:', err);
+    }
+  }
+
+  async function handleToggleSoundCategory() {
+    const categories: ('all' | 'piano' | 'ambient')[] = ['all', 'piano', 'ambient'];
+    const nextIdx = (categories.indexOf(soundCategory) + 1) % categories.length;
+    soundCategory = categories[nextIdx];
+
+    const result = selectTrackForSession({
+      category: soundCategory,
+      weather: weatherInfo?.condition,
+      timeOfDay: weatherInfo?.timeOfDay,
+      mood: activeMood || undefined,
+    });
+    currentTrack = result.track;
+    audioReason = result.reason;
+    currentTrackTitle = result.track.title;
+    currentTrackArtist = result.track.artist;
+    if (audioEngine) {
+      await audioEngine.setTrack(result.track);
+      isPlaying = audioEngine.isPlaying();
     }
   }
 
@@ -407,6 +430,7 @@
           trackTitle={currentTrackTitle}
           trackArtist={currentTrackArtist}
           {audioReason}
+          {soundCategory}
           {visualMode}
           artworkTitle={currentArtwork?.title}
           artworkArtist={currentArtwork?.artist}
@@ -417,6 +441,7 @@
           onTogglePlay={handleTogglePlay}
           onVolumeChange={handleVolumeChange}
           onNextTrack={handleNextTrack}
+          onToggleSoundCategory={handleToggleSoundCategory}
           onToggleVisualMode={handleToggleVisualMode}
           onNextArtwork={handleNextArtwork}
           onOpenJournalWrite={handleOpenJournalWrite}

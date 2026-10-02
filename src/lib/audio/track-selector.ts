@@ -5,6 +5,7 @@ export interface AudioSelectionContext {
   weather?: WeatherCondition;
   timeOfDay?: TimeOfDay;
   mood?: string;
+  category?: 'all' | 'piano' | 'ambient';
   excludedIds?: string[];
 }
 
@@ -91,42 +92,49 @@ function scoreTrack(track: HavenAudioTrack, context: AudioSelectionContext): num
     score += 3;
   }
 
+  // Slight bonus for piano when mood is reflective or grateful
+  if (track.category === 'piano' && (context.mood === 'reflective' || context.mood === 'grateful')) {
+    score += 2;
+  }
+
   return score;
 }
 
 function generateTrackReason(track: HavenAudioTrack, context: AudioSelectionContext): string {
+  const prefix = track.category === 'piano' ? 'Độc tấu Piano' : 'Âm thanh tự nhiên';
+
   if (context.mood && track.moods?.includes(context.mood)) {
     const moodMap: Record<string, string> = {
-      calm: 'Bình an, thư thái',
-      grateful: 'Biết ơn, tươi sáng',
-      reflective: 'Trầm tư, sâu lắng',
-      peaceful: 'An tĩnh, thanh thản',
-      hopeful: 'Hy vọng, nâng đỡ tâm hồn',
+      calm: 'bình an, thư thái',
+      grateful: 'biết ơn, tươi sáng',
+      reflective: 'trầm tư, sâu lắng',
+      peaceful: 'an tĩnh, thanh thản',
+      hopeful: 'hy vọng, nâng đỡ tâm hồn',
     };
-    return `Giai điệu phù hợp tâm trạng: ${moodMap[context.mood] || context.mood}`;
+    return `${prefix}: ${track.title} • Tâm trạng ${moodMap[context.mood] || context.mood}`;
   }
 
   if (context.weather && track.weather?.includes(context.weather)) {
     const weatherMap: Record<WeatherCondition, string> = {
-      clear: 'Giai điệu trong trẻo, an bình',
+      clear: 'Tiết trời trong trẻo, an bình',
       clouds: 'Âm hưởng mây trôi êm đềm',
-      rain: 'Tiếng mưa rơi an trú, thanh lọc',
+      rain: 'Mưa rơi tí tách an trú',
       fog: 'Khúc nhạc sương mai thanh tịnh',
       snow: 'Miền tuyết trắng tịch mịch',
-      dusk: 'Âm hưởng ráng chiều ấm áp',
+      dusk: 'Ráng chiều hoàng hôn ấm áp',
       night: 'Khúc ru đêm tĩnh mịch ngàn sao',
     };
-    return weatherMap[context.weather] || 'Âm nhạc an lành';
+    return `${prefix}: ${track.title} • ${weatherMap[context.weather] || 'Thời tiết an lành'}`;
   }
 
-  return track.genreVi || 'Âm nhạc an lành cho tâm hồn';
+  return `${prefix}: ${track.title} • ${track.genreVi}`;
 }
 
 /**
- * Smartly selects an ambient track for the current session or access.
+ * Smartly selects an ambient or piano track for the current session or access.
  * Guarantees:
  * 1. Each visit/access selects a DIFFERENT track than recently played ("mỗi lượt truy cập là một bản nhạc khác nhau").
- * 2. Adapts seamlessly to user local weather and journal mood.
+ * 2. Adapts seamlessly to user local weather, journal mood, and music category (Piano/Ambient).
  * 3. Never throws or halts, smoothly looping when the full library is exhausted.
  */
 export function selectTrackForSession(context: AudioSelectionContext = {}): AudioSelectionResult {
@@ -135,7 +143,13 @@ export function selectTrackForSession(context: AudioSelectionContext = {}): Audi
     context.excludedIds.forEach((id) => recentIds.add(id));
   }
 
-  const all = ALL_HAVEN_AUDIO_TRACKS;
+  let all = ALL_HAVEN_AUDIO_TRACKS;
+  if (context.category && context.category !== 'all') {
+    const filtered = all.filter((t) => t.category === context.category);
+    if (filtered.length > 0) {
+      all = filtered;
+    }
+  }
 
   let candidates = all.filter((track) => !recentIds.has(track.id));
 
@@ -181,12 +195,14 @@ export function selectNextTrack(options: {
   weather?: WeatherCondition;
   timeOfDay?: TimeOfDay;
   mood?: string;
+  category?: 'all' | 'piano' | 'ambient';
 } = {}): AudioSelectionResult {
   const excludedIds = options.currentId ? [options.currentId] : [];
   return selectTrackForSession({
     weather: options.weather,
     timeOfDay: options.timeOfDay,
     mood: options.mood,
+    category: options.category,
     excludedIds,
   });
 }

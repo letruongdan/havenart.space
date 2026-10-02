@@ -9,7 +9,7 @@ import {
 } from '../../src/lib/audio/track-selector';
 import { ALL_HAVEN_AUDIO_TRACKS } from '../../src/lib/audio/ambient-catalog';
 
-describe('Smart Audio Track Selector (Weather, Mood, Freshness)', () => {
+describe('Smart Audio Track Selector (Weather, Mood, Freshness & Piano Collection)', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     clearRecentTracks();
@@ -96,7 +96,30 @@ describe('Smart Audio Track Selector (Weather, Mood, Freshness)', () => {
     });
   });
 
-  describe('4. Manual Next Track Navigation (selectNextTrack)', () => {
+  describe('4. Piano Collection & Kiss the Rain Selection', () => {
+    it('selects Kiss the Rain when in piano mode during rain or reflective mood', () => {
+      const result = selectTrackForSession({ category: 'piano', weather: 'rain', mood: 'reflective' });
+      expect(result.track).toBeDefined();
+      expect(result.track.id).toBe('haven-piano-kiss-the-rain');
+      expect(result.track.title).toContain('Kiss the Rain');
+      expect(result.track.category).toBe('piano');
+      expect(result.reason).toContain('Độc tấu Piano');
+    });
+
+    it('filters strictly to piano tracks when category is piano', () => {
+      for (let i = 0; i < 4; i++) {
+        const result = selectTrackForSession({ category: 'piano' });
+        expect(result.track.category).toBe('piano');
+      }
+    });
+
+    it('filters strictly to ambient tracks when category is ambient', () => {
+      const result = selectTrackForSession({ category: 'ambient' });
+      expect(result.track.category).toBe('ambient');
+    });
+  });
+
+  describe('5. Manual Next Track Navigation (selectNextTrack)', () => {
     it('always selects a track different from the currently playing track ID', () => {
       const current = ALL_HAVEN_AUDIO_TRACKS[0];
       const next = selectNextTrack({ currentId: current.id });

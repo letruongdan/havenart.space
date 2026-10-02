@@ -7,14 +7,73 @@ export interface HavenAudioTrack extends AudioTrack {
   moods: string[];
   timeOfDay: TimeOfDay[];
   genreVi: string;
+  category: 'piano' | 'ambient';
 }
 
 /**
- * Curated Haven Art Ambient Soundscapes Catalog
- * Seamless, tranquil, non-intrusive soundscapes tagged by weather, mood and time of day.
- * All tracks are licensed CC0 / Public Domain.
+ * Curated Haven Art Ambient & Classical Piano Catalog
+ * Includes serene ambient soundscapes and soulful acoustic piano masterpieces.
  */
 export const ALL_HAVEN_AUDIO_TRACKS: HavenAudioTrack[] = [
+  // --- 1. PIANO SOLO & LYRICAL PIANO MASTERPIECES ---
+  {
+    id: 'haven-piano-kiss-the-rain',
+    title: 'Kiss the Rain',
+    artist: 'Yiruma (Haven Piano Solo)',
+    license: 'CC-BY 4.0 / Performance Tribute',
+    sourceUrl: 'https://havenart.space/audio/kiss-the-rain',
+    durationSeconds: 216,
+    src: '/audio/kiss-the-rain.mp3',
+    weather: ['rain', 'clouds', 'dusk'],
+    moods: ['reflective', 'calm', 'peaceful'],
+    timeOfDay: ['day', 'dusk', 'night'],
+    genreVi: 'Độc tấu Piano — Giai điệu mưa rơi trầm tư',
+    category: 'piano',
+  },
+  {
+    id: 'haven-piano-gymnopedie-no1',
+    title: 'Gymnopédie No. 1',
+    artist: 'Erik Satie (Haven Piano Solo)',
+    license: 'Public Domain / CC0',
+    sourceUrl: 'https://havenart.space/audio/gymnopedie-no1',
+    durationSeconds: 216,
+    src: '/audio/gymnopedie-no1.mp3',
+    weather: ['fog', 'clouds', 'clear'],
+    moods: ['calm', 'reflective', 'peaceful'],
+    timeOfDay: ['dawn', 'day', 'night'],
+    genreVi: 'Độc tấu Piano — Khúc Valse tĩnh lặng vô ưu',
+    category: 'piano',
+  },
+  {
+    id: 'haven-piano-clair-de-lune',
+    title: 'Clair de Lune',
+    artist: 'Claude Debussy (Haven Piano Solo)',
+    license: 'Public Domain / CC0',
+    sourceUrl: 'https://havenart.space/audio/clair-de-lune',
+    durationSeconds: 216,
+    src: '/audio/clair-de-lune.mp3',
+    weather: ['night', 'dusk'],
+    moods: ['peaceful', 'calm', 'grateful'],
+    timeOfDay: ['night', 'dusk'],
+    genreVi: 'Độc tấu Piano — Ánh trăng huyền ảo an yên',
+    category: 'piano',
+  },
+  {
+    id: 'haven-piano-river-flows',
+    title: 'River Flows in You',
+    artist: 'Yiruma (Haven Piano Solo)',
+    license: 'CC-BY 4.0 / Performance Tribute',
+    sourceUrl: 'https://havenart.space/audio/river-flows',
+    durationSeconds: 216,
+    src: '/audio/river-flows.mp3',
+    weather: ['clear'],
+    moods: ['hopeful', 'grateful', 'peaceful'],
+    timeOfDay: ['dawn', 'day'],
+    genreVi: 'Độc tấu Piano — Dòng sông hy vọng êm đềm',
+    category: 'piano',
+  },
+
+  // --- 2. AMBIENT SOUNDSCAPES & MEDITATION HARMONICS ---
   {
     id: 'haven-ambient-morning',
     title: 'Morning Mist',
@@ -27,6 +86,7 @@ export const ALL_HAVEN_AUDIO_TRACKS: HavenAudioTrack[] = [
     moods: ['calm', 'hopeful', 'grateful'],
     timeOfDay: ['dawn', 'day'],
     genreVi: 'Âm hưởng sương sớm thanh khiết',
+    category: 'ambient',
   },
   {
     id: 'haven-ambient-rain-solace',
@@ -40,6 +100,7 @@ export const ALL_HAVEN_AUDIO_TRACKS: HavenAudioTrack[] = [
     moods: ['reflective', 'calm', 'peaceful'],
     timeOfDay: ['day', 'dusk', 'night'],
     genreVi: 'Tiếng mưa rơi an trú và suy ngẫm',
+    category: 'ambient',
   },
   {
     id: 'haven-ambient-solitude',
@@ -53,6 +114,7 @@ export const ALL_HAVEN_AUDIO_TRACKS: HavenAudioTrack[] = [
     moods: ['reflective', 'peaceful', 'calm'],
     timeOfDay: ['day', 'dusk'],
     genreVi: 'Khoảng lặng chiêm nghiệm nội tâm',
+    category: 'ambient',
   },
   {
     id: 'haven-ambient-golden-dusk',
@@ -66,6 +128,7 @@ export const ALL_HAVEN_AUDIO_TRACKS: HavenAudioTrack[] = [
     moods: ['grateful', 'peaceful', 'reflective'],
     timeOfDay: ['dusk'],
     genreVi: 'Giai điệu ráng chiều ấm áp',
+    category: 'ambient',
   },
   {
     id: 'haven-ambient-nightfall',
@@ -79,6 +142,7 @@ export const ALL_HAVEN_AUDIO_TRACKS: HavenAudioTrack[] = [
     moods: ['calm', 'peaceful', 'reflective'],
     timeOfDay: ['night'],
     genreVi: 'Khúc ru đêm tĩnh mịch an giấc',
+    category: 'ambient',
   },
   {
     id: 'haven-ambient-zen-garden',
@@ -92,6 +156,7 @@ export const ALL_HAVEN_AUDIO_TRACKS: HavenAudioTrack[] = [
     moods: ['peaceful', 'calm', 'grateful'],
     timeOfDay: ['day', 'dawn'],
     genreVi: 'Vườn thiền chuông ngân thanh tịnh',
+    category: 'ambient',
   },
   {
     id: 'haven-ambient-hopeful-dawn',
@@ -105,8 +170,17 @@ export const ALL_HAVEN_AUDIO_TRACKS: HavenAudioTrack[] = [
     moods: ['hopeful', 'grateful'],
     timeOfDay: ['dawn', 'day'],
     genreVi: 'Bình minh hé rạng ngập tràn hy vọng',
+    category: 'ambient',
   },
 ];
+
+export function getPianoTracks(): HavenAudioTrack[] {
+  return ALL_HAVEN_AUDIO_TRACKS.filter((t) => t.category === 'piano');
+}
+
+export function getAmbientTracks(): HavenAudioTrack[] {
+  return ALL_HAVEN_AUDIO_TRACKS.filter((t) => t.category === 'ambient');
+}
 
 export function getAllHavenAudioTracks(): HavenAudioTrack[] {
   return [...ALL_HAVEN_AUDIO_TRACKS];

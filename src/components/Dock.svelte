@@ -12,6 +12,7 @@
     weatherLabel?: string;
     selectionReason?: string;
     audioReason?: string;
+    soundCategory?: 'all' | 'piano' | 'ambient';
     onTogglePlay?: () => void;
     onVolumeChange?: (volume: number) => void;
     onNextTrack?: () => void;
@@ -21,6 +22,7 @@
     onOpenJournalWrite?: () => void;
     onOpenJournalList?: () => void;
     onToggleZenMode?: () => void;
+    onToggleSoundCategory?: () => void;
   }
 
   let {
@@ -36,6 +38,7 @@
     weatherLabel = '',
     selectionReason = '',
     audioReason = '',
+    soundCategory = 'all',
     onTogglePlay,
     onVolumeChange,
     onNextTrack,
@@ -45,6 +48,7 @@
     onOpenJournalWrite,
     onOpenJournalList,
     onToggleZenMode,
+    onToggleSoundCategory,
   }: Props = $props();
 
   function handleVolumeInput(event: Event) {
@@ -96,6 +100,19 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5" aria-hidden="true">
             <path d="M5.055 7.06C3.805 6.347 2.25 7.25 2.25 8.69v8.622c0 1.44 1.555 2.343 2.805 1.628L12 14.471v4.34c0 1.44 1.555 2.343 2.805 1.628l7.108-4.061c1.26-.72 1.26-2.536 0-3.256L14.805 9.06C13.555 8.347 12 9.25 12 10.69v4.34L5.055 7.06Z" />
           </svg>
+        </button>
+      {/if}
+
+      <!-- Sound Category Toggle (All / Piano / Ambient) -->
+      {#if onToggleSoundCategory}
+        <button
+          type="button"
+          onclick={onToggleSoundCategory}
+          class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium border transition-all cursor-pointer {soundCategory === 'piano' ? 'bg-amber-400/25 text-amber-200 border-amber-300/50 shadow-[0_0_8px_rgba(251,191,36,0.3)]' : soundCategory === 'ambient' ? 'bg-emerald-400/25 text-emerald-200 border-emerald-300/50' : 'bg-white/10 hover:bg-white/20 text-stone-300 border-white/15'}"
+          title="Chuyển thể loại âm nhạc: Đa dạng / Độc tấu Piano / Âm thanh tự nhiên"
+          aria-label="Chuyển thể loại âm nhạc: {soundCategory === 'piano' ? 'Độc tấu Piano' : soundCategory === 'ambient' ? 'Ambient tự nhiên' : 'Đa dạng'}"
+        >
+          <span>{soundCategory === 'piano' ? '🎹 Piano' : soundCategory === 'ambient' ? '🍃 Ambient' : '🎵 Đa dạng'}</span>
         </button>
       {/if}
 
