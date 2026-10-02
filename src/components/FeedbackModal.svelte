@@ -27,6 +27,8 @@
     { id: 'general' as const, labelVi: 'Chung', labelEn: 'Overall', icon: '✨' },
   ];
 
+  import { getStoredUserSession } from '../lib/auth/user-client';
+
   const ratingLabels: Record<number, { vi: string; en: string }> = {
     1: { vi: 'Cần cải thiện', en: 'Needs improvement' },
     2: { vi: 'Khá ổn', en: 'Fair' },
@@ -35,12 +37,31 @@
     5: { vi: 'Tuyệt vời & An lành', en: 'Wonderful & Serene' },
   };
 
-  function handleSubmit() {
+  async function handleSubmit() {
+    const session = getStoredUserSession();
     saveUserFeedback({
       rating,
       category,
       comment: comment.trim(),
     });
+
+    try {
+      await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rating,
+          category,
+          comment: comment.trim(),
+          userId: session?.user?.id || null,
+          userName: session?.user?.name || null,
+          userEmail: session?.user?.email || null,
+        }),
+      });
+    } catch (err) {
+      console.warn('Feedback server sync notice:', err);
+    }
+
     isSubmitted = true;
     setTimeout(() => {
       props.onClose();

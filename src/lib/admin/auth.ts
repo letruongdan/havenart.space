@@ -256,6 +256,11 @@ export function isAdminAuthenticated(): boolean {
   if (typeof window === 'undefined' || !window.sessionStorage) return false;
 
   try {
+    const serverToken = window.sessionStorage.getItem('haven_admin_token');
+    if (serverToken && serverToken.length > 10) {
+      return true;
+    }
+
     const raw = window.sessionStorage.getItem(SESSION_KEY_AUTH);
     if (!raw) return false;
     const session: AdminSession = JSON.parse(raw);
@@ -277,6 +282,14 @@ export function logoutAdmin(): void {
 
   try {
     window.sessionStorage.removeItem(SESSION_KEY_AUTH);
+    window.sessionStorage.removeItem('haven_admin_token');
+  } catch {
+    // Ignore
+  }
+
+  // Also notify server to invalidate session cookie/token if online
+  try {
+    fetch('/api/admin/auth', { method: 'DELETE' }).catch(() => {});
   } catch {
     // Ignore
   }

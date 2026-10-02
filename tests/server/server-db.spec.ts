@@ -11,6 +11,18 @@ import {
   upsertServerEntries,
   getUserServerEntries,
   getServerDbPath,
+  getAllUsers,
+  updateUserStatus,
+  resetUserPassword,
+  deleteUser,
+  addServerFeedback,
+  getAllServerFeedbacks,
+  deleteServerFeedback,
+  getFeedbackStats,
+  recordServerSession,
+  getServerAnalyticsSummary,
+  exportServerDatabase,
+  importServerDatabase,
 } from '../../src/lib/server/db';
 
 describe('Server Database & User Sync Storage', () => {
@@ -37,10 +49,11 @@ describe('Server Database & User Sync Storage', () => {
     process.env.HAVEN_SERVER_DB_PATH = originalEnv;
   });
 
-  it('initializes a fresh database file with version 1', () => {
+  it('initializes a fresh database file with version 2', () => {
     const db = readServerDatabase();
-    expect(db.version).toBe(1);
-    expect(db.users).toEqual([]);
+    expect(db.version).toBe(2);
+    expect(db.users.length).toBeGreaterThanOrEqual(1); // Auto-seeds root admin
+    expect(db.users.some(u => u.role === 'admin')).toBe(true);
     expect(db.entries).toEqual([]);
     expect(fs.existsSync(testDbPath)).toBe(true);
   });
@@ -162,5 +175,111 @@ describe('Server Database & User Sync Storage', () => {
     const reloaded = getUserServerEntries(user.id);
     const target = reloaded.find((e) => e.id === 'entry-1');
     expect(target?.body).toContain('buổi sớm mai');
+  });
+
+  it('manages feedbacks with ratings, statistics, and deletion', () => {
+    const fb1 = addServerFeedback({
+      userName: 'Lan Huong',
+      userEmail: 'huong@havenart.space',
+      rating: 5,
+      category: 'peace',
+      comment: 'Không gian thật tĩnh lặng và an yên.',
+      device: 'Desktop',
+    });
+
+    const fb2 = addServerFeedback({
+      userName: 'Minh Tri',
+      rating: 4,
+      category: 'music',
+      comment: 'Bản nhạc Clair de Lune rất tuyệt vời.',
+      device: 'Mobile',
+    });
+
+    const all = getAllServerFeedbacks();
+    expect(all.length).toBe(2);
+
+    const stats = getFeedbackStats();
+    expect(stats.totalCount).toBe(2);
+    expect(stats.averageRating).toBe(4.5);
+    expect(stats.distribution[5]).toBe(1);
+    expect(stats.distribution[4]).toBe(1);
+
+    const deleted = deleteServerFeedback(fb1.id);
+    expect(deleted).toBe(true);
+    expect(getAllServerFeedbacks().length).toBe(1);
+  });
+
+  it('records session heartbeats and calculates traffic analytics', () => {
+    recordServerSession({
+      sessionId: 'sess_1',
+      durationSeconds: 120,
+      pageViews: 3,
+      device: 'desktop',
+      browser: 'chrome',
+      os: 'windows',
+    });
+
+    recordServerSession({
+      sessionId: 'sess_2',
+      durationSeconds: 300,
+      pageViews: 5,
+      device: 'mobile',
+      browser: 'safari',
+      os: 'ios',
+    });
+
+    const summary = getServerAnalyticsSummary();
+    expect(summary.visits.total).toBe(2);
+    expect(summary.duration.totalSeconds).toBe(420);
+    expect(summary.duration.averageSeconds).toBe(210);
+    expect(summary.devices.desktop).toBe(1);
+    expect(summary.devices.mobile).toBe(1);
+  });
+
+  it('allows admin to manage user accounts and reset passwords', () => {
+    const { user } = createServerUser({
+      email: 'member@havenart.space',
+      name: 'Test Member',
+      password: 'password123',
+    });
+
+    // Suspend user
+    const updated = updateUserStatus(user.id, 'suspended');
+    expect(updated).toBe(true);
+    expect(findUserByEmail('member@havenart.space')?.status).toBe('suspended');
+
+    // Reset password and reactivate
+    const reset = resetUserPassword(user.id, 'new_secret_pass_2026');
+    expect(reset).toBe(true);
+
+    // Suspended user cannot login
+    expect(() => authenticateUser('member@havenart.space', 'new_secret_pass_2026')).toThrow('tạm khóa');
+
+    // Reactivate user
+    updateUserStatus(user.id, 'active');
+    const auth = authenticateUser('member@havenart.space', 'new_secret_pass_2026');
+    expect(auth).not.toBeNull();
+
+    // Delete user
+    const deleted = deleteUser(user.id);
+    expect(deleted).toBe(true);
+    expect(findUserByEmail('member@havenart.space')).toBeUndefined();
+  });
+
+  it('exports and imports server database with validation', () => {
+    createServerUser({
+      email: 'export_user@havenart.space',
+      name: 'Export User',
+      password: 'password123',
+    });
+
+    const exported = exportServerDatabase();
+    expect(exported.version).toBe(2);
+    expect(exported.users.some((u) => u.email === 'export_user@havenart.space')).toBe(true);
+
+    // Import exported DB
+    const importResult = importServerDatabase(exported);
+    expect(importResult.success).toBe(true);
+    expect(readServerDatabase().users.length).toBeGreaterThan(0);
   });
 });

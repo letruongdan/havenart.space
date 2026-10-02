@@ -73,11 +73,135 @@
     X,
     Lock,
     Sparkles,
+    Search,
+    FileText,
+    Upload,
   } from 'lucide';
 
   let repo = $state<JournalRepository | null>(null);
   let telemetry = $state<SystemTelemetry | null>(null);
-  let activeTab = $state<'overview' | 'users' | 'database' | 'catalog' | 'diagnostics'>('overview');
+  let activeTab = $state<'overview' | 'users' | 'entries' | 'feedback' | 'catalog' | 'database' | 'diagnostics'>('overview');
+
+  // Server Database & Telemetry State
+  export interface ServerStatsData {
+    analytics: {
+      visits: { total: number; today: number; thisWeek: number };
+      duration: { averageSeconds: number; totalSeconds: number };
+      devices: { desktop: number; mobile: number; tablet: number };
+      users: { total: number; activeToday: number };
+      journal: { totalEntries: number; totalWords: number; moodBreakdown: Record<string, number> };
+    };
+    feedbackStats: {
+      averageRating: number;
+      totalCount: number;
+      distribution: Record<number, number>;
+    };
+    dbStats: {
+      filePath: string;
+      fileSizeBytes: number;
+      totalUsers: number;
+      totalEntries: number;
+      totalFeedbacks: number;
+      totalSessions: number;
+      version: number;
+      lastModifiedMs: number;
+    };
+  }
+
+  export interface ServerUserItem {
+    id: string;
+    email: string;
+    name: string;
+    role: 'admin' | 'user';
+    status: 'active' | 'suspended';
+    createdAt: number;
+    lastLoginAt?: number;
+    lastActiveAt?: number;
+    entriesCount: number;
+    totalWords: number;
+  }
+
+  export interface ServerEntryItem {
+    id: string;
+    userId: string;
+    title?: string;
+    body: string;
+    mood?: string;
+    wordCount: number;
+    authorName: string;
+    authorEmail: string;
+    createdAt: number;
+    updatedAt: number;
+  }
+
+  export interface ServerFeedbackItem {
+    id: string;
+    userId?: string | null;
+    userName: string;
+    userEmail?: string;
+    rating: number;
+    category: 'peace' | 'music' | 'visuals' | 'journal' | 'general';
+    comment: string;
+    device?: string;
+    createdAt: number;
+  }
+
+  let serverStats = $state<ServerStatsData | null>(null);
+  let serverUsers = $state<ServerUserItem[]>([]);
+  let serverEntries = $state<ServerEntryItem[]>([]);
+  let serverFeedbacks = $state<ServerFeedbackItem[]>([]);
+  let isServerLoading = $state(false);
+
+  // Filters for User, Entry, and Feedback tabs
+  let userSearchQuery = $state('');
+  let userStatusFilter = $state<'all' | 'active' | 'suspended'>('all');
+  let entrySearchQuery = $state('');
+  let feedbackCategoryFilter = $state<string>('all');
+
+  let filteredUsers = $derived.by(() => {
+    let list = serverUsers;
+    if (userStatusFilter !== 'all') {
+      list = list.filter((u) => u.status === userStatusFilter);
+    }
+    if (userSearchQuery.trim()) {
+      const q = userSearchQuery.trim().toLowerCase();
+      list = list.filter((u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+    }
+    return list;
+  });
+
+  let filteredEntries = $derived.by(() => {
+    let list = serverEntries;
+    if (entrySearchQuery.trim()) {
+      const q = entrySearchQuery.trim().toLowerCase();
+      list = list.filter(
+        (e) =>
+          (e.title && e.title.toLowerCase().includes(q)) ||
+          e.authorName.toLowerCase().includes(q) ||
+          e.authorEmail.toLowerCase().includes(q) ||
+          e.body.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  });
+
+  let filteredFeedbacks = $derived.by(() => {
+    let list = serverFeedbacks;
+    if (feedbackCategoryFilter !== 'all') {
+      list = list.filter((f) => f.category === feedbackCategoryFilter);
+    }
+    return list;
+  });
+
+  let feedbackCsat = $derived.by(() => {
+    const totalCount = serverStats?.feedbackStats.totalCount || serverFeedbacks.length;
+    const posCount =
+      (serverStats?.feedbackStats.distribution[5] || 0) +
+      (serverStats?.feedbackStats.distribution[4] || 0) ||
+      serverFeedbacks.filter((f) => f.rating >= 4).length;
+    const csatPercent = totalCount > 0 ? Math.round((posCount / totalCount) * 100) : 100;
+    return { totalCount, posCount, csatPercent };
+  });
   let autoRefresh = $state(true);
   let refreshInterval = $state(3); // seconds
   let timerId: ReturnType<typeof setInterval> | null = null;
@@ -315,6 +439,310 @@
     }, 4000);
   }
 
+  function getAdminToken(): string {
+    return (typeof window !== 'undefined' && window.sessionStorage?.getItem('haven_admin_token')) || '';
+  }
+
+  async function fetchServerStats() {
+    try {
+      const token = getAdminToken();
+      const res = await fetch('/api/admin/stats', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          serverStats = data;
+        }
+      }
+    } catch (e) {
+      console.warn('Lỗi tải server stats:', e);
+    }
+  }
+
+  async function fetchServerUsers() {
+    try {
+      const token = getAdminToken();
+      const res = await fetch('/api/admin/users', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          serverUsers = data.users;
+        }
+      }
+    } catch (e) {
+      console.warn('Lỗi tải server users:', e);
+    }
+  }
+
+  async function fetchServerEntries() {
+    try {
+      const token = getAdminToken();
+      const res = await fetch('/api/admin/entries', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          serverEntries = data.entries;
+        }
+      }
+    } catch (e) {
+      console.warn('Lỗi tải server entries:', e);
+    }
+  }
+
+  async function fetchServerFeedbacks() {
+    try {
+      const token = getAdminToken();
+      const res = await fetch('/api/admin/feedback', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          serverFeedbacks = data.feedbacks;
+        }
+      }
+    } catch (e) {
+      console.warn('Lỗi tải server feedbacks:', e);
+    }
+  }
+
+  async function refreshAllServerData() {
+    isServerLoading = true;
+    await Promise.allSettled([
+      fetchServerStats(),
+      fetchServerUsers(),
+      fetchServerEntries(),
+      fetchServerFeedbacks(),
+    ]);
+    isServerLoading = false;
+  }
+
+  async function handleToggleUserStatus(u: ServerUserItem) {
+    const newStatus = u.status === 'active' ? 'suspended' : 'active';
+    const actionText = newStatus === 'suspended' ? 'khóa' : 'kích hoạt lại';
+    if (!confirm(`Bạn có chắc chắn muốn ${actionText} tài khoản "${u.email}"?`)) return;
+
+    try {
+      const token = getAdminToken();
+      const res = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id: u.id, status: newStatus }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        serverUsers = data.users;
+        showNotice(`Đã ${actionText} tài khoản thành công!`, 'success');
+      } else {
+        showNotice(data.error || 'Thao tác không thành công', 'error');
+      }
+    } catch {
+      showNotice('Lỗi kết nối máy chủ', 'error');
+    }
+  }
+
+  async function handleResetUserPassword(u: ServerUserItem) {
+    const newPass = prompt(`Nhập mật khẩu mới cho tài khoản "${u.email}" (tối thiểu 6 ký tự):`);
+    if (!newPass) return;
+    if (newPass.length < 6) {
+      alert('Mật khẩu phải có ít nhất 6 ký tự.');
+      return;
+    }
+
+    try {
+      const token = getAdminToken();
+      const res = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id: u.id, newPassword: newPass }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        serverUsers = data.users;
+        showNotice(`Đã đặt lại mật khẩu cho "${u.email}" thành công!`, 'success');
+      } else {
+        showNotice(data.error || 'Thao tác không thành công', 'error');
+      }
+    } catch {
+      showNotice('Lỗi kết nối máy chủ', 'error');
+    }
+  }
+
+  async function handleDeleteUser(u: ServerUserItem) {
+    if (!confirm(`CẢNH BÁO: Bạn có chắc chắn muốn xóa tài khoản "${u.email}"? Toàn bộ bài viết của người dùng này trên server cũng sẽ bị xóa vĩnh viễn!`)) return;
+
+    try {
+      const token = getAdminToken();
+      const res = await fetch('/api/admin/users', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id: u.id }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        serverUsers = data.users;
+        await fetchServerEntries();
+        await fetchServerStats();
+        showNotice(`Đã xóa tài khoản "${u.email}" khỏi server.`, 'warn');
+      } else {
+        showNotice(data.error || 'Không thể xóa tài khoản', 'error');
+      }
+    } catch {
+      showNotice('Lỗi kết nối máy chủ', 'error');
+    }
+  }
+
+  async function handleDeleteEntry(e: ServerEntryItem) {
+    if (!confirm(`Xóa bài viết "${e.title || 'Không tiêu đề'}" khỏi máy chủ?`)) return;
+
+    try {
+      const token = getAdminToken();
+      const res = await fetch('/api/admin/entries', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id: e.id }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        serverEntries = serverEntries.filter((item) => item.id !== e.id);
+        await fetchServerStats();
+        showNotice('Đã xóa bài viết khỏi server', 'warn');
+      } else {
+        showNotice(data.error || 'Không thể xóa bài viết', 'error');
+      }
+    } catch {
+      showNotice('Lỗi kết nối máy chủ', 'error');
+    }
+  }
+
+  async function handlePurgeServerDeletedEntries() {
+    if (!confirm('Dọn dẹp và xóa hoàn toàn tất cả bài viết đã xóa mềm trên máy chủ?')) return;
+    try {
+      const token = getAdminToken();
+      const res = await fetch('/api/admin/entries', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ purge: true }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        await fetchServerEntries();
+        await fetchServerStats();
+        showNotice(`Đã dọn dẹp ${data.purgedCount || 0} bản ghi rác!`, 'success');
+      }
+    } catch {
+      showNotice('Lỗi kết nối máy chủ', 'error');
+    }
+  }
+
+  async function handleDeleteFeedback(fb: ServerFeedbackItem) {
+    if (!confirm(`Xóa đánh giá của "${fb.userName}"?`)) return;
+
+    try {
+      const token = getAdminToken();
+      const res = await fetch('/api/admin/feedback', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id: fb.id }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        serverFeedbacks = data.feedbacks;
+        await fetchServerStats();
+        showNotice('Đã xóa đánh giá', 'warn');
+      } else {
+        showNotice(data.error || 'Không thể xóa đánh giá', 'error');
+      }
+    } catch {
+      showNotice('Lỗi kết nối máy chủ', 'error');
+    }
+  }
+
+  async function handleDownloadServerDbBackup() {
+    try {
+      const token = getAdminToken();
+      const res = await fetch('/api/admin/backup', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        showNotice('Không thể xuất sao lưu máy chủ', 'error');
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `havenart-server-database-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showNotice('Đã tải xuống bản sao lưu CSDL Server thành công!', 'success');
+    } catch {
+      showNotice('Lỗi kết nối tải sao lưu', 'error');
+    }
+  }
+
+  let dbFileInputRef: HTMLInputElement | null = null;
+  async function handleUploadServerDbBackup(e: Event) {
+    const target = e.target as HTMLInputElement;
+    const file = target.files?.[0];
+    if (!file) return;
+
+    if (!confirm(`CẢNH BÁO: Nhập file "${file.name}" sẽ cập nhật và hợp nhất dữ liệu vào Cơ sở dữ liệu Server hiện tại. Bạn có muốn tiếp tục?`)) {
+      target.value = '';
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+      const token = getAdminToken();
+
+      const res = await fetch('/api/admin/backup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(json),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        await refreshAllServerData();
+        showNotice(data.message || 'Phục hồi CSDL thành công!', 'success');
+      } else {
+        showNotice(data.error || 'Phục hồi thất bại', 'error');
+      }
+    } catch (err: any) {
+      showNotice(`Lỗi phân tích file: ${err?.message || err}`, 'error');
+    } finally {
+      target.value = '';
+    }
+  }
+
   async function refreshTelemetry() {
     try {
       telemetry = await getSystemTelemetry({ repo });
@@ -342,18 +770,22 @@
       });
     }
 
-    await refreshTelemetry();
+    await Promise.allSettled([
+      refreshTelemetry(),
+      refreshAllServerData(),
+    ]);
 
     logSystemEvent({
       level: 'info',
       category: 'system',
-      message: 'Mở trang Bảng điều khiển Quản trị Haven Art',
+      message: 'Mở trang Bảng điều khiển Quản trị Haven Art (Server Connected)',
     });
 
     if (!timerId) {
       timerId = setInterval(() => {
         if (autoRefresh && isAuthenticated) {
           refreshTelemetry();
+          fetchServerStats();
         }
       }, refreshInterval * 1000);
     }
@@ -420,13 +852,6 @@
     }
   }
 
-  async function handleDeleteFeedback(id: string) {
-    if (typeof window !== 'undefined' && window.confirm('Bạn có chắc chắn muốn xóa phản hồi này?')) {
-      deleteUserFeedback(id);
-      await refreshTelemetry();
-      showNotice('Đã xóa đánh giá của người dùng', 'info');
-    }
-  }
 
   onDestroy(() => {
     if (timerId) clearInterval(timerId);
@@ -733,120 +1158,117 @@
   {/if}
 
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
-    <!-- Top KPI Cards Grid -->
+    <!-- Top KPI Cards Grid (Real Server Telemetry) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <!-- 1. Database & Storage Card -->
+      <!-- 1. Server Users Card -->
       <div class="p-5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/10 backdrop-blur-xl shadow-lg transition-all duration-200">
         <div class="flex items-center justify-between text-white/50 text-xs font-medium uppercase tracking-wider mb-2">
           <span class="flex items-center gap-1.5">
-            <MorphIcon icon={Database} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
-            <span>Lưu trữ CSDL</span>
+            <MorphIcon icon={Users} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+            <span>Người Dùng Server</span>
           </span>
-          <span class="text-amber-400 font-mono">IndexedDB</span>
+          <span class="text-amber-400 font-mono">Tài khoản</span>
         </div>
         <div class="mt-1">
           <div class="text-xl sm:text-2xl font-serif font-medium text-white">
-            {formatBytes(telemetry?.storage.usageBytes || 0)}
+            {serverStats?.analytics.users.total ?? serverUsers.length} <span class="text-xs sm:text-sm font-sans text-white/60 font-normal">thành viên</span>
           </div>
           <p class="text-xs text-white/50 mt-1 truncate">
-            Hạn ngạch: {formatBytes(telemetry?.storage.quotaBytes || 0)}
-            {#if telemetry?.storage.usagePercentage !== undefined}
-              <span class="text-amber-300">({telemetry.storage.usagePercentage}%)</span>
-            {/if}
+            Hôm nay hoạt động: <span class="text-emerald-300 font-medium">{serverStats?.analytics.users.activeToday || 0}</span> người dùng
           </p>
         </div>
-        <!-- Progress bar -->
         <div class="w-full bg-white/10 rounded-full h-1.5 mt-3 overflow-hidden">
           <div
             class="bg-amber-400 h-full rounded-full transition-all duration-500"
-            style="width: {Math.max(2, Math.min(100, (telemetry?.storage.usagePercentage || 1)))}%"
+            style="width: {serverUsers.length > 0 ? Math.min(100, Math.round(((serverStats?.analytics.users.activeToday || 1) / serverUsers.length) * 100)) : 100}%"
           ></div>
         </div>
         <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
-          <span>{telemetry?.storage.entriesCount || 0} bài viết</span>
-          <span>{telemetry?.storage.draftsCount ? '1 bản nháp' : '0 nháp'}</span>
+          <span>Hoạt động: {serverUsers.filter(u => u.status === 'active').length}</span>
+          <span>Tạm khóa: {serverUsers.filter(u => u.status === 'suspended').length}</span>
         </div>
       </div>
 
-      <!-- 2. Catalog & Assets Card -->
+      <!-- 2. Server Journal Entries Card -->
       <div class="p-5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/10 backdrop-blur-xl shadow-lg transition-all duration-200">
         <div class="flex items-center justify-between text-white/50 text-xs font-medium uppercase tracking-wider mb-2">
           <span class="flex items-center gap-1.5">
-            <MorphIcon icon={Layers} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
-            <span>Kho Nội Dung</span>
+            <MorphIcon icon={FileText} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+            <span>Bài Viết Nhật Ký</span>
           </span>
-          <span class="text-emerald-400 font-mono">100% Phê duyệt</span>
+          <span class="text-emerald-400 font-mono">Đồng bộ Cloud</span>
         </div>
         <div class="mt-1">
           <div class="text-xl sm:text-2xl font-serif font-medium text-white">
-            {telemetry?.audio.totalTracks ?? ALL_HAVEN_AUDIO_TRACKS.length} <span class="text-sm font-sans text-white/60 font-normal">nhạc</span> • {telemetry?.visual.totalArtworks ?? CURATED_ARTWORKS.length} <span class="text-sm font-sans text-white/60 font-normal">tranh</span>
+            {serverStats?.analytics.journal.totalEntries ?? serverEntries.length} <span class="text-xs sm:text-sm font-sans text-white/60 font-normal">bài viết</span>
           </div>
           <p class="text-xs text-white/50 mt-1">
-            {telemetry?.audio.pianoTracksCount ?? ALL_HAVEN_AUDIO_TRACKS.filter((t) => t.category === 'piano').length} Piano solo • {telemetry?.audio.ambientTracksCount ?? ALL_HAVEN_AUDIO_TRACKS.filter((t) => t.category === 'ambient').length} Ambient calm
+            Tổng cộng: <span class="text-emerald-300 font-medium">{(serverStats?.analytics.journal.totalWords ?? 0).toLocaleString()}</span> từ đã lưu
           </p>
         </div>
         <div class="w-full bg-white/10 rounded-full h-1.5 mt-3 overflow-hidden">
           <div class="bg-emerald-400 h-full rounded-full w-full"></div>
         </div>
         <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
-          <span>Bản quyền CC0 / Public Domain</span>
-          <span class="text-emerald-300">Minh bạch</span>
+          <span>Trung bình: {serverEntries.length > 0 ? Math.round((serverStats?.analytics.journal.totalWords || 0) / serverEntries.length) : 0} từ/bài</span>
+          <span class="text-emerald-300">An toàn</span>
         </div>
       </div>
 
-      <!-- 3. WebGL2 Visual Pipeline Card -->
+      <!-- 3. Traffic & Sessions Duration Card -->
       <div class="p-5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/10 backdrop-blur-xl shadow-lg transition-all duration-200">
         <div class="flex items-center justify-between text-white/50 text-xs font-medium uppercase tracking-wider mb-2">
           <span class="flex items-center gap-1.5">
-            <MorphIcon icon={Cpu} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
-            <span>Đồ họa & Shader</span>
+            <MorphIcon icon={Clock} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+            <span>Lưu Lượng & Thời Lượng</span>
           </span>
-          <span class="{telemetry?.visual.webgl2Supported ? 'text-cyan-400' : 'text-amber-400'} font-mono">
-            {telemetry?.visual.webgl2Supported ? 'WebGL2' : 'Static Fallback'}
-          </span>
+          <span class="text-cyan-400 font-mono">Phiên thực</span>
         </div>
         <div class="mt-1">
           <div class="text-xl sm:text-2xl font-serif font-medium text-white truncate">
-            {telemetry?.visual.webgl2Supported ? 'GPU Tăng tốc' : 'Ảnh tĩnh'}
+            {formatDuration(serverStats?.analytics.duration.averageSeconds || 0)}
           </div>
-          <p class="text-xs text-white/50 mt-1 truncate" title={telemetry?.visual.rendererInfo || 'Hardware Renderer'}>
-            {telemetry?.visual.rendererInfo || 'Hỗ trợ phần cứng'}
+          <p class="text-xs text-white/50 mt-1 truncate">
+            Thời lượng TB • Tổng: <span class="text-cyan-300 font-medium">{serverStats?.analytics.visits.total ?? 0}</span> lượt ghé thăm
           </p>
         </div>
         <div class="w-full bg-white/10 rounded-full h-1.5 mt-3 overflow-hidden">
           <div class="bg-cyan-400 h-full rounded-full w-full"></div>
         </div>
         <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
-          <span>DPR: {telemetry?.device.dpr || 1}x</span>
-          <span>{telemetry?.device.viewport || 'N/A'}</span>
+          <span>Hôm nay: {serverStats?.analytics.visits.today || 0}</span>
+          <span>Tuần này: {serverStats?.analytics.visits.thisWeek || 0}</span>
         </div>
       </div>
 
-      <!-- 4. Real Performance Web Vitals Card -->
+      <!-- 4. Real User Reviews & Feedback Card -->
       <div class="p-5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/10 backdrop-blur-xl shadow-lg transition-all duration-200">
         <div class="flex items-center justify-between text-white/50 text-xs font-medium uppercase tracking-wider mb-2">
           <span class="flex items-center gap-1.5">
-            <MorphIcon icon={Activity} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
-            <span>Đo lường Tốc độ</span>
+            <MorphIcon icon={Star} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+            <span>Đánh Giá Người Dùng</span>
           </span>
-          <span class="text-emerald-400 font-mono">Web Vitals</span>
+          <span class="text-amber-300 font-mono">Thực tế</span>
         </div>
         <div class="mt-1">
-          <div class="text-xl sm:text-2xl font-serif font-medium text-white">
-            {telemetry?.performance.firstContentfulPaintMs !== undefined ? `${telemetry.performance.firstContentfulPaintMs} ms` : 'Đang đo...'}
+          <div class="text-xl sm:text-2xl font-serif font-medium text-white flex items-center gap-2">
+            <span>{serverStats?.feedbackStats.averageRating || 5.0}</span>
+            <span class="text-amber-400 text-lg">★</span>
+            <span class="text-xs sm:text-sm font-sans text-white/60 font-normal">({serverStats?.feedbackStats.totalCount ?? serverFeedbacks.length} lượt)</span>
           </div>
           <p class="text-xs text-white/50 mt-1">
-            FCP (Sơn nội dung đầu tiên) • Tải trang: {telemetry?.performance.pageLoadTimeMs !== undefined ? `${telemetry.performance.pageLoadTimeMs}ms` : 'Đang đo...'}
+            Đánh giá 5★: <span class="text-amber-300 font-medium">{serverStats?.feedbackStats.distribution[5] || 0}</span> • 4★: <span class="text-amber-300 font-medium">{serverStats?.feedbackStats.distribution[4] || 0}</span>
           </p>
         </div>
         <div class="w-full bg-white/10 rounded-full h-1.5 mt-3 overflow-hidden">
-          <div class="bg-emerald-400 h-full rounded-full w-full"></div>
+          <div
+            class="bg-amber-400 h-full rounded-full"
+            style="width: {Math.round(((serverStats?.feedbackStats.averageRating || 5.0) / 5) * 100)}%"
+          ></div>
         </div>
         <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
-          <span>Tài nguyên: {telemetry?.performance.resourcesCount || 0}</span>
-          <span class="{telemetry?.performance.firstContentfulPaintMs !== undefined && telemetry.performance.firstContentfulPaintMs < 1000 ? 'text-emerald-300' : 'text-amber-300'}">
-            {telemetry?.performance.firstContentfulPaintMs !== undefined && telemetry.performance.firstContentfulPaintMs < 1000 ? 'Tốc độ A+' : 'Tiêu chuẩn'}
-          </span>
+          <span>Sự an yên & tĩnh lặng</span>
+          <span class="text-amber-300">Tích cực</span>
         </div>
       </div>
     </div>
@@ -859,7 +1281,7 @@
         class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer whitespace-nowrap {activeTab === 'overview' ? 'bg-amber-400/20 text-amber-200 border border-amber-400/30' : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'}"
       >
         <MorphIcon icon={BarChart2} size={15} strokeWidth={2} spring="smooth" reducedMotion="user" />
-        <span>Hiệu Năng & Thiết Bị</span>
+        <span>Tổng Quan & Thiết Bị</span>
       </button>
 
       <button
@@ -868,12 +1290,49 @@
         class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer whitespace-nowrap {activeTab === 'users' ? 'bg-amber-400/20 text-amber-200 border border-amber-400/30' : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'}"
       >
         <MorphIcon icon={Users} size={15} strokeWidth={2} spring="smooth" reducedMotion="user" />
-        <span>Người Dùng & Đánh Giá</span>
-        {#if (telemetry?.userAnalytics?.feedback.totalCount || 0) > 0}
+        <span>Quản Lý Người Dùng</span>
+        {#if serverUsers.length > 0}
           <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-400/20 text-amber-300 font-mono font-medium">
-            {telemetry?.userAnalytics?.feedback.totalCount}
+            {serverUsers.length}
           </span>
         {/if}
+      </button>
+
+      <button
+        type="button"
+        onclick={() => { activeTab = 'entries'; }}
+        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer whitespace-nowrap {activeTab === 'entries' ? 'bg-amber-400/20 text-amber-200 border border-amber-400/30' : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'}"
+      >
+        <MorphIcon icon={FileText} size={15} strokeWidth={2} spring="smooth" reducedMotion="user" />
+        <span>Bài Viết Server</span>
+        {#if serverEntries.length > 0}
+          <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-400/20 text-amber-300 font-mono font-medium">
+            {serverEntries.length}
+          </span>
+        {/if}
+      </button>
+
+      <button
+        type="button"
+        onclick={() => { activeTab = 'feedback'; }}
+        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer whitespace-nowrap {activeTab === 'feedback' ? 'bg-amber-400/20 text-amber-200 border border-amber-400/30' : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'}"
+      >
+        <MorphIcon icon={Star} size={15} strokeWidth={2} spring="smooth" reducedMotion="user" />
+        <span>Đánh Giá & Nhận Xét</span>
+        {#if serverFeedbacks.length > 0}
+          <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-400/20 text-amber-300 font-mono font-medium">
+            {serverFeedbacks.length}
+          </span>
+        {/if}
+      </button>
+
+      <button
+        type="button"
+        onclick={() => { activeTab = 'catalog'; }}
+        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer whitespace-nowrap {activeTab === 'catalog' ? 'bg-amber-400/20 text-amber-200 border border-amber-400/30' : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'}"
+      >
+        <MorphIcon icon={Image} size={15} strokeWidth={2} spring="smooth" reducedMotion="user" />
+        <span>Kho Ảnh Đa Nguồn (75)</span>
       </button>
 
       <button
@@ -882,16 +1341,7 @@
         class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer whitespace-nowrap {activeTab === 'database' ? 'bg-amber-400/20 text-amber-200 border border-amber-400/30' : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'}"
       >
         <MorphIcon icon={Database} size={15} strokeWidth={2} spring="smooth" reducedMotion="user" />
-        <span>CSDL & Nhật Ký</span>
-      </button>
-
-      <button
-        type="button"
-        onclick={() => { activeTab = 'catalog'; }}
-        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer whitespace-nowrap {activeTab === 'catalog' ? 'bg-amber-400/20 text-amber-200 border border-amber-400/30' : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'}"
-      >
-        <MorphIcon icon={Music} size={15} strokeWidth={2} spring="smooth" reducedMotion="user" />
-        <span>Thư Viện Media</span>
+        <span>Quản Trị CSDL Server</span>
       </button>
 
       <button
@@ -900,7 +1350,7 @@
         class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer whitespace-nowrap {activeTab === 'diagnostics' ? 'bg-amber-400/20 text-amber-200 border border-amber-400/30' : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'}"
       >
         <MorphIcon icon={Zap} size={15} strokeWidth={2} spring="smooth" reducedMotion="user" />
-        <span>Chẩn Đoán & Nhật Ký Console</span>
+        <span>Chẩn Đoán & Nhật Ký</span>
       </button>
     </div>
 
@@ -1075,314 +1525,526 @@
       </div>
     {/if}
 
-    <!-- TAB: USER ANALYTICS & FEEDBACK -->
+    <!-- TAB 2: USER MANAGEMENT (SERVER ACCOUNTS) -->
     {#if activeTab === 'users'}
       <div class="space-y-6">
-        <!-- 4 KPI Cards for Users -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <!-- 1. Lượt Truy Cập & Phiên -->
-          <div class="p-5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/10 backdrop-blur-xl shadow-lg transition-all duration-200">
-            <div class="flex items-center justify-between text-white/50 text-xs font-medium uppercase tracking-wider mb-2">
-              <span class="flex items-center gap-1.5">
-                <MorphIcon icon={Users} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
-                <span>Truy Cập & Phiên</span>
-              </span>
-              <span class="text-amber-400 font-mono">Lưu lượng</span>
-            </div>
-            <div class="mt-1">
-              <div class="text-xl sm:text-2xl font-serif font-medium text-white">
-                {telemetry?.userAnalytics?.visits.total || 0} <span class="text-xs font-sans text-white/50 font-normal">lượt</span>
-              </div>
-              <p class="text-xs text-white/50 mt-1 truncate">
-                {telemetry?.userAnalytics?.visits.uniqueSessions || 0} phiên duy nhất
+        <!-- Top Toolbar & Stats -->
+        <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl">
+          <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 class="text-base sm:text-lg font-serif font-medium text-white flex items-center gap-2">
+                <MorphIcon icon={Users} size={18} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                <span>Quản Lý Tài Khoản Người Dùng ({serverUsers.length})</span>
+              </h2>
+              <p class="text-xs text-white/50 mt-0.5">
+                Danh sách người dùng đã đăng ký tài khoản trên máy chủ Haven Art (được lưu tại CSDL server)
               </p>
             </div>
-            <div class="w-full bg-white/10 rounded-full h-1.5 mt-3 overflow-hidden">
-              <div class="bg-amber-400 h-full rounded-full w-full"></div>
-            </div>
-            <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
-              <span>Hôm nay: <strong class="text-white font-mono">{telemetry?.userAnalytics?.visits.today || 0}</strong></span>
-              <span>7 ngày qua: <strong class="text-amber-300 font-mono">{telemetry?.userAnalytics?.visits.thisWeek || 0}</strong></span>
+
+            <!-- Action Controls -->
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                onclick={refreshAllServerData}
+                disabled={isServerLoading}
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-white/80 hover:text-white transition-all cursor-pointer disabled:opacity-50"
+                title="Tải lại danh sách người dùng từ máy chủ"
+              >
+                <MorphIcon icon={RefreshCw} size={13} strokeWidth={2} spin={isServerLoading} />
+                <span>{isServerLoading ? 'Đang tải...' : 'Làm mới'}</span>
+              </button>
             </div>
           </div>
 
-          <!-- 2. Thời Lượng Trải Nghiệm -->
-          <div class="p-5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/10 backdrop-blur-xl shadow-lg transition-all duration-200">
-            <div class="flex items-center justify-between text-white/50 text-xs font-medium uppercase tracking-wider mb-2">
-              <span class="flex items-center gap-1.5">
-                <MorphIcon icon={Clock} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
-                <span>Thời Lượng Gắn Kết</span>
+          <!-- Quick Metrics Banner -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <div class="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5">
+              <span class="text-[11px] text-white/50 block">Tổng Người Dùng</span>
+              <span class="text-xl font-serif font-medium text-white">{serverUsers.length}</span>
+              <span class="text-[10px] text-white/40 block mt-0.5">Tài khoản server</span>
+            </div>
+            <div class="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+              <span class="text-[11px] text-emerald-300 block">Đang Hoạt Động</span>
+              <span class="text-xl font-serif font-medium text-emerald-300">
+                {serverUsers.filter((u) => u.status === 'active').length}
               </span>
-              <span class="text-emerald-400 font-mono">Thời gian</span>
+              <span class="text-[10px] text-emerald-400/60 block mt-0.5">Bình thường</span>
             </div>
-            <div class="mt-1">
-              <div class="text-xl sm:text-2xl font-serif font-medium text-white">
-                {formatDuration(telemetry?.userAnalytics?.duration.totalDurationSeconds || 0)}
-              </div>
-              <p class="text-xs text-white/50 mt-1 truncate">
-                Phiên này: {formatDuration(telemetry?.userAnalytics?.duration.currentSessionSeconds || 0)}
-              </p>
+            <div class="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20">
+              <span class="text-[11px] text-rose-300 block">Đã Bị Khóa</span>
+              <span class="text-xl font-serif font-medium text-rose-300">
+                {serverUsers.filter((u) => u.status === 'suspended').length}
+              </span>
+              <span class="text-[10px] text-rose-400/60 block mt-0.5">Tạm khóa</span>
             </div>
-            <div class="w-full bg-white/10 rounded-full h-1.5 mt-3 overflow-hidden">
-              <div class="bg-emerald-400 h-full rounded-full w-full"></div>
-            </div>
-            <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
-              <span>TB/phiên: <strong class="text-white font-mono">{formatDuration(telemetry?.userAnalytics?.duration.averageSessionSeconds || 0)}</strong></span>
-              <span>Nghe nhạc: <strong class="text-emerald-300 font-mono">{formatDuration(telemetry?.userAnalytics?.duration.musicListeningSeconds || 0)}</strong></span>
+            <div class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+              <span class="text-[11px] text-amber-300 block">Quản Trị Viên</span>
+              <span class="text-xl font-serif font-medium text-amber-300">
+                {serverUsers.filter((u) => u.role === 'admin').length}
+              </span>
+              <span class="text-[10px] text-amber-400/60 block mt-0.5">Toàn quyền</span>
             </div>
           </div>
 
-          <!-- 3. Viết Nhật Ký -->
-          <div class="p-5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/10 backdrop-blur-xl shadow-lg transition-all duration-200">
-            <div class="flex items-center justify-between text-white/50 text-xs font-medium uppercase tracking-wider mb-2">
-              <span class="flex items-center gap-1.5">
-                <MorphIcon icon={Database} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
-                <span>Hoạt Động Nhật Ký</span>
-              </span>
-              <span class="text-cyan-400 font-mono">Tự sự</span>
-            </div>
-            <div class="mt-1">
-              <div class="text-xl sm:text-2xl font-serif font-medium text-white">
-                {telemetry?.userAnalytics?.journaling.totalEntries || 0} <span class="text-xs font-sans text-white/50 font-normal">bài viết</span>
+          <!-- Filter & Search Toolbar -->
+          <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-white/10">
+            <div class="relative flex-1 min-w-[240px] max-w-md">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-white/40">
+                <MorphIcon icon={Search} size={14} />
               </div>
-              <p class="text-xs text-white/50 mt-1 truncate">
-                {telemetry?.userAnalytics?.journaling.totalWords || 0} từ tích lũy
-              </p>
+              <input
+                type="text"
+                bind:value={userSearchQuery}
+                placeholder="Tìm theo tên hoặc email người dùng..."
+                class="w-full pl-9 pr-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-white/30 focus:outline-none focus:border-amber-400/50"
+              />
             </div>
-            <div class="w-full bg-white/10 rounded-full h-1.5 mt-3 overflow-hidden">
-              <div class="bg-cyan-400 h-full rounded-full w-full"></div>
-            </div>
-            <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
-              <span>Hôm nay: <strong class="text-white font-mono">{telemetry?.userAnalytics?.journaling.entriesToday || 0}</strong> bài</span>
-              <span>TB: <strong class="text-cyan-300 font-mono">{telemetry?.userAnalytics?.journaling.averageWordsPerEntry || 0}</strong> từ/bài</span>
-            </div>
-          </div>
 
-          <!-- 4. Đánh Giá & Cảm Nhận -->
-          <div class="p-5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/10 backdrop-blur-xl shadow-lg transition-all duration-200">
-            <div class="flex items-center justify-between text-white/50 text-xs font-medium uppercase tracking-wider mb-2">
-              <span class="flex items-center gap-1.5">
-                <MorphIcon icon={Star} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
-                <span>Đánh Giá Hài Lòng</span>
-              </span>
-              <span class="text-amber-400 font-mono">CSAT</span>
-            </div>
-            <div class="mt-1">
-              {#if (telemetry?.userAnalytics?.feedback.totalCount || 0) > 0}
-                <div class="text-xl sm:text-2xl font-serif font-medium text-white flex items-center gap-2">
-                  <span>{telemetry?.userAnalytics?.feedback.averageRating?.toFixed(1)}</span>
-                  <span class="text-amber-400 text-lg">★</span>
-                  <span class="text-xs font-sans text-white/50 font-normal">/ 5.0</span>
-                </div>
-                <p class="text-xs text-white/50 mt-1 truncate">
-                  {telemetry?.userAnalytics?.feedback.totalCount} lượt gửi cảm nhận thực tế
-                </p>
-              {:else}
-                <div class="text-lg sm:text-xl font-serif font-medium text-white/50 mt-1">
-                  Chưa có đánh giá
-                </div>
-                <p class="text-xs text-white/40 mt-1 truncate">
-                  0 lượt phản hồi
-                </p>
-              {/if}
-            </div>
-            <div class="w-full bg-white/10 rounded-full h-1.5 mt-3 overflow-hidden">
-              <div
-                class="bg-amber-400 h-full rounded-full transition-all duration-500"
-                style="width: {(telemetry?.userAnalytics?.feedback.totalCount || 0) > 0 ? Math.round(((telemetry?.userAnalytics?.feedback.averageRating || 0) / 5) * 100) : 0}%"
-              ></div>
-            </div>
-            <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
-              {#if (telemetry?.userAnalytics?.feedback.totalCount || 0) > 0}
-                <span>5 sao: <strong class="text-white font-mono">{telemetry?.userAnalytics?.feedback.distribution[5] || 0}</strong></span>
-                <span class="text-amber-300">
-                  {Math.round(((telemetry?.userAnalytics?.feedback.distribution[5] || 0) / (telemetry?.userAnalytics?.feedback.totalCount || 1)) * 100)}% 5 sao
-                </span>
-              {:else}
-                <span>5 sao: <strong class="text-white/40 font-mono">0</strong></span>
-                <span class="text-white/40">Chưa có số liệu</span>
-              {/if}
+            <!-- Status Filter Pills -->
+            <div class="flex items-center gap-1.5 p-1 rounded-xl bg-white/5 border border-white/10 text-xs">
+              <button
+                type="button"
+                onclick={() => { userStatusFilter = 'all'; }}
+                class="px-2.5 py-1 rounded-lg transition-colors cursor-pointer {userStatusFilter === 'all' ? 'bg-amber-400 text-stone-900 font-medium' : 'text-white/60 hover:text-white'}"
+              >
+                Tất cả ({serverUsers.length})
+              </button>
+              <button
+                type="button"
+                onclick={() => { userStatusFilter = 'active'; }}
+                class="px-2.5 py-1 rounded-lg transition-colors cursor-pointer {userStatusFilter === 'active' ? 'bg-amber-400 text-stone-900 font-medium' : 'text-white/60 hover:text-white'}"
+              >
+                Hoạt động
+              </button>
+              <button
+                type="button"
+                onclick={() => { userStatusFilter = 'suspended'; }}
+                class="px-2.5 py-1 rounded-lg transition-colors cursor-pointer {userStatusFilter === 'suspended' ? 'bg-amber-400 text-stone-900 font-medium' : 'text-white/60 hover:text-white'}"
+              >
+                Bị khóa
+              </button>
             </div>
           </div>
         </div>
 
-        <!-- 2 Column Charts: 7-Day Visits & Rating Breakdown -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <!-- Left: 7-Day Visits History & Journal Moods -->
-          <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl space-y-6">
-            <div>
-              <div class="flex items-center justify-between mb-4">
-                <h2 class="text-base sm:text-lg font-serif font-medium text-white flex items-center gap-2">
-                  <span class="w-2 h-2 rounded-full bg-amber-400"></span>
-                  <span>Lịch Sử Lượt Truy Cập (7 Ngày Qua)</span>
-                </h2>
-                <span class="text-xs text-white/50 font-mono">
-                  Tổng 7 ngày: {telemetry?.userAnalytics?.visits.thisWeek || 0}
-                </span>
+        <!-- Users Table -->
+        <div class="rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl overflow-hidden shadow-lg">
+          {#if filteredUsers.length === 0}
+            <div class="text-center py-16 px-4">
+              <div class="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3 text-white/40">
+                <MorphIcon icon={Users} size={22} />
               </div>
+              <p class="font-medium text-white/70 text-sm">Không tìm thấy người dùng phù hợp.</p>
+              <p class="text-xs text-white/40 mt-1">Hãy thử tìm với từ khóa hoặc bộ lọc trạng thái khác.</p>
+            </div>
+          {:else}
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr class="border-b border-white/10 bg-white/[0.02] text-white/50 uppercase tracking-wider text-[11px]">
+                    <th class="py-3.5 px-4 font-medium">Người Dùng</th>
+                    <th class="py-3.5 px-4 font-medium">Vai Trò</th>
+                    <th class="py-3.5 px-4 font-medium">Trạng Thái</th>
+                    <th class="py-3.5 px-4 font-medium">Bài Viết / Số Từ</th>
+                    <th class="py-3.5 px-4 font-medium">Ngày Đăng Ký</th>
+                    <th class="py-3.5 px-4 font-medium">Đăng Nhập Cuối</th>
+                    <th class="py-3.5 px-4 font-medium text-right">Thao Tác Quản Trị</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                  {#each filteredUsers as u (u.id)}
+                    <tr class="hover:bg-white/[0.02] transition-colors">
+                      <td class="py-3.5 px-4">
+                        <div class="flex items-center gap-2.5">
+                          <div class="w-8 h-8 rounded-full bg-amber-400/10 border border-amber-400/20 flex items-center justify-center font-serif text-amber-300 font-medium text-xs">
+                            {u.name.slice(0, 1).toUpperCase()}
+                          </div>
+                          <div>
+                            <div class="font-medium text-white flex items-center gap-1.5">
+                              <span>{u.name}</span>
+                              {#if u.email === 'admin@havenart.space' || u.id === 'user_root_admin'}
+                                <span class="px-1.5 py-0.2 rounded text-[10px] bg-amber-400/20 text-amber-300 border border-amber-400/30">Root</span>
+                              {/if}
+                            </div>
+                            <div class="text-[11px] text-white/50 font-mono mt-0.5">{u.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="py-3.5 px-4">
+                        {#if u.role === 'admin'}
+                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] bg-amber-400/15 border border-amber-400/30 text-amber-300 font-medium">
+                            <MorphIcon icon={ShieldCheck} size={11} />
+                            <span>Quản trị viên</span>
+                          </span>
+                        {:else}
+                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] bg-cyan-400/10 border border-cyan-400/20 text-cyan-300">
+                            <span>Thành viên</span>
+                          </span>
+                        {/if}
+                      </td>
+                      <td class="py-3.5 px-4">
+                        {#if u.status === 'active'}
+                          <span class="inline-flex items-center gap-1.5 text-emerald-300">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span>Hoạt động</span>
+                          </span>
+                        {:else}
+                          <span class="inline-flex items-center gap-1.5 text-rose-300">
+                            <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                            <span>Đã khóa</span>
+                          </span>
+                        {/if}
+                      </td>
+                      <td class="py-3.5 px-4 font-mono text-white/80">
+                        <span class="font-medium text-white">{u.entriesCount}</span> bài
+                        <span class="text-white/40">({u.totalWords} từ)</span>
+                      </td>
+                      <td class="py-3.5 px-4 font-mono text-white/60">
+                        {new Date(u.createdAt).toLocaleDateString('vi-VN')}
+                      </td>
+                      <td class="py-3.5 px-4 font-mono text-white/60">
+                        {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString('vi-VN') : 'Chưa đăng nhập'}
+                      </td>
+                      <td class="py-3.5 px-4 text-right">
+                        <div class="flex items-center justify-end gap-1.5">
+                          <!-- Toggle Status (Lock / Unlock) -->
+                          {#if u.email !== 'admin@havenart.space' && u.id !== 'user_root_admin'}
+                            <button
+                              type="button"
+                              onclick={() => handleToggleUserStatus(u)}
+                              class="p-1.5 rounded-lg transition-colors cursor-pointer {u.status === 'active' ? 'text-white/40 hover:text-amber-300 hover:bg-amber-400/10' : 'text-emerald-400 hover:bg-emerald-400/10'}"
+                              title={u.status === 'active' ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
+                            >
+                              <MorphIcon icon={u.status === 'active' ? Lock : ShieldCheck} size={14} />
+                            </button>
+                          {/if}
 
-              <!-- Bar Chart Representation -->
-              <div class="space-y-2.5 pt-2">
-                {#if (telemetry?.userAnalytics?.visits.dailyHistory || []).length === 0}
-                  <div class="text-center py-6 text-white/40 text-xs">
-                    Chưa có đủ dữ liệu lịch sử truy cập.
-                  </div>
-                {:else}
-                  {@const maxVisits = Math.max(1, ...(telemetry?.userAnalytics?.visits.dailyHistory.map(d => d.count) || [1]))}
-                  {#each (telemetry?.userAnalytics?.visits.dailyHistory || []) as day}
-                    {@const pct = Math.round((day.count / maxVisits) * 100)}
-                    <div class="flex items-center gap-3 text-xs">
-                      <span class="w-20 font-mono text-white/60 truncate shrink-0">{day.date}</span>
-                      <div class="flex-1 bg-white/5 rounded-full h-3 overflow-hidden border border-white/5 relative">
-                        <div
-                          class="bg-gradient-to-r from-amber-500/80 to-amber-300 h-full rounded-full transition-all duration-500"
-                          style="width: {Math.max(4, pct)}%"
-                        ></div>
-                      </div>
-                      <span class="w-12 text-right font-mono text-white/90 shrink-0 font-medium">
-                        {day.count} <span class="text-[10px] text-white/40">lượt</span>
-                      </span>
-                    </div>
+                          <!-- Reset Password -->
+                          <button
+                            type="button"
+                            onclick={() => handleResetUserPassword(u)}
+                            class="p-1.5 rounded-lg text-white/40 hover:text-cyan-300 hover:bg-cyan-400/10 transition-colors cursor-pointer"
+                            title="Đặt lại mật khẩu cho tài khoản"
+                          >
+                            <MorphIcon icon={KeyRound} size={14} />
+                          </button>
+
+                          <!-- Delete User -->
+                          {#if u.email !== 'admin@havenart.space' && u.id !== 'user_root_admin'}
+                            <button
+                              type="button"
+                              onclick={() => handleDeleteUser(u)}
+                              class="p-1.5 rounded-lg text-white/40 hover:text-rose-400 hover:bg-rose-400/10 transition-colors cursor-pointer"
+                              title="Xóa vĩnh viễn tài khoản và bài viết trên máy chủ"
+                            >
+                              <MorphIcon icon={Trash2} size={14} />
+                            </button>
+                          {/if}
+                        </div>
+                      </td>
+                    </tr>
                   {/each}
-                {/if}
-              </div>
+                </tbody>
+              </table>
+            </div>
+          {/if}
+        </div>
+      </div>
+    {/if}
+
+    <!-- TAB 3: SERVER JOURNAL ENTRIES -->
+    {#if activeTab === 'entries'}
+      <div class="space-y-6">
+        <!-- Top Toolbar & Stats -->
+        <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl">
+          <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 class="text-base sm:text-lg font-serif font-medium text-white flex items-center gap-2">
+                <MorphIcon icon={FileText} size={18} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                <span>Quản Lý Bài Viết Server ({serverEntries.length})</span>
+              </h2>
+              <p class="text-xs text-white/50 mt-0.5">
+                Các bài viết được lưu trữ và đồng bộ hóa an toàn trên máy chủ của Haven Art
+              </p>
             </div>
 
-            <!-- Mood Breakdown mini section -->
-            <div class="pt-4 border-t border-white/10">
-              <h3 class="text-sm font-medium text-white mb-3 flex items-center justify-between">
-                <span>Tâm Trạng Khi Viết Nhật Ký</span>
-                <span class="text-xs text-white/40 font-normal">
-                  {telemetry?.userAnalytics?.journaling.totalEntries || 0} bài
-                </span>
-              </h3>
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                onclick={handlePurgeServerDeletedEntries}
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-xs text-rose-300 hover:text-rose-200 transition-all cursor-pointer"
+                title="Xóa vĩnh viễn các bài viết người dùng đã xóa mềm"
+              >
+                <MorphIcon icon={Trash2} size={13} strokeWidth={1.75} />
+                <span>Dọn Rác Máy Chủ</span>
+              </button>
 
-              <div class="grid grid-cols-5 gap-2 text-center">
-                {#each Object.entries(MOOD_META) as [key, meta]}
-                  {@const count = telemetry?.userAnalytics?.journaling.moodBreakdown[key] || 0}
-                  {@const total = telemetry?.userAnalytics?.journaling.totalEntries || 1}
-                  {@const pct = total > 0 ? Math.round((count / total) * 100) : 0}
-                  <div class="p-2.5 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col items-center">
-                    <span class="text-lg">{meta.icon}</span>
-                    <span class="text-[11px] text-white/80 mt-1">{meta.label}</span>
-                    <span class="text-xs font-mono font-medium text-amber-300 mt-0.5">{count}</span>
-                    <span class="text-[10px] text-white/40">{pct}%</span>
-                  </div>
-                {/each}
-              </div>
+              <button
+                type="button"
+                onclick={fetchServerEntries}
+                disabled={isServerLoading}
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-white/80 hover:text-white transition-all cursor-pointer disabled:opacity-50"
+              >
+                <MorphIcon icon={RefreshCw} size={13} strokeWidth={2} spin={isServerLoading} />
+                <span>Làm mới</span>
+              </button>
             </div>
           </div>
 
-          <!-- Right: Star Rating Distribution & Satisfaction Metric -->
-          <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl flex flex-col justify-between space-y-6">
-            <div>
-              <div class="flex items-center justify-between mb-4">
+          <!-- Quick Metrics Banner -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <div class="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5">
+              <span class="text-[11px] text-white/50 block">Tổng Bài Viết Server</span>
+              <span class="text-xl font-serif font-medium text-white">{serverEntries.length}</span>
+              <span class="text-[10px] text-white/40 block mt-0.5">Đã đồng bộ</span>
+            </div>
+            <div class="p-3.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/20">
+              <span class="text-[11px] text-cyan-300 block">Tổng Số Từ</span>
+              <span class="text-xl font-serif font-medium text-cyan-300">
+                {serverEntries.reduce((acc, e) => acc + (e.wordCount || 0), 0).toLocaleString('vi-VN')}
+              </span>
+              <span class="text-[10px] text-cyan-400/60 block mt-0.5">Tích lũy</span>
+            </div>
+            <div class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+              <span class="text-[11px] text-amber-300 block">Số Tác Giả</span>
+              <span class="text-xl font-serif font-medium text-amber-300">
+                {new Set(serverEntries.map((e) => e.userId)).size}
+              </span>
+              <span class="text-[10px] text-amber-400/60 block mt-0.5">Người viết</span>
+            </div>
+            <div class="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+              <span class="text-[11px] text-emerald-300 block">TB Từ / Bài</span>
+              <span class="text-xl font-serif font-medium text-emerald-300">
+                {serverEntries.length > 0 ? Math.round(serverEntries.reduce((acc, e) => acc + (e.wordCount || 0), 0) / serverEntries.length) : 0}
+              </span>
+              <span class="text-[10px] text-emerald-400/60 block mt-0.5">Độ dài trung bình</span>
+            </div>
+          </div>
+
+          <!-- Search Bar -->
+          <div class="relative max-w-md pt-4 border-t border-white/10">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-white/40 pt-4">
+              <MorphIcon icon={Search} size={14} />
+            </div>
+            <input
+              type="text"
+              bind:value={entrySearchQuery}
+              placeholder="Tìm theo tiêu đề, tác giả, nội dung bài viết..."
+              class="w-full pl-9 pr-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-white/30 focus:outline-none focus:border-amber-400/50"
+            />
+          </div>
+        </div>
+
+        <!-- Entries Table -->
+        <div class="rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl overflow-hidden shadow-lg">
+          {#if filteredEntries.length === 0}
+            <div class="text-center py-16 px-4">
+              <div class="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3 text-white/40">
+                <MorphIcon icon={FileText} size={22} />
+              </div>
+              <p class="font-medium text-white/70 text-sm">Không có bài viết nào trên máy chủ.</p>
+              <p class="text-xs text-white/40 mt-1">Khi người dùng đăng nhập và lưu nhật ký, các bài viết sẽ được đồng bộ tại đây.</p>
+            </div>
+          {:else}
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr class="border-b border-white/10 bg-white/[0.02] text-white/50 uppercase tracking-wider text-[11px]">
+                    <th class="py-3.5 px-4 font-medium">Tiêu Đề & Nội Dung</th>
+                    <th class="py-3.5 px-4 font-medium">Tác Giả</th>
+                    <th class="py-3.5 px-4 font-medium">Tâm Trạng</th>
+                    <th class="py-3.5 px-4 font-medium">Số Từ</th>
+                    <th class="py-3.5 px-4 font-medium">Thời Gian Lưu</th>
+                    <th class="py-3.5 px-4 font-medium text-right">Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                  {#each filteredEntries as e (e.id)}
+                    <tr class="hover:bg-white/[0.02] transition-colors">
+                      <td class="py-3.5 px-4 max-w-sm">
+                        <div class="font-medium text-white line-clamp-1">
+                          {e.title || 'Không tiêu đề'}
+                        </div>
+                        <div class="text-[11px] text-white/50 line-clamp-2 mt-0.5 font-serif italic">
+                          {e.body}
+                        </div>
+                      </td>
+                      <td class="py-3.5 px-4">
+                        <div class="font-medium text-white">{e.authorName}</div>
+                        <div class="text-[11px] text-white/40 font-mono mt-0.5">{e.authorEmail}</div>
+                      </td>
+                      <td class="py-3.5 px-4">
+                        {#if e.mood && MOOD_META[e.mood]}
+                          <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] bg-white/5 border border-white/10 text-white/80">
+                            <span>{MOOD_META[e.mood].icon}</span>
+                            <span>{MOOD_META[e.mood].label}</span>
+                          </span>
+                        {:else}
+                          <span class="text-white/40 text-[11px]">—</span>
+                        {/if}
+                      </td>
+                      <td class="py-3.5 px-4 font-mono text-cyan-300">
+                        {e.wordCount} từ
+                      </td>
+                      <td class="py-3.5 px-4 font-mono text-white/60">
+                        {new Date(e.createdAt).toLocaleString('vi-VN')}
+                      </td>
+                      <td class="py-3.5 px-4 text-right">
+                        <button
+                          type="button"
+                          onclick={() => handleDeleteEntry(e)}
+                          class="p-1.5 rounded-lg text-white/40 hover:text-rose-400 hover:bg-rose-400/10 transition-colors cursor-pointer"
+                          title="Xóa bài viết này khỏi máy chủ"
+                        >
+                          <MorphIcon icon={Trash2} size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          {/if}
+        </div>
+      </div>
+    {/if}
+
+    <!-- TAB 4: REAL USER FEEDBACK & REVIEWS -->
+    {#if activeTab === 'feedback'}
+      <div class="space-y-6">
+        <!-- Top Analytics & Feedback Summary -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Rating Breakdown Card -->
+          <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl lg:col-span-2 space-y-5">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
                 <h2 class="text-base sm:text-lg font-serif font-medium text-white flex items-center gap-2">
-                  <span class="w-2 h-2 rounded-full bg-amber-400"></span>
-                  <span>Phân Bổ Xếp Hạng & Điểm Hài Lòng</span>
+                  <MorphIcon icon={Star} size={18} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                  <span>Xếp Hạng & Điểm Hài Lòng (CSAT)</span>
                 </h2>
-                {#if (telemetry?.userAnalytics?.feedback.totalCount || 0) > 0}
-                  <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-400/10 border border-amber-400/20 text-amber-300 text-xs font-mono">
-                    <span>Trung bình:</span>
-                    <strong class="text-white">{telemetry?.userAnalytics?.feedback.averageRating?.toFixed(1)} ★</strong>
-                  </div>
-                {:else}
-                  <span class="text-xs text-white/40 font-mono">0 đánh giá</span>
-                {/if}
+                <p class="text-xs text-white/50 mt-0.5">
+                  Dữ liệu phản hồi thực tế từ người dùng được gửi và lưu trữ tập trung trên máy chủ
+                </p>
               </div>
 
-              <!-- Rating 5 stars to 1 star bars -->
-              <div class="space-y-3 mt-4">
+              <button
+                type="button"
+                onclick={fetchServerFeedbacks}
+                disabled={isServerLoading}
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-white/80 hover:text-white transition-all cursor-pointer disabled:opacity-50"
+              >
+                <MorphIcon icon={RefreshCw} size={13} strokeWidth={2} spin={isServerLoading} />
+                <span>Làm mới</span>
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+              <!-- Big Rating Display -->
+              <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex flex-col justify-center items-center text-center">
+                <span class="text-3xl sm:text-4xl font-serif font-medium text-amber-300">
+                  {serverStats?.feedbackStats.averageRating?.toFixed(1) || '5.0'}
+                </span>
+                <div class="flex items-center text-amber-400 text-sm mt-1">
+                  <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
+                </div>
+                <span class="text-xs text-white/60 mt-1 font-mono">
+                  {serverStats?.feedbackStats.totalCount ?? serverFeedbacks.length} lượt đánh giá thực tế
+                </span>
+              </div>
+
+              <!-- Star Distribution 5 to 1 -->
+              <div class="sm:col-span-2 space-y-2 flex flex-col justify-center">
                 {#each [5, 4, 3, 2, 1] as star}
-                  {@const count = telemetry?.userAnalytics?.feedback.distribution[star] || 0}
-                  {@const total = telemetry?.userAnalytics?.feedback.totalCount || 0}
+                  {@const total = serverStats?.feedbackStats.totalCount || (serverFeedbacks.length || 1)}
+                  {@const count = serverStats?.feedbackStats.distribution[star] || serverFeedbacks.filter((f) => f.rating === star).length}
                   {@const pct = total > 0 ? Math.round((count / total) * 100) : 0}
-                  <div class="flex items-center gap-3 text-xs">
-                    <div class="w-14 flex items-center gap-1 shrink-0 font-mono text-white/80">
-                      <span>{star}</span>
-                      <span class="text-amber-400 text-xs">★</span>
-                    </div>
-                    <div class="flex-1 bg-white/5 rounded-full h-3 overflow-hidden border border-white/5">
+                  <div class="flex items-center gap-2.5 text-xs">
+                    <span class="w-12 font-mono text-white/70 flex items-center gap-1">
+                      <span>{star}</span><span class="text-amber-400 text-xs">★</span>
+                    </span>
+                    <div class="flex-1 bg-white/5 rounded-full h-2.5 overflow-hidden border border-white/5">
                       <div
                         class="h-full rounded-full transition-all duration-500 {star >= 4 ? 'bg-amber-400' : star === 3 ? 'bg-amber-500/70' : 'bg-stone-500'}"
                         style="width: {pct}%"
                       ></div>
                     </div>
-                    <div class="w-16 text-right font-mono text-white/70 shrink-0">
+                    <span class="w-16 text-right font-mono text-white/60 text-[11px]">
                       {count} <span class="text-white/40">({pct}%)</span>
-                    </div>
+                    </span>
                   </div>
                 {/each}
               </div>
             </div>
+          </div>
 
-            <!-- Satisfaction Index Box -->
-            {#if (telemetry?.userAnalytics?.feedback.totalCount || 0) > 0}
-              {@const positiveCount = (telemetry?.userAnalytics?.feedback.distribution[4] || 0) + (telemetry?.userAnalytics?.feedback.distribution[5] || 0)}
-              {@const csatPct = Math.round((positiveCount / (telemetry?.userAnalytics?.feedback.totalCount || 1)) * 100)}
-              <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs space-y-2">
-                <div class="flex items-center gap-2 text-amber-300 font-medium">
-                  <MorphIcon icon={Heart} size={15} strokeWidth={2} />
-                  <span>Chỉ Số Hài Lòng Thực Tế (CSAT)</span>
-                </div>
-                <p class="text-white/80 leading-relaxed font-mono">
-                  Tỷ lệ đánh giá tích cực (4-5 sao): <strong class="text-amber-300 text-sm">{csatPct}%</strong> ({positiveCount}/{telemetry?.userAnalytics?.feedback.totalCount} lượt đánh giá thực tế).
-                </p>
-                <div class="pt-1 flex items-center justify-between text-[11px] text-white/50 border-t border-white/10">
-                  <span>Dữ liệu thu thập trực tiếp từ người dùng</span>
-                  <span class="text-emerald-300 font-mono">Xác thực</span>
-                </div>
+          <!-- CSAT Metrics Card -->
+          <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl flex flex-col justify-between">
+            <div>
+              <div class="flex items-center gap-2 text-white font-medium text-sm mb-3">
+                <MorphIcon icon={Heart} size={16} strokeWidth={2} />
+                <span>Chỉ Số Trải Nghiệm Tích Cực</span>
               </div>
-            {:else}
-              <div class="p-4 rounded-2xl bg-white/[0.02] border border-white/10 text-xs space-y-2">
-                <div class="flex items-center gap-2 text-white/60 font-medium">
-                  <MorphIcon icon={Heart} size={15} strokeWidth={2} />
-                  <span>Chỉ Số Hài Lòng Thực Tế (CSAT)</span>
+              <div class="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs text-white/60">Tỷ lệ hài lòng (4-5★):</span>
+                  <span class="text-base font-serif font-medium text-emerald-300 font-mono">{feedbackCsat.csatPercent}%</span>
                 </div>
-                <p class="text-white/40 leading-relaxed">
-                  Chưa có dữ liệu đánh giá từ người dùng. Khi người dùng bấm biểu tượng trái tim trên thanh điều hướng để gửi cảm nhận, điểm số CSAT sẽ được tính toán trực tiếp tại đây.
+                <div class="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+                  <div class="bg-emerald-400 h-full rounded-full" style="width: {feedbackCsat.csatPercent}%"></div>
+                </div>
+                <p class="text-[11px] text-white/50 leading-relaxed pt-1">
+                  {feedbackCsat.posCount} trên tổng số {feedbackCsat.totalCount} người dùng cảm nhận sự bình yên và yêu thích không gian Haven Art.
                 </p>
-                <div class="pt-1 flex items-center justify-between text-[11px] text-white/30 border-t border-white/5">
-                  <span>Chờ phản hồi từ người dùng</span>
-                  <span class="text-white/40 font-mono">0 lượt</span>
-                </div>
               </div>
-            {/if}
+            </div>
+
+            <!-- Category Filters -->
+            <div class="pt-4 mt-4 border-t border-white/10">
+              <span class="text-[11px] text-white/50 block mb-2">Lọc theo danh mục:</span>
+              <div class="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onclick={() => { feedbackCategoryFilter = 'all'; }}
+                  class="px-2 py-1 rounded-lg text-[11px] transition-colors cursor-pointer {feedbackCategoryFilter === 'all' ? 'bg-amber-400 text-stone-900 font-medium' : 'bg-white/5 text-white/60 hover:text-white'}"
+                >
+                  Tất cả ({serverFeedbacks.length})
+                </button>
+                {#each Object.entries(FEEDBACK_CATEGORY_META) as [key, meta]}
+                  {@const catCount = serverFeedbacks.filter((f) => f.category === key).length}
+                  <button
+                    type="button"
+                    onclick={() => { feedbackCategoryFilter = key; }}
+                    class="px-2 py-1 rounded-lg text-[11px] transition-colors cursor-pointer {feedbackCategoryFilter === key ? 'bg-amber-400 text-stone-900 font-medium' : 'bg-white/5 text-white/60 hover:text-white'}"
+                  >
+                    <span>{meta.icon}</span> <span>{meta.label}</span> ({catCount})
+                  </button>
+                {/each}
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- User Feedback List Section -->
+        <!-- Feedback Cards Grid -->
         <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl">
-          <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
-            <div>
-              <h2 class="text-base sm:text-lg font-serif font-medium text-white flex items-center gap-2">
-                <MorphIcon icon={MessageSquare} size={18} strokeWidth={2} spring="smooth" reducedMotion="user" />
-                <span>Cảm Nhận & Góp Ý Từ Người Dùng ({telemetry?.userAnalytics?.feedback.totalCount || 0})</span>
-              </h2>
-              <p class="text-xs text-white/50 mt-0.5">
-                Các nhận xét được lưu trữ cục bộ, phản ánh chân thực cảm xúc và mong muốn của người dùng
-              </p>
-            </div>
-          </div>
+          <h3 class="text-base font-serif font-medium text-white mb-4">
+            Ý Kiến & Cảm Nhận Chi Tiết ({filteredFeedbacks.length})
+          </h3>
 
-          {#if (telemetry?.userAnalytics?.feedback.recentFeedbacks || []).length === 0}
+          {#if filteredFeedbacks.length === 0}
             <div class="text-center py-12 text-white/40 text-xs sm:text-sm">
               <div class="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3 text-white/30">
                 <MorphIcon icon={MessageSquare} size={20} />
               </div>
-              <p class="font-medium text-white/60">Chưa có cảm nhận nào được gửi từ người dùng.</p>
-              <p class="text-[11px] text-white/40 mt-1 max-w-sm mx-auto">
-                Khi người dùng trải nghiệm và gửi đánh giá từ biểu tượng Trái tim trên thanh điều hướng ở trang chính, các nhận xét thực tế sẽ hiển thị tại đây.
-              </p>
+              <p class="font-medium text-white/60">Chưa có đánh giá nào phù hợp.</p>
+              <p class="text-[11px] text-white/40 mt-1">Khi người dùng bấm biểu tượng Trái tim để gửi cảm nhận, nhận xét thực tế sẽ hiển thị tại đây.</p>
             </div>
           {:else}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {#each (telemetry?.userAnalytics?.feedback.recentFeedbacks || []) as fb (fb.id)}
+              {#each filteredFeedbacks as fb (fb.id)}
                 <div class="p-4 rounded-2xl bg-white/[0.02] hover:bg-white/[0.04] border border-white/10 transition-all flex flex-col justify-between gap-3 group">
                   <!-- Header: Stars + Category + Date -->
                   <div class="flex items-center justify-between gap-2">
                     <div class="flex items-center gap-2">
-                      <!-- Star rating representation -->
                       <div class="flex items-center text-amber-400 text-xs">
                         {#each Array(fb.rating) as _}
                           <span>★</span>
@@ -1392,7 +2054,6 @@
                         {/each}
                       </div>
 
-                      <!-- Category Badge -->
                       <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] bg-white/5 border border-white/10 text-white/80">
                         <span>{FEEDBACK_CATEGORY_META[fb.category]?.icon || '✨'}</span>
                         <span>{FEEDBACK_CATEGORY_META[fb.category]?.label || 'Chung'}</span>
@@ -1403,16 +2064,28 @@
                       <span class="text-[11px] text-white/40 font-mono">
                         {new Date(fb.createdAt).toLocaleDateString('vi-VN')}
                       </span>
-                      <!-- Delete feedback button -->
                       <button
                         type="button"
-                        onclick={() => handleDeleteFeedback(fb.id)}
+                        onclick={() => handleDeleteFeedback(fb)}
                         class="p-1 rounded-lg text-white/30 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                        title="Xóa phản hồi này"
+                        title="Xóa đánh giá này"
                       >
                         <MorphIcon icon={Trash2} size={13} strokeWidth={1.75} />
                       </button>
                     </div>
+                  </div>
+
+                  <!-- Author info -->
+                  <div class="text-[11px] text-white/60 flex items-center gap-2">
+                    <span class="font-medium text-white">{fb.userName}</span>
+                    {#if fb.userEmail}
+                      <span class="text-white/40 font-mono">({fb.userEmail})</span>
+                    {/if}
+                    {#if fb.device}
+                      <span class="px-1.5 py-0.2 rounded text-[10px] bg-white/5 text-white/50 border border-white/5 font-mono ml-auto">
+                        {fb.device}
+                      </span>
+                    {/if}
                   </div>
 
                   <!-- Comment Body -->
@@ -1422,7 +2095,7 @@
 
                   <!-- Footer note -->
                   <div class="text-[10px] text-white/30 font-mono text-right">
-                    ID: {fb.id.slice(0, 10)}...
+                    ID: {fb.id.slice(0, 12)}...
                   </div>
                 </div>
               {/each}
@@ -1432,101 +2105,200 @@
       </div>
     {/if}
 
-    <!-- TAB 2: DATABASE & JOURNAL -->
+    <!-- TAB 5: SERVER DATABASE ADMINISTRATION -->
     {#if activeTab === 'database'}
       <div class="space-y-6">
-        <!-- Storage Quota & Mood Distribution -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <!-- Mood Breakdown Card -->
-          <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl lg:col-span-2">
-            <h2 class="text-base sm:text-lg font-serif font-medium text-white mb-3 flex items-center justify-between">
-              <span>Phân Bố Cảm Xúc Trong Nhật Ký</span>
-              <span class="text-xs font-sans text-white/50 font-normal">
-                Tổng: {telemetry?.storage.entriesCount || 0} bài viết
-              </span>
-            </h2>
-
-            <div class="space-y-3 mt-4">
-              {#each Object.entries(MOOD_META) as [key, meta]}
-                {@const count = telemetry?.storage.moodBreakdown[key] || 0}
-                {@const total = telemetry?.storage.entriesCount || 1}
-                {@const pct = total > 0 ? Math.round((count / total) * 100) : 0}
-                <div>
-                  <div class="flex items-center justify-between text-xs sm:text-sm mb-1.5">
-                    <span class="flex items-center gap-2">
-                      <span>{meta.icon}</span>
-                      <span class="text-white/90">{meta.label}</span>
-                    </span>
-                    <span class="font-mono text-white/60">
-                      {count} bài <span class="text-white/40">({pct}%)</span>
-                    </span>
-                  </div>
-                  <div class="w-full bg-white/10 rounded-full h-2 overflow-hidden">
-                    <div
-                      class="{meta.color} h-full rounded-full transition-all duration-500"
-                      style="width: {pct}%"
-                    ></div>
-                  </div>
-                </div>
-              {/each}
+        <!-- Database Overview & File Metrics -->
+        <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl">
+          <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 class="text-base sm:text-lg font-serif font-medium text-white flex items-center gap-2">
+                <MorphIcon icon={Database} size={18} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                <span>Quản Trị Cơ Sở Dữ Liệu Máy Chủ (Server Database)</span>
+              </h2>
+              <p class="text-xs text-white/50 mt-0.5">
+                Cơ sở dữ liệu tập trung lưu trữ tài khoản, bài viết, đánh giá và lưu lượng truy cập thực tế
+              </p>
             </div>
+
+            <button
+              type="button"
+              onclick={refreshAllServerData}
+              disabled={isServerLoading}
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-white/80 hover:text-white transition-all cursor-pointer disabled:opacity-50"
+            >
+              <MorphIcon icon={RefreshCw} size={13} strokeWidth={2} spin={isServerLoading} />
+              <span>Làm mới</span>
+            </button>
           </div>
 
-          <!-- Quick Actions & Maintenance -->
-          <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl flex flex-col justify-between">
+          <!-- DB File Properties Grid -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5 text-xs">
             <div>
-              <h2 class="text-base sm:text-lg font-serif font-medium text-white mb-2">Bảo Trì Cơ Sở Dữ Liệu</h2>
-              <p class="text-xs text-white/60 leading-relaxed mb-4">
-                Toàn bộ dữ liệu nằm an toàn trong trình duyệt (Local-First). Bạn có thể sao lưu hoặc dọn dẹp các bản ghi rác.
-              </p>
-
-              <div class="space-y-2.5">
-                <div class="p-3 rounded-2xl bg-white/5 border border-white/10 text-xs">
-                  <div class="flex items-center justify-between text-white/70">
-                    <span>Số từ đã viết:</span>
-                    <span class="font-mono font-medium text-white">{telemetry?.storage.totalWords || 0} từ</span>
-                  </div>
-                  <div class="flex items-center justify-between text-white/70 mt-1">
-                    <span>Bài viết đã xóa tạm:</span>
-                    <span class="font-mono font-medium text-amber-300">{telemetry?.storage.softDeletedCount || 0} bài</span>
-                  </div>
-                  <div class="flex items-center justify-between text-white/70 mt-1">
-                    <span>Quyền lưu trữ bền vững:</span>
-                    <span class="font-mono font-medium {telemetry?.storage.persisted ? 'text-emerald-300' : 'text-white/50'}">
-                      {telemetry?.storage.persisted ? 'Đã cấp' : 'Chưa cấp'}
-                    </span>
-                  </div>
-                </div>
-              </div>
+              <span class="text-white/40 block">Vị Trí CSDL Server</span>
+              <span class="font-mono text-white text-xs mt-0.5 block truncate" title="data/server-db.json">data/server-db.json</span>
             </div>
+            <div>
+              <span class="text-white/40 block">Dung Lượng Tệp</span>
+              <span class="font-mono text-amber-300 text-xs mt-0.5 block">
+                {formatBytes(serverStats?.dbStats.fileSizeBytes ?? 0)}
+              </span>
+            </div>
+            <div>
+              <span class="text-white/40 block">Kiến Trúc Schema</span>
+              <span class="font-mono text-emerald-300 text-xs mt-0.5 block">
+                Version {serverStats?.dbStats.version || 2} (Multi-User)
+              </span>
+            </div>
+            <div>
+              <span class="text-white/40 block">Cập Nhật Gần Nhất</span>
+              <span class="font-mono text-white/70 text-xs mt-0.5 block truncate">
+                {serverStats?.dbStats.lastModifiedMs ? new Date(serverStats.dbStats.lastModifiedMs).toLocaleTimeString('vi-VN') : 'Mới cập nhật'}
+              </span>
+            </div>
+          </div>
+        </div>
 
-            <div class="space-y-2 mt-4">
+        <!-- Maintenance & Operations Action Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Card 1: Backup Download -->
+          <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl flex flex-col justify-between space-y-4">
+            <div>
+              <div class="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-300 mb-3">
+                <MorphIcon icon={Download} size={18} strokeWidth={2} />
+              </div>
+              <h3 class="text-base font-serif font-medium text-white mb-1">Sao Lưu CSDL Máy Chủ</h3>
+              <p class="text-xs text-white/60 leading-relaxed">
+                Tải xuống toàn bộ tệp CSDL JSON chứa tài khoản, bài viết nhật ký, đánh giá và lịch sử phiên truy cập.
+              </p>
+            </div>
+            <button
+              type="button"
+              onclick={handleDownloadServerDbBackup}
+              class="w-full py-2.5 px-3.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-200 hover:text-white text-xs font-medium transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+            >
+              <MorphIcon icon={Download} size={14} strokeWidth={2} />
+              <span>Tải Xuất Bản Sao Lưu (.json)</span>
+            </button>
+          </div>
+
+          <!-- Card 2: Restore / Upload -->
+          <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl flex flex-col justify-between space-y-4">
+            <div>
+              <div class="w-10 h-10 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-300 mb-3">
+                <MorphIcon icon={Upload} size={18} strokeWidth={2} />
+              </div>
+              <h3 class="text-base font-serif font-medium text-white mb-1">Phục Hồi CSDL Từ File</h3>
+              <p class="text-xs text-white/60 leading-relaxed">
+                Nhập file sao lưu JSON hợp lệ để đồng bộ hoặc khôi phục dữ liệu lên server.
+              </p>
+              <input
+                type="file"
+                accept=".json"
+                bind:this={dbFileInputRef}
+                onchange={handleUploadServerDbBackup}
+                class="hidden"
+              />
+            </div>
+            <button
+              type="button"
+              onclick={() => dbFileInputRef?.click()}
+              class="w-full py-2.5 px-3.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-200 hover:text-white text-xs font-medium transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+            >
+              <MorphIcon icon={Upload} size={14} strokeWidth={2} />
+              <span>Tải Lên Bản Phục Hồi (.json)</span>
+            </button>
+          </div>
+
+          <!-- Card 3: Root Security & Maintenance -->
+          <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl flex flex-col justify-between space-y-4">
+            <div>
+              <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-300 mb-3">
+                <MorphIcon icon={ShieldCheck} size={18} strokeWidth={2} />
+              </div>
+              <h3 class="text-base font-serif font-medium text-white mb-1">Bảo Mật & Quản Trị Viên</h3>
+              <p class="text-xs text-white/60 leading-relaxed">
+                Đổi mật khẩu tài khoản Root Admin hoặc dọn dẹp các bản ghi bài viết đã xóa tạm khỏi hệ thống.
+              </p>
+            </div>
+            <div class="space-y-2">
               <button
                 type="button"
-                onclick={handleExportBackup}
-                class="w-full py-2.5 px-3.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-200 hover:text-white text-xs font-medium transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-              >
-                <MorphIcon icon={Download} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
-                <span>Sao Lưu Toàn Bộ CSDL (JSON)</span>
-              </button>
-
-              <button
-                type="button"
-                onclick={handleRequestPersistence}
+                onclick={() => { showChangePasswordModal = true; }}
                 class="w-full py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-white/80 hover:text-white text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                <MorphIcon icon={ShieldCheck} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
-                <span>Yêu Cầu Lưu Trữ Bền Vững</span>
+                <MorphIcon icon={KeyRound} size={14} strokeWidth={1.75} />
+                <span>Đổi Mật Khẩu Admin Root</span>
               </button>
 
               <button
                 type="button"
-                onclick={handlePurgeDatabase}
+                onclick={handlePurgeServerDeletedEntries}
                 class="w-full py-2 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 hover:text-rose-100 text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                <MorphIcon icon={Trash2} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
-                <span>Dọn Dẹp Bài Viết Đã Xóa Tạm</span>
+                <MorphIcon icon={Trash2} size={14} strokeWidth={1.75} />
+                <span>Dọn Rác Bài Viết Đã Xóa Tạm</span>
               </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Real Traffic & Sessions Metrics -->
+        <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl space-y-6">
+          <div class="flex items-center justify-between">
+            <h3 class="text-base font-serif font-medium text-white flex items-center gap-2">
+              <MorphIcon icon={Clock} size={18} strokeWidth={2} spring="smooth" reducedMotion="user" />
+              <span>Phân Tích Lưu Lượng & Thời Lượng Thực Tế (Server Sessions)</span>
+            </h3>
+            <span class="text-xs text-cyan-300 font-mono">
+              Tổng {serverStats?.analytics.visits.total ?? 0} lượt truy cập
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Duration -->
+            <div class="p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+              <span class="text-xs text-white/50 block">Thời Lượng Trung Bình Mỗi Phiên</span>
+              <span class="text-2xl font-serif font-medium text-white mt-1 block">
+                {formatDuration(serverStats?.analytics.duration.averageSeconds || 0)}
+              </span>
+              <span class="text-[11px] text-white/40 block mt-1">Được tính từ nhịp tim heartbeat máy chủ</span>
+            </div>
+
+            <!-- Visits breakdown -->
+            <div class="p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+              <span class="text-xs text-white/50 block">Truy Cập Hôm Nay / 7 Ngày</span>
+              <div class="flex items-baseline gap-2 mt-1">
+                <span class="text-2xl font-serif font-medium text-amber-300">
+                  {serverStats?.analytics.visits.today || 0}
+                </span>
+                <span class="text-xs text-white/50">hôm nay</span>
+                <span class="text-white/30">•</span>
+                <span class="text-lg font-serif text-white/80">
+                  {serverStats?.analytics.visits.thisWeek || 0}
+                </span>
+                <span class="text-xs text-white/50">tuần này</span>
+              </div>
+              <span class="text-[11px] text-white/40 block mt-1">Ghi nhận liên tục từ telemetry</span>
+            </div>
+
+            <!-- Devices breakdown -->
+            <div class="p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+              <span class="text-xs text-white/50 block">Phân Bổ Thiết Bị</span>
+              <div class="flex items-center gap-3 mt-2 text-xs">
+                <div>
+                  <span class="text-white/40 block text-[10px]">Máy tính</span>
+                  <span class="font-mono text-white font-medium">{serverStats?.analytics.devices.desktop || 0}</span>
+                </div>
+                <div>
+                  <span class="text-white/40 block text-[10px]">Điện thoại</span>
+                  <span class="font-mono text-cyan-300 font-medium">{serverStats?.analytics.devices.mobile || 0}</span>
+                </div>
+                <div>
+                  <span class="text-white/40 block text-[10px]">Máy tính bảng</span>
+                  <span class="font-mono text-amber-300 font-medium">{serverStats?.analytics.devices.tablet || 0}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

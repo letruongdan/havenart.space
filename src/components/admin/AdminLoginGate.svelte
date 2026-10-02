@@ -24,14 +24,45 @@
     errorMessage = null;
 
     try {
+      const res = await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        if (typeof window !== 'undefined' && window.sessionStorage) {
+          window.sessionStorage.setItem('haven_admin_token', data.token);
+        }
+        props.onAuthenticated();
+        return;
+      }
+
+      if (data.error) {
+        errorMessage = data.error;
+        return;
+      }
+
+      // Client-side fallback if server unavailable
       const result = await verifyAdminLogin(username, password);
       if (result.success) {
         props.onAuthenticated();
       } else {
         errorMessage = result.error || 'Xác thực không thành công.';
       }
-    } catch (err: any) {
-      errorMessage = err?.message || 'Lỗi hệ thống khi đăng nhập.';
+    } catch {
+      // Network failure, attempt client verification fallback
+      try {
+        const result = await verifyAdminLogin(username, password);
+        if (result.success) {
+          props.onAuthenticated();
+        } else {
+          errorMessage = result.error || 'Xác thực không thành công.';
+        }
+      } catch (err: any) {
+        errorMessage = err?.message || 'Lỗi hệ thống khi đăng nhập.';
+      }
     } finally {
       isLoading = false;
     }

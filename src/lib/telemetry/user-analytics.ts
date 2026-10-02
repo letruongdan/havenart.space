@@ -97,6 +97,7 @@ export function recordVisit(): void {
     visitsData.dailyHistory[todayStr] = (visitsData.dailyHistory[todayStr] || 0) + 1;
 
     window.localStorage.setItem(STORAGE_KEY_VISITS, JSON.stringify(visitsData));
+    pingServerSessionHeartbeat();
   } catch {
     // Ignore storage issues
   }
@@ -114,11 +115,61 @@ function updateSessionCount(): void {
   }
 }
 
+let lastServerPing = 0;
+
 /**
- * Accumulate active duration time.
+ * Pings the server analytics endpoint to track active session duration and traffic.
+ */
+export async function pingServerSessionHeartbeat(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  const now = Date.now();
+  if (now - lastServerPing < 10000) return; // limit frequency to at most once per 10s
+  lastServerPing = now;
+
+  let sessionId = window.sessionStorage?.getItem('haven_session_uuid');
+  if (!sessionId) {
+    sessionId = `ses_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    window.sessionStorage?.setItem('haven_session_uuid', sessionId);
+  }
+
+  const device = window.innerWidth < 768 ? 'mobile' : window.innerWidth < 1024 ? 'tablet' : 'desktop';
+  const language = navigator.language || 'vi';
+
+  try {
+    const rawUser = window.localStorage?.getItem('haven_user_session');
+    let userId = null;
+    if (rawUser) {
+      const u = JSON.parse(rawUser);
+      userId = u?.user?.id || null;
+    }
+
+    fetch('/api/analytics/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId,
+        durationSeconds: inMemorySessionSeconds,
+        pageViews: 1,
+        device,
+        language,
+        userId,
+      }),
+    }).catch(() => {});
+  } catch {
+    // Ignore analytics network errors
+  }
+}
+
+/**
+ * Accumulate active duration time and sync to server.
  */
 export function updateActiveDuration(secondsElapsed: number, isMusicPlaying: boolean = false): void {
   inMemorySessionSeconds += secondsElapsed;
+
+  // Periodically sync session heartbeat to server every ~30 seconds
+  if (inMemorySessionSeconds > 0 && inMemorySessionSeconds % 30 === 0) {
+    pingServerSessionHeartbeat();
+  }
 
   if (typeof window === 'undefined' || !window.localStorage) return;
 
