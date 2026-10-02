@@ -1,7 +1,7 @@
 import type { JournalRepository } from '../db/repository';
 import { DEFAULT_DRAFT_ID } from '../db/schema';
 import { ALL_HAVEN_AUDIO_TRACKS } from '../audio/ambient-catalog';
-import { CURATED_ARTWORKS } from '../visuals/artworks';
+import { ALL_HAVEN_ARTWORKS } from '../visuals/pexels';
 import {
   getUserAnalyticsSummary,
   type UserAnalyticsSummary,
@@ -424,7 +424,7 @@ export async function getSystemTelemetry(options?: {
     visual: {
       webgl2Supported,
       rendererInfo,
-      totalArtworks: CURATED_ARTWORKS.length,
+      totalArtworks: ALL_HAVEN_ARTWORKS.length,
       activeMode: webgl2Supported ? 'shader' : 'static',
     },
     pwa: {

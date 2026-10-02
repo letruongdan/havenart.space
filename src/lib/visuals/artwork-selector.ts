@@ -19,6 +19,23 @@ const MAX_RECENT_TRACKING = 12;
 
 // In-memory fallback if sessionStorage is inaccessible
 let inMemoryRecentIds: string[] = [];
+let dynamicLiveArtworks: HavenArtwork[] = [];
+
+/**
+ * Registers dynamically fetched live artworks (e.g. from Pexels API) into available pool.
+ */
+export function registerLiveArtworks(artworks: HavenArtwork[]): void {
+  const existingIds = new Set(ALL_HAVEN_ARTWORKS.map((a) => a.id));
+  const newOnes = artworks.filter((a) => !existingIds.has(a.id));
+  dynamicLiveArtworks = newOnes;
+}
+
+/**
+ * Retrieves all currently available artworks (curated + any dynamically loaded ones).
+ */
+export function getAllAvailableArtworks(): HavenArtwork[] {
+  return [...dynamicLiveArtworks, ...ALL_HAVEN_ARTWORKS];
+}
 
 /**
  * Retrieves the list of recently displayed artwork IDs.
@@ -141,8 +158,7 @@ export function selectArtworkForSession(context: SelectionContext = {}): Selecti
   if (context.excludedIds) {
     context.excludedIds.forEach((id) => recentIds.add(id));
   }
-
-  const all = ALL_HAVEN_ARTWORKS;
+  const all = getAllAvailableArtworks();
 
   // Filter out recent artworks
   let candidates = all.filter((art) => !recentIds.has(art.id));

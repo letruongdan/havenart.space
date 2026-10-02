@@ -2,7 +2,13 @@
   import { onMount, onDestroy } from 'svelte';
   import { JournalRepository } from '../../lib/db/repository';
   import { ALL_HAVEN_AUDIO_TRACKS, type HavenAudioTrack } from '../../lib/audio/ambient-catalog';
-  import { CURATED_ARTWORKS, type Artwork } from '../../lib/visuals/artworks';
+  import { ALL_HAVEN_ARTWORKS, type HavenArtwork } from '../../lib/visuals/pexels';
+  import {
+    getPexelsApiKey,
+    setPexelsApiKey,
+    hasPexelsApiKey,
+    testPexelsApiKey,
+  } from '../../lib/visuals/pexels-api';
   import {
     getSystemTelemetry,
     formatBytes,
@@ -84,6 +90,80 @@
 
   // Event log filter
   let eventLevelFilter = $state<string>('all');
+
+  // Pexels API & Catalog Filter State
+  let pexelsApiKeyInput = $state(getPexelsApiKey() || '');
+  let isTestingPexelsKey = $state(false);
+  let pexelsTestResult = $state<{ success: boolean; message: string } | null>(null);
+  let artworkCategoryFilter = $state<'all' | 'pexels' | 'classical'>('all');
+
+  let filteredArtworks = $derived.by(() => {
+    if (artworkCategoryFilter === 'pexels') {
+      return ALL_HAVEN_ARTWORKS.filter((a) => a.id.startsWith('pexels_'));
+    }
+    if (artworkCategoryFilter === 'classical') {
+      return ALL_HAVEN_ARTWORKS.filter((a) => !a.id.startsWith('pexels_'));
+    }
+    return ALL_HAVEN_ARTWORKS;
+  });
+
+  async function handleTestPexelsKey() {
+    const key = pexelsApiKeyInput.trim();
+    if (!key) {
+      pexelsTestResult = {
+        success: false,
+        message: 'Vui lòng nhập API Key để kiểm tra kết nối.',
+      };
+      return;
+    }
+    isTestingPexelsKey = true;
+    pexelsTestResult = null;
+    try {
+      const res = await testPexelsApiKey(key);
+      if (res.valid) {
+        pexelsTestResult = {
+          success: true,
+          message: `Kết nối Pexels API thành công! Đã xác thực API key hợp lệ (Mẫu ảnh: "${res.samplePhotographer || 'Pexels Contributor'}").`,
+        };
+      } else {
+        pexelsTestResult = {
+          success: false,
+          message: res.error || 'API Key không hợp lệ hoặc bị từ chối bởi Pexels.',
+        };
+      }
+    } catch (err: any) {
+      pexelsTestResult = {
+        success: false,
+        message: err?.message || 'Không thể kết nối đến Pexels API. Vui lòng kiểm tra lại mạng.',
+      };
+    } finally {
+      isTestingPexelsKey = false;
+    }
+  }
+
+  function handleSavePexelsKey() {
+    const key = pexelsApiKeyInput.trim();
+    setPexelsApiKey(key);
+    showNotice(key ? 'Đã lưu cấu hình Pexels API Key thành công' : 'Đã xóa API Key, trở về chế độ kho ảnh tĩnh', 'success');
+    logSystemEvent({
+      level: 'info',
+      category: 'system',
+      message: key ? 'Cập nhật cấu hình Pexels Live API Key' : 'Xóa cấu hình Pexels API Key',
+    });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('haven:pexels-key-changed'));
+    }
+  }
+
+  function handleClearPexelsKey() {
+    pexelsApiKeyInput = '';
+    setPexelsApiKey('');
+    pexelsTestResult = null;
+    showNotice('Đã gỡ Pexels API Key, trở về kho ảnh mặc định', 'warn');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('haven:pexels-key-changed'));
+    }
+  }
 
   function showNotice(text: string, type: 'success' | 'warn' | 'error' = 'success') {
     statusNotice = { text, type };
@@ -1402,26 +1482,172 @@
           </div>
         </div>
 
-        <!-- Curated Artworks Gallery -->
+        <!-- Pexels Live API Configuration & Status -->
         <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl">
-          <div class="mb-4">
-            <h2 class="text-base sm:text-lg font-serif font-medium text-white flex items-center gap-2">
-              <MorphIcon icon={Image} size={18} strokeWidth={2} spring="smooth" reducedMotion="user" />
-              <span>Bộ Sưu Tập Danh Họa Kinh Điển ({CURATED_ARTWORKS.length})</span>
-            </h2>
-            <p class="text-xs text-white/50 mt-0.5">Tất cả các tác phẩm đã kiểm chứng bản quyền Public Domain minh bạch</p>
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="p-2 rounded-xl bg-amber-400/10 text-amber-300 border border-amber-400/20">
+                  <MorphIcon icon={Zap} size={18} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                </span>
+                <div>
+                  <h2 class="text-base sm:text-lg font-serif font-medium text-white flex items-center gap-2">
+                    <span>Tự Động Nạp Ảnh Live Pexels API</span>
+                  </h2>
+                  <p class="text-xs text-white/50 mt-0.5">Tải ảnh phong cảnh thời gian thực trực tiếp từ Pexels theo thời tiết và tâm trạng</p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              {#if hasPexelsApiKey()}
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  Đang bật Live API
+                </span>
+              {:else}
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-500/15 text-blue-300 border border-blue-500/30">
+                  <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+                  Kho 40 Ảnh Tuyển Chọn Sẵn
+                </span>
+              {/if}
+            </div>
+          </div>
+
+          <div class="mt-5 space-y-4">
+            <div class="flex flex-col sm:flex-row gap-3">
+              <div class="relative flex-1">
+                <input
+                  type="password"
+                  bind:value={pexelsApiKeyInput}
+                  placeholder="Nhập Pexels API Key (ví dụ: aB39kL...)"
+                  class="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white placeholder-white/30 text-sm focus:outline-none focus:border-amber-400/50 focus:ring-1 focus:ring-amber-400/50 transition-all font-mono"
+                />
+              </div>
+
+              <div class="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onclick={handleTestPexelsKey}
+                  disabled={isTestingPexelsKey}
+                  class="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 disabled:opacity-50 text-white text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  {#if isTestingPexelsKey}
+                    <div class="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                    <span>Đang kiểm tra...</span>
+                  {:else}
+                    <MorphIcon icon={RefreshCw} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                    <span>Kiểm tra kết nối</span>
+                  {/if}
+                </button>
+
+                <button
+                  type="button"
+                  onclick={handleSavePexelsKey}
+                  class="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-medium text-xs transition-all cursor-pointer shadow-sm flex items-center gap-1.5"
+                >
+                  <MorphIcon icon={CheckCircle2} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                  <span>Lưu cấu hình</span>
+                </button>
+
+                {#if pexelsApiKeyInput}
+                  <button
+                    type="button"
+                    onclick={handleClearPexelsKey}
+                    class="p-2.5 rounded-xl bg-white/5 hover:bg-rose-500/20 text-white/50 hover:text-rose-300 border border-white/10 transition-all cursor-pointer"
+                    title="Xóa Key"
+                  >
+                    <MorphIcon icon={Trash2} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                  </button>
+                {/if}
+              </div>
+            </div>
+
+            <!-- Test Result Feedback Banner -->
+            {#if pexelsTestResult}
+              <div class="p-3.5 rounded-xl text-xs flex items-start gap-2.5 {pexelsTestResult.success ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-200' : 'bg-rose-500/10 border border-rose-500/20 text-rose-200'}">
+                <div class="shrink-0 mt-0.5">
+                  {#if pexelsTestResult.success}
+                    <MorphIcon icon={CheckCircle2} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                  {:else}
+                    <MorphIcon icon={AlertTriangle} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                  {/if}
+                </div>
+                <div>
+                  <div class="font-medium">{pexelsTestResult.message}</div>
+                </div>
+              </div>
+            {/if}
+
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-white/40 gap-2 pt-1">
+              <p>
+                💡 Chưa có API Key? Đăng ký hoàn toàn miễn phí tại Pexels để nhận khóa API truy cập hàng triệu bức ảnh.
+              </p>
+              <a
+                href="https://www.pexels.com/api/"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-1 text-amber-300 hover:text-amber-200 underline shrink-0 transition-colors"
+              >
+                <span>Nhận Pexels API Key miễn phí</span>
+                <MorphIcon icon={ExternalLink} size={11} strokeWidth={2} spring="smooth" reducedMotion="user" />
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Artworks & Photography Gallery -->
+        <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 pb-4 border-b border-white/10">
+            <div>
+              <h2 class="text-base sm:text-lg font-serif font-medium text-white flex items-center gap-2">
+                <MorphIcon icon={Image} size={18} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                <span>Kho Hình Nền Tuyển Chọn & Danh Họa ({filteredArtworks.length} / {ALL_HAVEN_ARTWORKS.length})</span>
+              </h2>
+              <p class="text-xs text-white/50 mt-0.5">Ảnh thiên nhiên phân giải cao 1920px và kiệt tác cổ điển có bản quyền minh bạch</p>
+            </div>
+
+            <!-- Category Filter Tabs -->
+            <div class="flex items-center gap-1.5 p-1 rounded-xl bg-white/5 border border-white/10 self-start sm:self-auto">
+              <button
+                type="button"
+                onclick={() => (artworkCategoryFilter = 'all')}
+                class="px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer {artworkCategoryFilter === 'all' ? 'bg-amber-400 text-black font-medium shadow-sm' : 'text-white/60 hover:text-white'}"
+              >
+                Tất cả ({ALL_HAVEN_ARTWORKS.length})
+              </button>
+              <button
+                type="button"
+                onclick={() => (artworkCategoryFilter = 'pexels')}
+                class="px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer {artworkCategoryFilter === 'pexels' ? 'bg-amber-400 text-black font-medium shadow-sm' : 'text-white/60 hover:text-white'}"
+              >
+                🌿 Pexels Thiên Nhiên (35)
+              </button>
+              <button
+                type="button"
+                onclick={() => (artworkCategoryFilter = 'classical')}
+                class="px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer {artworkCategoryFilter === 'classical' ? 'bg-amber-400 text-black font-medium shadow-sm' : 'text-white/60 hover:text-white'}"
+              >
+                🎨 Danh Họa Cổ Điển (5)
+              </button>
+            </div>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {#each CURATED_ARTWORKS as artwork (artwork.id)}
+            {#each filteredArtworks as artwork (artwork.id)}
               <div class="group relative rounded-2xl overflow-hidden bg-white/5 border border-white/10 hover:border-white/25 transition-all">
-                <div class="aspect-[4/3] w-full overflow-hidden bg-black/40">
+                <div class="aspect-[4/3] w-full overflow-hidden bg-black/40 relative">
                   <img
                     src={artwork.src}
                     alt={artwork.title}
                     loading="lazy"
                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                   />
+                  <div class="absolute top-2 left-2">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium backdrop-blur-md {artwork.id.startsWith('pexels_') ? 'bg-emerald-500/30 text-emerald-200 border border-emerald-400/30' : 'bg-amber-500/30 text-amber-200 border border-amber-400/30'}">
+                      {artwork.id.startsWith('pexels_') ? 'Pexels HD' : 'Danh Họa'}
+                    </span>
+                  </div>
                 </div>
                 <div class="p-3.5">
                   <h3 class="font-serif font-medium text-white text-sm truncate" title={artwork.title}>
@@ -1429,12 +1655,12 @@
                   </h3>
                   <p class="text-xs text-white/60 truncate mt-0.5">{artwork.artist}</p>
                   <div class="mt-2 pt-2 border-t border-white/10 flex items-center justify-between text-[11px] text-white/40">
-                    <span>{artwork.license}</span>
+                    <span class="truncate max-w-[120px]" title={artwork.license}>{artwork.license}</span>
                     <a
                       href={artwork.sourceUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      class="text-amber-300/80 hover:text-amber-200 transition-colors"
+                      class="text-amber-300/80 hover:text-amber-200 transition-colors shrink-0"
                     >
                       Chi tiết ↗
                     </a>

@@ -13,7 +13,12 @@
   import {
     selectArtworkForSession,
     selectNextArtwork,
+    registerLiveArtworks,
   } from '../lib/visuals/artwork-selector';
+  import {
+    searchPexelsLivePhotos,
+    hasPexelsApiKey,
+  } from '../lib/visuals/pexels-api';
   import {
     selectTrackForSession,
     selectNextTrack,
@@ -81,7 +86,24 @@
   let visualController: VisualController | null = null;
   let canvasElement: HTMLCanvasElement | null = $state(null);
 
+  async function loadLivePexelsIfAvailable() {
+    if (!hasPexelsApiKey()) return;
+    try {
+      const livePhotos = await searchPexelsLivePhotos({
+        weather: weatherInfo?.condition,
+        mood: activeMood || undefined,
+        perPage: 15,
+      });
+      if (livePhotos && livePhotos.length > 0) {
+        registerLiveArtworks(livePhotos);
+      }
+    } catch (e) {
+      console.warn('Pexels live fetch notice:', e);
+    }
+  }
+
   onMount(() => {
+    loadLivePexelsIfAvailable();
     // 1. Initialize Audio Engine & Select Unique Ambient Track for this Visit
     try {
       const initialTrackSelection = selectTrackForSession();
@@ -192,6 +214,7 @@
           currentTrackArtist = weatherTrackSelection.track.artist;
           audioEngine?.setTrack(weatherTrackSelection.track);
         }
+        loadLivePexelsIfAvailable();
       })
       .catch((err) => {
         console.warn('Weather detection notice:', err);
@@ -212,10 +235,16 @@
       }
     }
 
+    function onPexelsKeyChangeEvent() {
+      loadLivePexelsIfAvailable();
+    }
+
     window.addEventListener('haven:language-change', onLanguageChangeEvent);
+    window.addEventListener('haven:pexels-key-changed', onPexelsKeyChangeEvent);
 
     return () => {
       window.removeEventListener('haven:language-change', onLanguageChangeEvent);
+      window.removeEventListener('haven:pexels-key-changed', onPexelsKeyChangeEvent);
     };
   });
 
@@ -388,6 +417,7 @@
     currentArtwork = artResult.artwork;
     selectionReason = artResult.reason;
     visualController?.setArtwork(artResult.artwork);
+    loadLivePexelsIfAvailable();
 
     // Adapt audio soundscape to selected mood
     const trackResult = selectTrackForSession({
