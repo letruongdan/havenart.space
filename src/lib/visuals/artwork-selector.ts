@@ -20,6 +20,87 @@ const MAX_RECENT_TRACKING = 12;
 // In-memory fallback if sessionStorage is inaccessible
 let inMemoryRecentIds: string[] = [];
 let dynamicLiveArtworks: HavenArtwork[] = [];
+const failedArtworkIds = new Set<string>();
+
+/**
+ * 5 Guaranteed local offline masterpieces bundled in public/images/artworks/
+ * These never 404 and have zero network dependencies.
+ */
+export const LOCAL_GUARANTEED_ARTWORKS: HavenArtwork[] = [
+  {
+    id: 'haven-local-hokusai-red-fuji',
+    title: 'Gió lành, sớm mai quang đãng (Phú Sĩ Đỏ)',
+    artist: 'Katsushika Hokusai',
+    src: '/images/artworks/hokusai-red-fuji.webp',
+    license: 'Public Domain',
+    sourceUrl: 'https://havenart.space/art/hokusai-red-fuji',
+    description: 'Bình minh tĩnh lặng trên núi Phú Sĩ từ bộ tranh Ba Mươi Sáu Cảnh Núi Phú Sĩ.',
+    weather: ['clear', 'dusk'],
+    moods: ['peaceful', 'hopeful'],
+    timeOfDay: ['dawn', 'day'],
+  },
+  {
+    id: 'haven-local-monet-water-lilies',
+    title: 'Hoa súng (Nymphéas)',
+    artist: 'Claude Monet',
+    src: '/images/artworks/monet-water-lilies.webp',
+    license: 'Public Domain',
+    sourceUrl: 'https://havenart.space/art/monet-water-lilies',
+    description: 'Hình bóng mờ ảo phản chiếu mặt nước êm đềm với những bông súng nở rộ tại Giverny.',
+    weather: ['clouds', 'rain'],
+    moods: ['calm', 'peaceful'],
+    timeOfDay: ['day'],
+  },
+  {
+    id: 'haven-local-hasui-lake-chuzenji',
+    title: 'Hồ Chūzenji, Nikkō',
+    artist: 'Kawase Hasui',
+    src: '/images/artworks/hasui-lake-chuzenji.webp',
+    license: 'Public Domain',
+    sourceUrl: 'https://havenart.space/art/hasui-lake-chuzenji',
+    description: 'Làn sương chiều tịch mịch và làn nước tĩnh lặng theo phong cách shin-hanga truyền thống.',
+    weather: ['fog', 'dusk'],
+    moods: ['reflective', 'calm'],
+    timeOfDay: ['dusk', 'night'],
+  },
+  {
+    id: 'haven-local-turner-evening-star',
+    title: 'Ngôi sao hôm (The Evening Star)',
+    artist: 'J. M. W. Turner',
+    src: '/images/artworks/turner-evening-star.webp',
+    license: 'Public Domain',
+    sourceUrl: 'https://havenart.space/art/turner-evening-star',
+    description: 'Hoàng hôn thanh bình trên bờ biển vắng với ánh sáng le lói của vì sao hôm.',
+    weather: ['dusk', 'night', 'clear'],
+    moods: ['reflective', 'peaceful'],
+    timeOfDay: ['dusk', 'night'],
+  },
+  {
+    id: 'haven-local-friedrich-morning-mist',
+    title: 'Nắng sớm trên dãy núi',
+    artist: 'Caspar David Friedrich',
+    src: '/images/artworks/friedrich-morning-mist.webp',
+    license: 'Public Domain',
+    sourceUrl: 'https://havenart.space/art/friedrich-morning-mist',
+    description: 'Ánh bình minh dịu nhẹ bao trùm những dải núi thoai thoải trong làn sương sớm.',
+    weather: ['fog', 'clear'],
+    moods: ['hopeful', 'grateful'],
+    timeOfDay: ['dawn', 'day'],
+  },
+];
+
+export function recordFailedArtwork(id: string): void {
+  if (!id) return;
+  failedArtworkIds.add(id);
+}
+
+export function clearFailedArtworks(): void {
+  failedArtworkIds.clear();
+}
+
+export function isArtworkFailed(id: string): boolean {
+  return failedArtworkIds.has(id);
+}
 
 /**
  * Registers dynamically fetched live artworks (e.g. from Pexels API) into available pool.
@@ -31,10 +112,12 @@ export function registerLiveArtworks(artworks: HavenArtwork[]): void {
 }
 
 /**
- * Retrieves all currently available artworks (curated + any dynamically loaded ones).
+ * Retrieves all currently available artworks (curated + dynamic, excluding any that failed to load).
  */
 export function getAllAvailableArtworks(): HavenArtwork[] {
-  return [...dynamicLiveArtworks, ...ALL_HAVEN_ARTWORKS];
+  const list = [...dynamicLiveArtworks, ...ALL_HAVEN_ARTWORKS, ...LOCAL_GUARANTEED_ARTWORKS];
+  const valid = list.filter((a) => !failedArtworkIds.has(a.id));
+  return valid.length > 0 ? valid : [...LOCAL_GUARANTEED_ARTWORKS];
 }
 
 /**

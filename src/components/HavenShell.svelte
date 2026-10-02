@@ -14,6 +14,8 @@
     selectArtworkForSession,
     selectNextArtwork,
     registerLiveArtworks,
+    recordFailedArtwork,
+    LOCAL_GUARANTEED_ARTWORKS,
   } from '../lib/visuals/artwork-selector';
   import { searchAnyLivePhotos } from '../lib/visuals/multi-source';
   import {
@@ -78,6 +80,7 @@
   // Visual state: Start with static artwork for full-screen immersive painting experience
   let visualMode = $state<VisualMode>('static');
   let currentArtwork = $state<Artwork | null>(null);
+  let imageErrorCount = $state(0);
 
   // Weather & Mood Context
   let weatherInfo = $state<WeatherInfo | null>(null);
@@ -413,7 +416,49 @@
     visualMode = visualController.getActiveMode();
   }
 
+  function handleImageLoad() {
+    imageErrorCount = 0;
+  }
+
+  function handleArtworkError() {
+    if (!currentArtwork) return;
+
+    const failedId = currentArtwork.id;
+    const failedSrc = currentArtwork.src;
+    console.warn(`[Haven Art] Artwork failed to load: ${failedId} (${failedSrc}). Activating safety fallback.`);
+
+    recordFailedArtwork(failedId);
+    imageErrorCount += 1;
+
+    // Tier 1 Fallback: Switch to one of the 5 guaranteed bundled local masterpieces
+    if (imageErrorCount <= 2) {
+      const localCandidates = LOCAL_GUARANTEED_ARTWORKS.filter((a) => a.id !== failedId);
+      const matchedLocal =
+        localCandidates.find(
+          (a) =>
+            (weatherInfo && a.weather?.includes(weatherInfo.condition)) ||
+            (activeMood && a.moods?.includes(activeMood))
+        ) ||
+        localCandidates[Math.floor(Math.random() * localCandidates.length)] ||
+        LOCAL_GUARANTEED_ARTWORKS[0];
+
+      if (matchedLocal) {
+        currentArtwork = matchedLocal;
+        selectionReason = 'Kiệt tác thanh tịnh (Bộ sưu tập ngoại tuyến)';
+        visualController?.setArtwork(matchedLocal);
+        return;
+      }
+    }
+
+    // Tier 2 Fallback: If repeated failures occur, switch to WebGL2 Procedural Shader
+    console.warn('[Haven Art] Consecutive image load failures detected. Falling back to WebGL2 Procedural Shader.');
+    visualMode = 'shader';
+    visualController?.setMode('shader');
+    selectionReason = 'Không gian thị giác tạo sinh (GPU WebGL2)';
+  }
+
   function handleNextArtwork() {
+    imageErrorCount = 0;
     const result = selectNextArtwork({
       currentId: currentArtwork?.id,
       weather: weatherInfo?.condition,
@@ -422,10 +467,15 @@
     });
     currentArtwork = result.artwork;
     selectionReason = result.reason;
+    if (visualMode === 'shader') {
+      visualMode = 'static';
+      visualController?.setMode('static');
+    }
     visualController?.setArtwork(result.artwork);
   }
 
   function handleMoodChange(newMood: string) {
+    imageErrorCount = 0;
     activeMood = newMood;
 
     // Adapt visual artwork to selected mood
@@ -436,6 +486,10 @@
     });
     currentArtwork = artResult.artwork;
     selectionReason = artResult.reason;
+    if (visualMode === 'shader') {
+      visualMode = 'static';
+      visualController?.setMode('static');
+    }
     visualController?.setArtwork(artResult.artwork);
     loadLivePhotosIfAvailable();
 
@@ -528,17 +582,24 @@
 >
   <!-- Full-Screen Artwork & Visual Presentation -->
   <div class="fixed inset-0 w-full h-full pointer-events-none z-0" aria-hidden="true">
+    <!-- Tier 0 Fallback: Ambient soothing CSS gradient layer so screen is NEVER pitch black -->
+    <div
+      class="absolute inset-0 bg-gradient-to-br from-[#1a1c26] via-[#101217] to-[#090a0f] pointer-events-none"
+    ></div>
+
     <!-- WebGL2 Shader Canvas -->
     <canvas
       bind:this={canvasElement}
       class="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-out {visualMode === 'shader' ? 'opacity-100' : 'opacity-0'}"
     ></canvas>
 
-    <!-- Curated Masterpiece Artwork (Full-Bleed Cover) -->
+    <!-- Curated Masterpiece Artwork (Full-Bleed Cover) with Load and Error Protection -->
     {#if currentArtwork}
       <img
         src={currentArtwork.src}
         alt={currentArtwork.title}
+        onload={handleImageLoad}
+        onerror={handleArtworkError}
         class="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-out {visualMode === 'static' ? 'opacity-100' : 'opacity-0'}"
       />
     {/if}
