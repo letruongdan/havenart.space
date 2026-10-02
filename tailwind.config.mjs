@@ -4,8 +4,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Be Vietnam Pro"', '"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-        serif: ['"Cormorant Garamond"', '"Playfair Display"', '"Lora"', 'ui-serif', 'Georgia', 'Cambria', 'serif'],
+        sans: ['"Be Vietnam Pro"', '"Inter"', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+        serif: ['"Lora"', '"Playfair Display"', '"Merriweather"', 'ui-serif', 'Georgia', 'Cambria', 'serif'],
       },
     },
   },
