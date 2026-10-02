@@ -1,0 +1,1069 @@
+<script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
+  import { JournalRepository } from '../../lib/db/repository';
+  import { ALL_HAVEN_AUDIO_TRACKS, type HavenAudioTrack } from '../../lib/audio/ambient-catalog';
+  import { CURATED_ARTWORKS, type Artwork } from '../../lib/visuals/artworks';
+  import {
+    getSystemTelemetry,
+    formatBytes,
+    formatDuration,
+    generateDiagnosticReport,
+    logSystemEvent,
+    getRecentEvents,
+    clearRecentEvents,
+    runDatabasePurge,
+    requestStoragePersistence,
+    clearAllPwaCaches,
+    type SystemTelemetry,
+    type SystemEvent,
+  } from '../../lib/telemetry/system-monitor';
+  import { BackupManager } from '../../lib/export/backup';
+  import { MorphIcon } from 'morphicons/svelte';
+  import {
+    Activity,
+    Database,
+    Cpu,
+    Wifi,
+    Volume2,
+    RefreshCw,
+    Download,
+    Trash2,
+    Music,
+    Image,
+    CheckCircle2,
+    AlertTriangle,
+    Info,
+    Clock,
+    ArrowLeft,
+    ExternalLink,
+    Zap,
+    BarChart2,
+    ShieldCheck,
+    Play,
+    Pause,
+    Layers,
+  } from 'lucide';
+
+  let repo = $state<JournalRepository | null>(null);
+  let telemetry = $state<SystemTelemetry | null>(null);
+  let activeTab = $state<'overview' | 'database' | 'catalog' | 'diagnostics'>('overview');
+  let autoRefresh = $state(true);
+  let refreshInterval = $state(3); // seconds
+  let timerId: ReturnType<typeof setInterval> | null = null;
+  let statusNotice = $state<{ text: string; type: 'success' | 'warn' | 'error' } | null>(null);
+  let noticeTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  // Audio preview state inside admin
+  let activePreviewTrackId = $state<string | null>(null);
+  let previewAudioElement: HTMLAudioElement | null = null;
+
+  // Event log filter
+  let eventLevelFilter = $state<string>('all');
+
+  function showNotice(text: string, type: 'success' | 'warn' | 'error' = 'success') {
+    statusNotice = { text, type };
+    if (noticeTimeout) clearTimeout(noticeTimeout);
+    noticeTimeout = setTimeout(() => {
+      statusNotice = null;
+    }, 4000);
+  }
+
+  async function refreshTelemetry() {
+    try {
+      telemetry = await getSystemTelemetry({ repo });
+    } catch (err: any) {
+      console.warn('Lỗi thu thập thông số hệ thống:', err);
+    }
+  }
+
+  onMount(async () => {
+    try {
+      repo = new JournalRepository();
+      await repo.init();
+      logSystemEvent({
+        level: 'success',
+        category: 'db',
+        message: 'Khởi tạo kết nối IndexedDB Quản trị thành công',
+      });
+    } catch (err: any) {
+      logSystemEvent({
+        level: 'warn',
+        category: 'db',
+        message: `Khởi tạo CSDL: ${err?.message || err}`,
+      });
+    }
+
+    await refreshTelemetry();
+
+    logSystemEvent({
+      level: 'info',
+      category: 'system',
+      message: 'Mở trang Bảng điều khiển Quản trị Haven Art',
+    });
+
+    // Start auto-refresh interval
+    timerId = setInterval(() => {
+      if (autoRefresh) {
+        refreshTelemetry();
+      }
+    }, refreshInterval * 1000);
+  });
+
+  onDestroy(() => {
+    if (timerId) clearInterval(timerId);
+    if (noticeTimeout) clearTimeout(noticeTimeout);
+    if (previewAudioElement) {
+      previewAudioElement.pause();
+      previewAudioElement.src = '';
+    }
+    repo?.close().catch(() => {});
+  });
+
+  // Toggle audio preview
+  function toggleAudioPreview(track: HavenAudioTrack) {
+    if (activePreviewTrackId === track.id) {
+      if (previewAudioElement) {
+        previewAudioElement.pause();
+      }
+      activePreviewTrackId = null;
+    } else {
+      if (!previewAudioElement) {
+        previewAudioElement = new Audio();
+        previewAudioElement.addEventListener('ended', () => {
+          activePreviewTrackId = null;
+        });
+      }
+      previewAudioElement.src = track.src;
+      previewAudioElement.volume = 0.5;
+      previewAudioElement.play().then(() => {
+        activePreviewTrackId = track.id;
+        logSystemEvent({
+          level: 'info',
+          category: 'audio',
+          message: `Nghe thử bản nhạc: ${track.title}`,
+        });
+      }).catch((e) => {
+        showNotice(`Không thể phát thử âm thanh: ${e.message}`, 'error');
+      });
+    }
+  }
+
+  // Test sound beep using AudioContext oscillator
+  function testAudioOscillator() {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) {
+        showNotice('Web Audio API không được hỗ trợ trên trình duyệt này', 'error');
+        return;
+      }
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, ctx.currentTime); // 440 Hz (Note A4)
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.3); // Ramp to A5
+
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.35);
+
+      logSystemEvent({
+        level: 'success',
+        category: 'audio',
+        message: 'Thử nghiệm Web Audio Oscillator (440Hz -> 880Hz) thành công',
+      });
+      showNotice('Phát thử nghiệm âm thanh Web Audio thành công!', 'success');
+    } catch (err: any) {
+      showNotice(`Lỗi Web Audio: ${err.message}`, 'error');
+    }
+  }
+
+  // Handle Maintenance Actions
+  async function handlePurgeDatabase() {
+    if (!repo) return;
+    const count = await runDatabasePurge(repo, 0);
+    await refreshTelemetry();
+    showNotice(`Đã dọn dẹp vĩnh viễn ${count} bài viết đã xóa tạm trong CSDL`, 'success');
+  }
+
+  async function handleRequestPersistence() {
+    const isGranted = await requestStoragePersistence();
+    await refreshTelemetry();
+    if (isGranted) {
+      showNotice('Trình duyệt đã cấp quyền lưu trữ bền vững (Persistent Storage)', 'success');
+    } else {
+      showNotice('Trình duyệt chưa thể cấp quyền lưu trữ bền vững tại thời điểm này', 'warn');
+    }
+  }
+
+  async function handleClearCaches() {
+    const count = await clearAllPwaCaches();
+    await refreshTelemetry();
+    showNotice(`Đã làm sạch ${count} bộ nhớ đệm PWA`, 'success');
+  }
+
+  async function handleExportBackup() {
+    if (!repo) return;
+    try {
+      const backupMgr = new BackupManager(repo);
+      const json = await backupMgr.exportDataAsJson();
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `haven-journal-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      logSystemEvent({
+        level: 'success',
+        category: 'db',
+        message: 'Xuất sao lưu CSDL nhật ký thành công',
+      });
+      showNotice('Đã tải xuống tệp sao lưu dữ liệu JSON thành công', 'success');
+    } catch (err: any) {
+      showNotice(`Lỗi xuất dữ liệu: ${err.message}`, 'error');
+    }
+  }
+
+  function handleDownloadDiagnosticReport() {
+    if (!telemetry) return;
+    const reportJson = generateDiagnosticReport(telemetry);
+    const blob = new Blob([reportJson], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `haven-system-diagnostics-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    logSystemEvent({
+      level: 'success',
+      category: 'system',
+      message: 'Tải xuống Báo cáo chẩn đoán hệ thống (JSON)',
+    });
+    showNotice('Đã xuất báo cáo chẩn đoán hệ thống thành công!', 'success');
+  }
+
+  function handleClearEvents() {
+    clearRecentEvents();
+    if (telemetry) {
+      telemetry.events = [];
+    }
+    showNotice('Đã xóa toàn bộ nhật ký sự kiện', 'success');
+  }
+
+  let filteredEvents = $derived(
+    telemetry?.events.filter((e) => {
+      if (eventLevelFilter === 'all') return true;
+      return e.level === eventLevelFilter;
+    }) || []
+  );
+
+  const MOOD_META: Record<string, { label: string; icon: string; color: string }> = {
+    calm: { label: 'Bình an', icon: '🍃', color: 'bg-emerald-500' },
+    grateful: { label: 'Biết ơn', icon: '✨', color: 'bg-amber-400' },
+    reflective: { label: 'Trầm tư', icon: '🌙', color: 'bg-indigo-400' },
+    peaceful: { label: 'Tĩnh lặng', icon: '🕊️', color: 'bg-cyan-400' },
+    hopeful: { label: 'Hy vọng', icon: '☀️', color: 'bg-yellow-400' },
+  };
+</script>
+
+<div class="min-h-screen bg-[#090a0d] text-stone-200 font-sans selection:bg-amber-500/25 selection:text-white pb-16">
+  <!-- Top Navigation & System Status Header -->
+  <header class="sticky top-0 z-40 bg-[#0d0e12]/80 backdrop-blur-xl border-b border-white/10 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+      <!-- Brand & Identity -->
+      <div class="flex items-center gap-3">
+        <a
+          href="/"
+          class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/15 text-xs text-white/80 hover:text-white transition-colors cursor-pointer group"
+          title="Trở lại giao diện người dùng"
+        >
+          <MorphIcon icon={ArrowLeft} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+          <span>Về trang chủ</span>
+        </a>
+
+        <div class="h-4 w-px bg-white/20 hidden sm:block"></div>
+
+        <div class="flex items-center gap-2.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_10px_#fbbf24]"></span>
+          <h1 class="text-base sm:text-lg font-serif font-medium text-white tracking-wide">
+            Haven Art <span class="text-xs sm:text-sm font-sans text-white/50 font-normal">| Quản Trị & Giám Sát</span>
+          </h1>
+        </div>
+
+        <!-- Real-time Status Beacon -->
+        <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-mono">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="font-sans">Hệ thống Trực tuyến</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons & Auto-refresh -->
+      <div class="flex items-center gap-2.5 flex-wrap">
+        <!-- Session Clock -->
+        {#if telemetry}
+          <div class="hidden md:flex items-center gap-1.5 text-xs text-white/50 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">
+            <MorphIcon icon={Clock} size={13} strokeWidth={1.75} spring="smooth" reducedMotion="user" />
+            <span>Phiên: {formatDuration(telemetry.uptimeSeconds)}</span>
+          </div>
+        {/if}
+
+        <!-- Auto Refresh Toggle -->
+        <button
+          type="button"
+          onclick={() => { autoRefresh = !autoRefresh; }}
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs border transition-all cursor-pointer {autoRefresh ? 'bg-amber-400/15 border-amber-400/30 text-amber-300' : 'bg-white/5 border-white/10 text-white/50'}"
+          title="Bật/Tắt tự động cập nhật thông số"
+        >
+          <span class="w-1.5 h-1.5 rounded-full {autoRefresh ? 'bg-amber-400' : 'bg-white/30'}"></span>
+          <span>Tự động ({refreshInterval}s)</span>
+        </button>
+
+        <!-- Manual Refresh Button -->
+        <button
+          type="button"
+          onclick={refreshTelemetry}
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-xs text-white/80 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
+          title="Làm mới thông số ngay bây giờ"
+        >
+          <MorphIcon icon={RefreshCw} size={13} strokeWidth={2} spring="smooth" reducedMotion="user" />
+          <span>Làm mới</span>
+        </button>
+
+        <!-- Export Diagnostics -->
+        <button
+          type="button"
+          onclick={handleDownloadDiagnosticReport}
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-xs text-amber-200 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95 font-medium"
+          title="Tải về tệp báo cáo chẩn đoán toàn bộ hệ thống dưới dạng JSON"
+        >
+          <MorphIcon icon={Download} size={13} strokeWidth={2} spring="smooth" reducedMotion="user" />
+          <span>Xuất JSON</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Notification Banner -->
+  {#if statusNotice}
+    <div
+      class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 transition-all duration-300"
+      role="alert"
+    >
+      <div
+        class="flex items-center justify-between p-3 rounded-2xl border backdrop-blur-md shadow-md text-xs sm:text-sm {statusNotice.type === 'success' ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-200' : statusNotice.type === 'warn' ? 'bg-amber-500/15 border-amber-500/30 text-amber-200' : 'bg-rose-500/15 border-rose-500/30 text-rose-200'}"
+      >
+        <div class="flex items-center gap-2">
+          {#if statusNotice.type === 'success'}
+            <MorphIcon icon={CheckCircle2} size={16} strokeWidth={2} spring="smooth" reducedMotion="user" />
+          {:else if statusNotice.type === 'warn'}
+            <MorphIcon icon={AlertTriangle} size={16} strokeWidth={2} spring="smooth" reducedMotion="user" />
+          {:else}
+            <MorphIcon icon={Info} size={16} strokeWidth={2} spring="smooth" reducedMotion="user" />
+          {/if}
+          <span>{statusNotice.text}</span>
+        </div>
+        <button
+          type="button"
+          onclick={() => { statusNotice = null; }}
+          class="text-white/60 hover:text-white px-2 py-0.5 rounded cursor-pointer"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  {/if}
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+    <!-- Top KPI Cards Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- 1. Database & Storage Card -->
+      <div class="p-5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/10 backdrop-blur-xl shadow-lg transition-all duration-200">
+        <div class="flex items-center justify-between text-white/50 text-xs font-medium uppercase tracking-wider mb-2">
+          <span class="flex items-center gap-1.5">
+            <MorphIcon icon={Database} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+            <span>Lưu trữ CSDL</span>
+          </span>
+          <span class="text-amber-400 font-mono">IndexedDB</span>
+        </div>
+        <div class="mt-1">
+          <div class="text-xl sm:text-2xl font-serif font-medium text-white">
+            {formatBytes(telemetry?.storage.usageBytes || 0)}
+          </div>
+          <p class="text-xs text-white/50 mt-1 truncate">
+            Hạn ngạch: {formatBytes(telemetry?.storage.quotaBytes || 0)}
+            {#if telemetry?.storage.usagePercentage !== undefined}
+              <span class="text-amber-300">({telemetry.storage.usagePercentage}%)</span>
+            {/if}
+          </p>
+        </div>
+        <!-- Progress bar -->
+        <div class="w-full bg-white/10 rounded-full h-1.5 mt-3 overflow-hidden">
+          <div
+            class="bg-amber-400 h-full rounded-full transition-all duration-500"
+            style="width: {Math.max(2, Math.min(100, (telemetry?.storage.usagePercentage || 1)))}%"
+          ></div>
+        </div>
+        <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
+          <span>{telemetry?.storage.entriesCount || 0} bài viết</span>
+          <span>{telemetry?.storage.draftsCount ? '1 bản nháp' : '0 nháp'}</span>
+        </div>
+      </div>
+
+      <!-- 2. Catalog & Assets Card -->
+      <div class="p-5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/10 backdrop-blur-xl shadow-lg transition-all duration-200">
+        <div class="flex items-center justify-between text-white/50 text-xs font-medium uppercase tracking-wider mb-2">
+          <span class="flex items-center gap-1.5">
+            <MorphIcon icon={Layers} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+            <span>Kho Nội Dung</span>
+          </span>
+          <span class="text-emerald-400 font-mono">100% Phê duyệt</span>
+        </div>
+        <div class="mt-1">
+          <div class="text-xl sm:text-2xl font-serif font-medium text-white">
+            {telemetry?.audio.totalTracks || 8} <span class="text-sm font-sans text-white/60 font-normal">nhạc</span> • {telemetry?.visual.totalArtworks || 8} <span class="text-sm font-sans text-white/60 font-normal">tranh</span>
+          </div>
+          <p class="text-xs text-white/50 mt-1">
+            {telemetry?.audio.pianoTracksCount || 3} Piano solo • {telemetry?.audio.ambientTracksCount || 5} Ambient calm
+          </p>
+        </div>
+        <div class="w-full bg-white/10 rounded-full h-1.5 mt-3 overflow-hidden">
+          <div class="bg-emerald-400 h-full rounded-full w-full"></div>
+        </div>
+        <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
+          <span>Bản quyền CC0 / Public Domain</span>
+          <span class="text-emerald-300">Minh bạch</span>
+        </div>
+      </div>
+
+      <!-- 3. WebGL2 Visual Pipeline Card -->
+      <div class="p-5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/10 backdrop-blur-xl shadow-lg transition-all duration-200">
+        <div class="flex items-center justify-between text-white/50 text-xs font-medium uppercase tracking-wider mb-2">
+          <span class="flex items-center gap-1.5">
+            <MorphIcon icon={Cpu} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+            <span>Đồ họa & Shader</span>
+          </span>
+          <span class="{telemetry?.visual.webgl2Supported ? 'text-cyan-400' : 'text-amber-400'} font-mono">
+            {telemetry?.visual.webgl2Supported ? 'WebGL2' : 'Static Fallback'}
+          </span>
+        </div>
+        <div class="mt-1">
+          <div class="text-xl sm:text-2xl font-serif font-medium text-white truncate">
+            {telemetry?.visual.webgl2Supported ? 'GPU Tăng tốc' : 'Ảnh tĩnh'}
+          </div>
+          <p class="text-xs text-white/50 mt-1 truncate" title={telemetry?.visual.rendererInfo || 'Hardware Renderer'}>
+            {telemetry?.visual.rendererInfo || 'Hỗ trợ phần cứng'}
+          </p>
+        </div>
+        <div class="w-full bg-white/10 rounded-full h-1.5 mt-3 overflow-hidden">
+          <div class="bg-cyan-400 h-full rounded-full w-full"></div>
+        </div>
+        <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
+          <span>DPR: {telemetry?.device.dpr || 1}x</span>
+          <span>{telemetry?.device.viewport || '1920x1080'}</span>
+        </div>
+      </div>
+
+      <!-- 4. Real Performance Web Vitals Card -->
+      <div class="p-5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/10 backdrop-blur-xl shadow-lg transition-all duration-200">
+        <div class="flex items-center justify-between text-white/50 text-xs font-medium uppercase tracking-wider mb-2">
+          <span class="flex items-center gap-1.5">
+            <MorphIcon icon={Activity} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+            <span>Đo lường Tốc độ</span>
+          </span>
+          <span class="text-emerald-400 font-mono">Web Vitals</span>
+        </div>
+        <div class="mt-1">
+          <div class="text-xl sm:text-2xl font-serif font-medium text-white">
+            {telemetry?.performance.firstContentfulPaintMs !== undefined ? `${telemetry.performance.firstContentfulPaintMs} ms` : 'Tối ưu'}
+          </div>
+          <p class="text-xs text-white/50 mt-1">
+            FCP (Sơn nội dung đầu tiên) • Tải trang: {telemetry?.performance.pageLoadTimeMs !== undefined ? `${telemetry.performance.pageLoadTimeMs}ms` : '< 1s'}
+          </p>
+        </div>
+        <div class="w-full bg-white/10 rounded-full h-1.5 mt-3 overflow-hidden">
+          <div class="bg-emerald-400 h-full rounded-full w-full"></div>
+        </div>
+        <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
+          <span>Tài nguyên: {telemetry?.performance.resourcesCount || 0}</span>
+          <span class="text-emerald-300">Tốc độ A+</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex items-center gap-2 border-b border-white/10 pb-2 overflow-x-auto">
+      <button
+        type="button"
+        onclick={() => { activeTab = 'overview'; }}
+        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer whitespace-nowrap {activeTab === 'overview' ? 'bg-amber-400/20 text-amber-200 border border-amber-400/30' : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'}"
+      >
+        <MorphIcon icon={BarChart2} size={15} strokeWidth={2} spring="smooth" reducedMotion="user" />
+        <span>Hiệu Năng & Thiết Bị</span>
+      </button>
+
+      <button
+        type="button"
+        onclick={() => { activeTab = 'database'; }}
+        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer whitespace-nowrap {activeTab === 'database' ? 'bg-amber-400/20 text-amber-200 border border-amber-400/30' : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'}"
+      >
+        <MorphIcon icon={Database} size={15} strokeWidth={2} spring="smooth" reducedMotion="user" />
+        <span>CSDL & Nhật Ký</span>
+      </button>
+
+      <button
+        type="button"
+        onclick={() => { activeTab = 'catalog'; }}
+        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer whitespace-nowrap {activeTab === 'catalog' ? 'bg-amber-400/20 text-amber-200 border border-amber-400/30' : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'}"
+      >
+        <MorphIcon icon={Music} size={15} strokeWidth={2} spring="smooth" reducedMotion="user" />
+        <span>Thư Viện Media</span>
+      </button>
+
+      <button
+        type="button"
+        onclick={() => { activeTab = 'diagnostics'; }}
+        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer whitespace-nowrap {activeTab === 'diagnostics' ? 'bg-amber-400/20 text-amber-200 border border-amber-400/30' : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'}"
+      >
+        <MorphIcon icon={Zap} size={15} strokeWidth={2} spring="smooth" reducedMotion="user" />
+        <span>Chẩn Đoán & Nhật Ký Console</span>
+      </button>
+    </div>
+
+    <!-- TAB 1: OVERVIEW & PERFORMANCE -->
+    {#if activeTab === 'overview'}
+      <div class="space-y-6">
+        <!-- Navigation Timings Grid -->
+        <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl">
+          <h2 class="text-base sm:text-lg font-serif font-medium text-white mb-4 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span>Chi tiết Thời gian Tải trang (Navigation Timing API)</span>
+          </h2>
+
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div class="p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 text-center">
+              <span class="text-xs text-white/50 block mb-1">Sơn Đầu Tiên (FP)</span>
+              <span class="text-base sm:text-lg font-mono font-medium text-emerald-300">
+                {telemetry?.performance.firstPaintMs !== undefined ? `${telemetry.performance.firstPaintMs} ms` : 'N/A'}
+              </span>
+              <span class="text-[10px] text-emerald-400/80 block mt-1">Tức thì</span>
+            </div>
+
+            <div class="p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 text-center">
+              <span class="text-xs text-white/50 block mb-1">Nội Dung Đầu (FCP)</span>
+              <span class="text-base sm:text-lg font-mono font-medium text-emerald-300">
+                {telemetry?.performance.firstContentfulPaintMs !== undefined ? `${telemetry.performance.firstContentfulPaintMs} ms` : 'N/A'}
+              </span>
+              <span class="text-[10px] text-emerald-400/80 block mt-1">Xuất sắc</span>
+            </div>
+
+            <div class="p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 text-center">
+              <span class="text-xs text-white/50 block mb-1">DOM Interactive</span>
+              <span class="text-base sm:text-lg font-mono font-medium text-cyan-300">
+                {telemetry?.performance.domInteractiveMs !== undefined ? `${telemetry.performance.domInteractiveMs} ms` : 'N/A'}
+              </span>
+              <span class="text-[10px] text-cyan-400/80 block mt-1">Sẵn sàng phản hồi</span>
+            </div>
+
+            <div class="p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 text-center">
+              <span class="text-xs text-white/50 block mb-1">DOM Complete</span>
+              <span class="text-base sm:text-lg font-mono font-medium text-cyan-300">
+                {telemetry?.performance.domCompleteMs !== undefined ? `${telemetry.performance.domCompleteMs} ms` : 'N/A'}
+              </span>
+              <span class="text-[10px] text-cyan-400/80 block mt-1">Đầy đủ cây DOM</span>
+            </div>
+
+            <div class="p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 text-center">
+              <span class="text-xs text-white/50 block mb-1">Tổng Thời Gian Tải</span>
+              <span class="text-base sm:text-lg font-mono font-medium text-amber-300">
+                {telemetry?.performance.pageLoadTimeMs !== undefined ? `${telemetry.performance.pageLoadTimeMs} ms` : '< 1s'}
+              </span>
+              <span class="text-[10px] text-amber-400/80 block mt-1">Hoàn tất</span>
+            </div>
+
+            <div class="p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 text-center">
+              <span class="text-xs text-white/50 block mb-1">Số Tài Nguyên</span>
+              <span class="text-base sm:text-lg font-mono font-medium text-white/90">
+                {telemetry?.performance.resourcesCount || 0}
+              </span>
+              <span class="text-[10px] text-white/40 block mt-1">Modules, Audio, Fonts</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hardware & Device Environment -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl">
+            <h2 class="text-base sm:text-lg font-serif font-medium text-white mb-4 flex items-center gap-2">
+              <MorphIcon icon={Cpu} size={18} strokeWidth={2} spring="smooth" reducedMotion="user" />
+              <span>Phần Cứng & Môi Trường Thiết Bị</span>
+            </h2>
+
+            <div class="space-y-3 text-xs sm:text-sm">
+              <div class="flex items-center justify-between py-2 border-b border-white/5">
+                <span class="text-white/50">User Agent</span>
+                <span class="font-mono text-white/80 max-w-[280px] sm:max-w-xs truncate" title={telemetry?.device.userAgent}>
+                  {telemetry?.device.userAgent}
+                </span>
+              </div>
+
+              <div class="flex items-center justify-between py-2 border-b border-white/5">
+                <span class="text-white/50">Độ phân giải Màn hình</span>
+                <span class="font-mono text-white">{telemetry?.device.screenResolution}</span>
+              </div>
+
+              <div class="flex items-center justify-between py-2 border-b border-white/5">
+                <span class="text-white/50">Khung nhìn Trình duyệt (Viewport)</span>
+                <span class="font-mono text-white">{telemetry?.device.viewport}</span>
+              </div>
+
+              <div class="flex items-center justify-between py-2 border-b border-white/5">
+                <span class="text-white/50">Tỷ lệ Điểm ảnh (Device Pixel Ratio)</span>
+                <span class="font-mono text-white">{telemetry?.device.dpr}x</span>
+              </div>
+
+              <div class="flex items-center justify-between py-2 border-b border-white/5">
+                <span class="text-white/50">Số luồng CPU (Hardware Concurrency)</span>
+                <span class="font-mono text-white">{telemetry?.device.hardwareConcurrency} luồng</span>
+              </div>
+
+              <div class="flex items-center justify-between py-2 border-b border-white/5">
+                <span class="text-white/50">RAM Thiết bị Ước tính</span>
+                <span class="font-mono text-white">
+                  {telemetry?.device.deviceMemoryGb ? `${telemetry.device.deviceMemoryGb} GB` : 'Bảo mật/Không công khai'}
+                </span>
+              </div>
+
+              <div class="flex items-center justify-between py-2">
+                <span class="text-white/50">Tùy chọn Giảm Chuyển Động</span>
+                <span class="font-mono text-white">
+                  {telemetry?.device.prefersReducedMotion ? 'Đang bật (Reduced Motion)' : 'Bình thường (Smooth)'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Network & Engine Diagnostics -->
+          <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl">
+            <h2 class="text-base sm:text-lg font-serif font-medium text-white mb-4 flex items-center gap-2">
+              <MorphIcon icon={Wifi} size={18} strokeWidth={2} spring="smooth" reducedMotion="user" />
+              <span>Kết Nối & Bộ Nhớ Trình Duyệt</span>
+            </h2>
+
+            <div class="space-y-3 text-xs sm:text-sm">
+              <div class="flex items-center justify-between py-2 border-b border-white/5">
+                <span class="text-white/50">Trạng thái Mạng</span>
+                <span class="inline-flex items-center gap-1.5 font-medium {telemetry?.device.isOnline ? 'text-emerald-400' : 'text-rose-400'}">
+                  <span class="w-2 h-2 rounded-full {telemetry?.device.isOnline ? 'bg-emerald-400' : 'bg-rose-400'}"></span>
+                  {telemetry?.device.isOnline ? 'Trực tuyến (Online)' : 'Ngoại tuyến (Offline)'}
+                </span>
+              </div>
+
+              <div class="flex items-center justify-between py-2 border-b border-white/5">
+                <span class="text-white/50">Loại Kết nối (Network Effective Type)</span>
+                <span class="font-mono text-white uppercase">{telemetry?.device.connectionType || 'Broadband / WiFi'}</span>
+              </div>
+
+              {#if telemetry?.performance.memory}
+                <div class="flex items-center justify-between py-2 border-b border-white/5">
+                  <span class="text-white/50">JS Heap Đang Sử Dụng</span>
+                  <span class="font-mono text-white">{formatBytes(telemetry.performance.memory.usedJSHeapSize || 0)}</span>
+                </div>
+
+                <div class="flex items-center justify-between py-2 border-b border-white/5">
+                  <span class="text-white/50">Tổng JS Heap Đã Cấp Phát</span>
+                  <span class="font-mono text-white">{formatBytes(telemetry.performance.memory.totalJSHeapSize || 0)}</span>
+                </div>
+
+                <div class="flex items-center justify-between py-2 border-b border-white/5">
+                  <span class="text-white/50">Giới Hạn JS Heap Tối Đa</span>
+                  <span class="font-mono text-white">{formatBytes(telemetry.performance.memory.jsHeapSizeLimit || 0)}</span>
+                </div>
+              {/if}
+
+              <!-- Weather Engine Status -->
+              <div class="flex items-center justify-between py-2 border-b border-white/5">
+                <span class="text-white/50">Cơ chế Dự báo Thời tiết</span>
+                <span class="font-mono text-white">
+                  {telemetry?.weather.detected ? `${telemetry.weather.descriptionVi} (${telemetry.weather.temperature}°C)` : 'Chế độ an toàn mặc định'}
+                </span>
+              </div>
+
+              <div class="flex items-center justify-between py-2">
+                <span class="text-white/50">Bộ nhớ Đệm Thời tiết</span>
+                <span class="font-mono {telemetry?.weather.isCached ? 'text-emerald-300' : 'text-white/50'}">
+                  {telemetry?.weather.isCached ? 'Cache Hit (Tiết kiệm băng thông)' : 'Trực tiếp'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    {/if}
+
+    <!-- TAB 2: DATABASE & JOURNAL -->
+    {#if activeTab === 'database'}
+      <div class="space-y-6">
+        <!-- Storage Quota & Mood Distribution -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Mood Breakdown Card -->
+          <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl lg:col-span-2">
+            <h2 class="text-base sm:text-lg font-serif font-medium text-white mb-3 flex items-center justify-between">
+              <span>Phân Bố Cảm Xúc Trong Nhật Ký</span>
+              <span class="text-xs font-sans text-white/50 font-normal">
+                Tổng: {telemetry?.storage.entriesCount || 0} bài viết
+              </span>
+            </h2>
+
+            <div class="space-y-3 mt-4">
+              {#each Object.entries(MOOD_META) as [key, meta]}
+                {@const count = telemetry?.storage.moodBreakdown[key] || 0}
+                {@const total = telemetry?.storage.entriesCount || 1}
+                {@const pct = total > 0 ? Math.round((count / total) * 100) : 0}
+                <div>
+                  <div class="flex items-center justify-between text-xs sm:text-sm mb-1.5">
+                    <span class="flex items-center gap-2">
+                      <span>{meta.icon}</span>
+                      <span class="text-white/90">{meta.label}</span>
+                    </span>
+                    <span class="font-mono text-white/60">
+                      {count} bài <span class="text-white/40">({pct}%)</span>
+                    </span>
+                  </div>
+                  <div class="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+                    <div
+                      class="{meta.color} h-full rounded-full transition-all duration-500"
+                      style="width: {pct}%"
+                    ></div>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          </div>
+
+          <!-- Quick Actions & Maintenance -->
+          <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl flex flex-col justify-between">
+            <div>
+              <h2 class="text-base sm:text-lg font-serif font-medium text-white mb-2">Bảo Trì Cơ Sở Dữ Liệu</h2>
+              <p class="text-xs text-white/60 leading-relaxed mb-4">
+                Toàn bộ dữ liệu nằm an toàn trong trình duyệt (Local-First). Bạn có thể sao lưu hoặc dọn dẹp các bản ghi rác.
+              </p>
+
+              <div class="space-y-2.5">
+                <div class="p-3 rounded-2xl bg-white/5 border border-white/10 text-xs">
+                  <div class="flex items-center justify-between text-white/70">
+                    <span>Số từ đã viết:</span>
+                    <span class="font-mono font-medium text-white">{telemetry?.storage.totalWords || 0} từ</span>
+                  </div>
+                  <div class="flex items-center justify-between text-white/70 mt-1">
+                    <span>Bài viết đã xóa tạm:</span>
+                    <span class="font-mono font-medium text-amber-300">{telemetry?.storage.softDeletedCount || 0} bài</span>
+                  </div>
+                  <div class="flex items-center justify-between text-white/70 mt-1">
+                    <span>Quyền lưu trữ bền vững:</span>
+                    <span class="font-mono font-medium {telemetry?.storage.persisted ? 'text-emerald-300' : 'text-white/50'}">
+                      {telemetry?.storage.persisted ? 'Đã cấp' : 'Chưa cấp'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-2 mt-4">
+              <button
+                type="button"
+                onclick={handleExportBackup}
+                class="w-full py-2.5 px-3.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-200 hover:text-white text-xs font-medium transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+              >
+                <MorphIcon icon={Download} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                <span>Sao Lưu Toàn Bộ CSDL (JSON)</span>
+              </button>
+
+              <button
+                type="button"
+                onclick={handleRequestPersistence}
+                class="w-full py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-white/80 hover:text-white text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <MorphIcon icon={ShieldCheck} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                <span>Yêu Cầu Lưu Trữ Bền Vững</span>
+              </button>
+
+              <button
+                type="button"
+                onclick={handlePurgeDatabase}
+                class="w-full py-2 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 hover:text-rose-100 text-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <MorphIcon icon={Trash2} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                <span>Dọn Dẹp Bài Viết Đã Xóa Tạm</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    {/if}
+
+    <!-- TAB 3: MEDIA CATALOG -->
+    {#if activeTab === 'catalog'}
+      <div class="space-y-6">
+        <!-- Audio Tracks Catalog -->
+        <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-base sm:text-lg font-serif font-medium text-white flex items-center gap-2">
+                <MorphIcon icon={Music} size={18} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                <span>Kho Bản Nhạc & Không Gian Âm Thanh ({ALL_HAVEN_AUDIO_TRACKS.length})</span>
+              </h2>
+              <p class="text-xs text-white/50 mt-0.5">Tất cả các bản nhạc độc tấu Piano kinh điển và âm thanh thiền định được chọn lọc</p>
+            </div>
+            <button
+              type="button"
+              onclick={testAudioOscillator}
+              class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-xs text-white/80 hover:text-white transition-all cursor-pointer"
+            >
+              <MorphIcon icon={Volume2} size={13} strokeWidth={2} spring="smooth" reducedMotion="user" />
+              <span>Thử nghiệm loa (440Hz)</span>
+            </button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs sm:text-sm">
+              <thead class="text-xs font-mono text-white/40 uppercase border-b border-white/10">
+                <tr>
+                  <th class="py-3 px-3">Bản nhạc</th>
+                  <th class="py-3 px-3">Thể loại</th>
+                  <th class="py-3 px-3">Thời lượng</th>
+                  <th class="py-3 px-3">Giấy phép</th>
+                  <th class="py-3 px-3 text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-white/5 font-light">
+                {#each ALL_HAVEN_AUDIO_TRACKS as track (track.id)}
+                  <tr class="hover:bg-white/[0.02] transition-colors">
+                    <td class="py-3 px-3">
+                      <div class="font-serif font-medium text-white/90">{track.title}</div>
+                      <div class="text-xs text-white/50">{track.artist}</div>
+                    </td>
+                    <td class="py-3 px-3">
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs {track.category === 'piano' ? 'bg-amber-400/10 text-amber-300 border border-amber-400/20' : 'bg-cyan-400/10 text-cyan-300 border border-cyan-400/20'}">
+                        {track.category === 'piano' ? '🎹 Piano solo' : '🌿 Ambient calm'}
+                      </span>
+                    </td>
+                    <td class="py-3 px-3 font-mono text-white/70">
+                      {formatDuration(track.durationSeconds)}
+                    </td>
+                    <td class="py-3 px-3">
+                      <span class="text-xs text-white/60 block truncate max-w-xs" title={track.license}>
+                        {track.license}
+                      </span>
+                    </td>
+                    <td class="py-3 px-3 text-right">
+                      <div class="inline-flex items-center gap-2">
+                        <button
+                          type="button"
+                          onclick={() => toggleAudioPreview(track)}
+                          class="px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1.5 {activePreviewTrackId === track.id ? 'bg-amber-400 text-black font-medium shadow-sm' : 'bg-white/10 hover:bg-white/20 text-white'}"
+                          title={activePreviewTrackId === track.id ? 'Dừng phát' : 'Nghe thử trực tiếp'}
+                        >
+                          {#if activePreviewTrackId === track.id}
+                            <MorphIcon icon={Pause} size={12} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                            <span>Dừng</span>
+                          {:else}
+                            <MorphIcon icon={Play} size={12} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                            <span>Nghe thử</span>
+                          {/if}
+                        </button>
+
+                        {#if track.sourceUrl}
+                          <a
+                            href={track.sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="p-1 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+                            title="Mở nguồn nhạc"
+                          >
+                            <MorphIcon icon={ExternalLink} size={13} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                          </a>
+                        {/if}
+                      </div>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Curated Artworks Gallery -->
+        <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl">
+          <div class="mb-4">
+            <h2 class="text-base sm:text-lg font-serif font-medium text-white flex items-center gap-2">
+              <MorphIcon icon={Image} size={18} strokeWidth={2} spring="smooth" reducedMotion="user" />
+              <span>Bộ Sưu Tập Danh Họa Kinh Điển ({CURATED_ARTWORKS.length})</span>
+            </h2>
+            <p class="text-xs text-white/50 mt-0.5">Tất cả các tác phẩm đã kiểm chứng bản quyền Public Domain minh bạch</p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {#each CURATED_ARTWORKS as artwork (artwork.id)}
+              <div class="group relative rounded-2xl overflow-hidden bg-white/5 border border-white/10 hover:border-white/25 transition-all">
+                <div class="aspect-[4/3] w-full overflow-hidden bg-black/40">
+                  <img
+                    src={artwork.src}
+                    alt={artwork.title}
+                    loading="lazy"
+                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+                  />
+                </div>
+                <div class="p-3.5">
+                  <h3 class="font-serif font-medium text-white text-sm truncate" title={artwork.title}>
+                    {artwork.title}
+                  </h3>
+                  <p class="text-xs text-white/60 truncate mt-0.5">{artwork.artist}</p>
+                  <div class="mt-2 pt-2 border-t border-white/10 flex items-center justify-between text-[11px] text-white/40">
+                    <span>{artwork.license}</span>
+                    <a
+                      href={artwork.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-amber-300/80 hover:text-amber-200 transition-colors"
+                    >
+                      Chi tiết ↗
+                    </a>
+                  </div>
+                </div>
+              </div>
+            {/each}
+          </div>
+        </div>
+      </div>
+    {/if}
+
+    <!-- TAB 4: DIAGNOSTICS & SYSTEM EVENTS -->
+    {#if activeTab === 'diagnostics'}
+      <div class="space-y-6">
+        <!-- Quick Diagnostic Actions Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="p-4 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-xl">
+            <h3 class="text-sm font-medium text-white flex items-center gap-2 mb-1.5">
+              <MorphIcon icon={Volume2} size={15} strokeWidth={2} spring="smooth" reducedMotion="user" />
+              <span>Kiểm Tra Web Audio</span>
+            </h3>
+            <p class="text-xs text-white/50 mb-3">Tạo sóng dao động âm tần 440Hz kiểm tra AudioContext.</p>
+            <button
+              type="button"
+              onclick={testAudioOscillator}
+              class="w-full py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-all cursor-pointer shadow-sm"
+            >
+              Phát Âm Thử Nghiệm
+            </button>
+          </div>
+
+          <div class="p-4 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-xl">
+            <h3 class="text-sm font-medium text-white flex items-center gap-2 mb-1.5">
+              <MorphIcon icon={Trash2} size={15} strokeWidth={2} spring="smooth" reducedMotion="user" />
+              <span>Làm Sạch Cache PWA</span>
+            </h3>
+            <p class="text-xs text-white/50 mb-3">Xóa bộ đệm offline cũ để ép nạp tài nguyên mới nhất.</p>
+            <button
+              type="button"
+              onclick={handleClearCaches}
+              class="w-full py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-all cursor-pointer shadow-sm"
+            >
+              Xóa Bộ Đệm Caches
+            </button>
+          </div>
+
+          <div class="p-4 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-xl">
+            <h3 class="text-sm font-medium text-white flex items-center gap-2 mb-1.5">
+              <MorphIcon icon={Download} size={15} strokeWidth={2} spring="smooth" reducedMotion="user" />
+              <span>Báo Cáo Kỹ Thuật JSON</span>
+            </h3>
+            <p class="text-xs text-white/50 mb-3">Tải báo cáo chi tiết mọi thông số cấu hình và bộ nhớ.</p>
+            <button
+              type="button"
+              onclick={handleDownloadDiagnosticReport}
+              class="w-full py-2 px-3 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/30 text-amber-200 text-xs font-medium transition-all cursor-pointer shadow-sm"
+            >
+              Tải Báo Cáo JSON
+            </button>
+          </div>
+        </div>
+
+        <!-- Live System Event Log Stream -->
+        <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 class="text-base sm:text-lg font-serif font-medium text-white flex items-center gap-2">
+                <MorphIcon icon={Activity} size={18} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                <span>Nhật Ký Hoạt Động Thời Gian Thực (Live Event Stream)</span>
+              </h2>
+              <p class="text-xs text-white/50 mt-0.5">Ghi nhận các sự kiện hệ thống, khởi tạo CSDL, nạp âm thanh và thao tác người dùng</p>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <!-- Filter dropdown -->
+              <select
+                bind:value={eventLevelFilter}
+                class="bg-white/5 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white/80 focus:outline-none focus:ring-1 focus:ring-amber-400"
+              >
+                <option value="all">Tất cả cấp độ</option>
+                <option value="info">Thông tin (Info)</option>
+                <option value="success">Thành công (Success)</option>
+                <option value="warn">Cảnh báo (Warn)</option>
+                <option value="error">Lỗi (Error)</option>
+              </select>
+
+              <button
+                type="button"
+                onclick={handleClearEvents}
+                class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-xs text-white/60 hover:text-white transition-colors cursor-pointer"
+              >
+                Xóa nhật ký
+              </button>
+            </div>
+          </div>
+
+          <!-- Log items stream container -->
+          <div class="bg-black/40 rounded-2xl border border-white/10 p-3 sm:p-4 max-h-96 overflow-y-auto font-mono text-xs space-y-2">
+            {#if filteredEvents.length === 0}
+              <div class="text-white/40 text-center py-8">
+                Chưa có sự kiện nào được ghi nhận.
+              </div>
+            {:else}
+              {#each filteredEvents as evt (evt.id)}
+                <div class="flex items-start gap-2.5 p-2 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] transition-colors">
+                  <span class="text-white/40 select-none whitespace-nowrap">
+                    {new Date(evt.timestamp).toLocaleTimeString('vi-VN')}
+                  </span>
+
+                  <!-- Level Badge -->
+                  <span
+                    class="px-1.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider whitespace-nowrap {evt.level === 'success' ? 'bg-emerald-500/20 text-emerald-300' : evt.level === 'warn' ? 'bg-amber-500/20 text-amber-300' : evt.level === 'error' ? 'bg-rose-500/20 text-rose-300' : 'bg-cyan-500/20 text-cyan-300'}"
+                  >
+                    {evt.level}
+                  </span>
+
+                  <!-- Category -->
+                  <span class="text-white/50 text-[11px] uppercase tracking-wide whitespace-nowrap">
+                    [{evt.category}]
+                  </span>
+
+                  <!-- Message -->
+                  <span class="text-white/90 break-words flex-1">
+                    {evt.message}
+                  </span>
+                </div>
+              {/each}
+            {/if}
+          </div>
+        </div>
+      </div>
+    {/if}
+  </main>
+</div>

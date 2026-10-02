@@ -20,7 +20,7 @@
   } from '../lib/audio/track-selector';
   import { ALL_HAVEN_AUDIO_TRACKS } from '../lib/audio/ambient-catalog';
   import { MorphIcon } from 'morphicons/svelte';
-  import { X } from 'lucide';
+  import { X, Activity } from 'lucide';
 
   let experienceState = $state<'gate' | 'haven'>('gate');
   let activeModal = $state<'write' | 'list' | null>(null);
@@ -436,12 +436,23 @@
           <span class="text-xs sm:text-sm font-sans tracking-[0.2em] uppercase font-medium text-white drop-shadow-sm">Haven Art</span>
         </div>
 
-        <!-- Weather Whisper with Matching Frosted Glass Pill -->
-        {#if weatherLabel}
-          <div class="hidden sm:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/25 hover:bg-black/40 border border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.25)] backdrop-blur-md select-none transition-all duration-300 font-sans">
-            <span class="text-xs sm:text-sm font-normal text-white/95 tracking-wide drop-shadow-sm">{weatherLabel}</span>
-          </div>
-        {/if}
+        <!-- Header Controls: Weather Whisper & Admin Portal Link -->
+        <div class="flex items-center gap-2">
+          {#if weatherLabel}
+            <div class="hidden sm:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/25 hover:bg-black/40 border border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.25)] backdrop-blur-md select-none transition-all duration-300 font-sans">
+              <span class="text-xs sm:text-sm font-normal text-white/95 tracking-wide drop-shadow-sm">{weatherLabel}</span>
+            </div>
+          {/if}
+
+          <a
+            href="/admin"
+            class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-black/25 hover:bg-black/45 border border-white/20 hover:border-white/40 text-white/70 hover:text-white shadow-[0_4px_20px_rgba(0,0,0,0.25)] backdrop-blur-md transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60"
+            title="Bảng điều khiển & Giám sát hệ thống (Admin)"
+            aria-label="Bảng điều khiển hệ thống"
+          >
+            <MorphIcon icon={Activity} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+          </a>
+        </div>
       </header>
 
       <!-- Center Space: Unobstructed, Pure Art Appreciation -->
