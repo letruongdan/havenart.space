@@ -45,6 +45,9 @@
     }
     const pathname = parsedUrl ? parsedUrl.pathname : url.split(/[?#]/)[0];
     const fullUrl = parsedUrl ? parsedUrl.href : url;
+    if (pathname.startsWith("/@") || pathname.startsWith("/src/") || pathname.includes("__x00__") || pathname.includes("astro:toolbar") || pathname.includes("?astro=")) {
+      return false;
+    }
     if (pathname.startsWith("/audio/") || pathname.includes("/audio/") || AUDIO_EXTENSIONS_REGEX.test(fullUrl)) {
       return false;
     }
@@ -128,7 +131,7 @@
         const fallback = await shellCache.match("/index.html");
         if (fallback) return fallback;
       }
-      throw err;
+      return new Response("Asset not available offline", { status: 503 });
     }
   }
   async function requestPersistentStorage() {
@@ -176,6 +179,10 @@
     });
     swSelf.addEventListener("fetch", (event) => {
       const fetchEvt = event;
+      const url = fetchEvt.request?.url;
+      if (!fetchEvt.request || fetchEvt.request.method !== "GET" || isAudioUrl(url) || !shouldCacheUrl(url)) {
+        return;
+      }
       fetchEvt.respondWith(handleFetch(fetchEvt.request));
     });
   }

@@ -22,10 +22,19 @@ import HavenShell from '../components/HavenShell.svelte';
       content="Haven Art — Không gian tĩnh lặng, âm nhạc thiền định và nhật ký an yên cho tâm hồn."
     />
     <script is:inline>
-      if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(() => {});
-        });
+      if ('serviceWorker' in navigator) {
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          // In local dev, unregister stale service workers to prevent Vite HMR & port collisions
+          navigator.serviceWorker.getRegistrations().then((registrations) => {
+            for (const registration of registrations) {
+              registration.unregister();
+            }
+          });
+        } else if (window.location.protocol.startsWith('http')) {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+          });
+        }
       }
     </script>
   </head>

@@ -128,7 +128,7 @@ export async function handleFetch(request: Request): Promise<Response> {
       const fallback = await shellCache.match('/index.html');
       if (fallback) return fallback;
     }
-    throw err;
+    return new Response('Asset not available offline', { status: 503 });
   }
 }
 
@@ -216,6 +216,16 @@ if (
 
   swSelf.addEventListener('fetch', (event: unknown) => {
     const fetchEvt = event as FetchEventLike;
+    const url = fetchEvt.request?.url;
+    if (
+      !fetchEvt.request ||
+      fetchEvt.request.method !== 'GET' ||
+      isAudioUrl(url) ||
+      !shouldCacheUrl(url)
+    ) {
+      // Do not intercept - allow browser native handling
+      return;
+    }
     fetchEvt.respondWith(handleFetch(fetchEvt.request));
   });
 }

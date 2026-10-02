@@ -89,6 +89,17 @@ export function shouldCacheUrl(url: string): boolean {
   const pathname = parsedUrl ? parsedUrl.pathname : url.split(/[?#]/)[0];
   const fullUrl = parsedUrl ? parsedUrl.href : url;
 
+  // Reject Vite and Astro development internal endpoints
+  if (
+    pathname.startsWith('/@') ||
+    pathname.startsWith('/src/') ||
+    pathname.includes('__x00__') ||
+    pathname.includes('astro:toolbar') ||
+    pathname.includes('?astro=')
+  ) {
+    return false;
+  }
+
   // 1. STRICT FORBID: Heavy audio assets must NEVER be cached to conserve user mobile data
   if (
     pathname.startsWith('/audio/') ||
