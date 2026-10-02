@@ -2,6 +2,8 @@
   import { onMount, onDestroy } from 'svelte';
   import type { JournalRepository } from '../lib/db/repository';
   import type { JournalEntry } from '../lib/db/schema';
+  import { MorphIcon } from 'morphicons/svelte';
+  import { Search } from 'lucide';
 
   export function normalizeVietnamese(text: string): string {
     if (!text) return '';
@@ -185,9 +187,13 @@
   <!-- Search Filter Bar -->
   <div class="relative">
     <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-white/40">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4" aria-hidden="true">
-        <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clip-rule="evenodd" />
-      </svg>
+      <MorphIcon
+        icon={Search}
+        size={15}
+        strokeWidth={1.75}
+        spring="smooth"
+        reducedMotion="user"
+      />
     </div>
     <input
       type="text"

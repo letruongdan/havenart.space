@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { MorphIcon } from 'morphicons/svelte';
+  import { Sparkles, ArrowRight } from 'lucide';
+
   interface Props {
     onEnter?: () => void;
   }
@@ -26,26 +29,18 @@
   <div
     class="max-w-sm w-full mx-auto px-8 py-10 rounded-3xl bg-black/20 hover:bg-black/25 backdrop-blur-2xl border border-white/15 shadow-[0_16px_50px_rgba(0,0,0,0.3)] ring-1 ring-white/10 transition-all duration-700 ease-out"
   >
-    <!-- Insignia: Zen Ensō Ring -->
+    <!-- Insignia: Zen Ensō Ring with MorphIcon -->
     <div class="mb-5 flex justify-center">
       <div
         class="w-14 h-14 rounded-full bg-white/5 border border-white/20 flex items-center justify-center text-white/90 shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-transform duration-700 hover:scale-105"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke-width="1.5"
-          stroke="currentColor"
-          class="w-7 h-7"
-          aria-hidden="true"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"
-          />
-        </svg>
+        <MorphIcon
+          icon={Sparkles}
+          size={26}
+          strokeWidth={1.5}
+          spring="smooth"
+          reducedMotion="user"
+        />
       </div>
     </div>
 
@@ -66,17 +61,14 @@
       aria-label="Bước vào không gian Haven Art"
     >
       <span class="relative z-10 font-sans font-medium tracking-widest text-sm">Bước vào</span>
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke-width="2"
-        stroke="currentColor"
-        class="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1 text-white/80"
-        aria-hidden="true"
-      >
-        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-      </svg>
+      <MorphIcon
+        icon={ArrowRight}
+        size={16}
+        strokeWidth={2}
+        spring="smooth"
+        reducedMotion="user"
+        class="transition-transform duration-300 group-hover:translate-x-1 text-white/80"
+      />
     </button>
 
     <div class="mt-4 text-[10px] text-white/40 tracking-wider">

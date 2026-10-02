@@ -16,9 +16,16 @@ describe('Project Build Environment', () => {
     const svelte = await import('svelte');
     expect(svelte).toBeDefined();
 
+    const morphicons = await import('morphicons/svelte');
+    expect(morphicons.MorphIcon).toBeDefined();
+
+    const lucide = await import('lucide');
+    expect(lucide.Play).toBeDefined();
+    expect(lucide.Pause).toBeDefined();
+
     const vitest = await import('vitest');
     expect(vitest).toBeDefined();
-  });
+  }, 15000);
 
   it('should provide DOM test environment with happy-dom', () => {
     expect(typeof window).toBe('object');

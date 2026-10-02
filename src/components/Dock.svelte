@@ -1,4 +1,20 @@
 <script lang="ts">
+  import { MorphIcon } from 'morphicons/svelte';
+  import {
+    Play,
+    Pause,
+    SkipForward,
+    Volume2,
+    VolumeX,
+    Sparkles,
+    Image,
+    RefreshCw,
+    Pen,
+    BookOpen,
+    Eye,
+    EyeOff,
+  } from 'lucide';
+
   interface Props {
     isPlaying?: boolean;
     volume?: number;
@@ -70,25 +86,24 @@
   >
     <!-- 1. Audio Playback Section -->
     <div class="flex items-center gap-1.5 sm:gap-2">
-      <!-- Play/Pause Button with Subtle Crystal Glass -->
+      <!-- Play/Pause Button with MorphIcon Spring Physics -->
       <button
         type="button"
         onclick={onTogglePlay}
         class="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 cursor-pointer {isPlaying ? 'bg-white/20 text-white border border-white/40 shadow-[0_0_15px_rgba(255,255,255,0.25)] scale-105' : 'bg-white/10 hover:bg-white/20 text-white/90 border border-white/25'}"
         aria-label={isPlaying ? 'Tạm dừng nhạc' : 'Phát nhạc'}
       >
-        {#if isPlaying}
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4" aria-hidden="true">
-            <path fill-rule="evenodd" d="M6.75 5.25a.75.75 0 0 1 .75.75v12a.75.75 0 0 1-1.5 0v-12a.75.75 0 0 1 .75-.75Zm9 0a.75.75 0 0 1 .75.75v12a.75.75 0 0 1-1.5 0v-12a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
-          </svg>
-        {:else}
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 ml-0.5" aria-hidden="true">
-            <path fill-rule="evenodd" d="M4.5 5.653c0-1.427 1.529-2.33 2.779-1.643l11.54 6.347c1.295.712 1.295 2.573 0 3.286L7.28 19.99c-1.25.687-2.779-.217-2.779-1.643V5.653Z" clip-rule="evenodd" />
-          </svg>
-        {/if}
+        <MorphIcon
+          icon={isPlaying ? Pause : Play}
+          size={16}
+          strokeWidth={2}
+          spring="smooth"
+          reducedMotion="user"
+          class={isPlaying ? '' : 'translate-x-0.5'}
+        />
       </button>
 
-      <!-- Next Track Button -->
+      <!-- Next Track Button with MorphIcon -->
       {#if onNextTrack}
         <button
           type="button"
@@ -97,9 +112,13 @@
           aria-label="Bài nhạc tiếp theo"
           title="Chuyển bài thiền định tiếp theo"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5" aria-hidden="true">
-            <path d="M5.055 7.06C3.805 6.347 2.25 7.25 2.25 8.69v8.622c0 1.44 1.555 2.343 2.805 1.628L12 14.471v4.34c0 1.44 1.555 2.343 2.805 1.628l7.108-4.061c1.26-.72 1.26-2.536 0-3.256L14.805 9.06C13.555 8.347 12 9.25 12 10.69v4.34L5.055 7.06Z" />
-          </svg>
+          <MorphIcon
+            icon={SkipForward}
+            size={14}
+            strokeWidth={2}
+            spring="smooth"
+            reducedMotion="user"
+          />
         </button>
       {/if}
 
@@ -132,12 +151,16 @@
         </div>
       {/if}
 
-      <!-- Volume Slider -->
+      <!-- Volume Slider with MorphIcon -->
       <div class="flex items-center gap-1.5 ml-0.5">
         <label for="haven-dock-volume" class="text-white/60 hover:text-white flex items-center cursor-pointer">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5" aria-hidden="true">
-            <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.5A2.25 2.25 0 0 0 2.25 9.75v4.5A2.25 2.25 0 0 0 4.5 16.5h1.94l4.5 4.5c.944.945 2.56.276 2.56-1.06V4.06ZM18.584 5.106a.75.75 0 0 1 1.06 0c3.808 3.807 3.808 9.98 0 13.788a.75.75 0 0 1-1.06-1.06 8.25 8.25 0 0 0 0-11.668.75.75 0 0 1 0-1.06Z" />
-          </svg>
+          <MorphIcon
+            icon={volume <= 0.01 ? VolumeX : Volume2}
+            size={14}
+            strokeWidth={2}
+            spring="smooth"
+            reducedMotion="user"
+          />
         </label>
         <input
           id="haven-dock-volume"
@@ -158,7 +181,7 @@
 
     <!-- 2. Visual / Artwork Presentation Section -->
     <div class="flex items-center gap-1 sm:gap-1.5">
-      <!-- Visual Switch Button -->
+      <!-- Visual Switch Button with MorphIcon -->
       <button
         type="button"
         onclick={onToggleVisualMode}
@@ -166,16 +189,18 @@
         aria-label="Chuyển chế độ hình nền: {visualMode === 'shader' ? 'Đổi sang ảnh tĩnh' : 'Đổi sang shader động'}"
         title="Chuyển giữa kiệt tác tranh tĩnh và shader dòng chảy"
       >
-        {#if visualMode === 'shader'}
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]"></span>
-          <span>Shader</span>
-        {:else}
-          <span class="w-1.5 h-1.5 rounded-full bg-amber-300 shadow-[0_0_6px_#fbbf24]"></span>
-          <span>Tranh tĩnh</span>
-        {/if}
+        <MorphIcon
+          icon={visualMode === 'shader' ? Sparkles : Image}
+          size={13}
+          strokeWidth={2}
+          spring="smooth"
+          reducedMotion="user"
+          class={visualMode === 'shader' ? 'text-emerald-400' : 'text-amber-300'}
+        />
+        <span>{visualMode === 'shader' ? 'Shader' : 'Tranh tĩnh'}</span>
       </button>
 
-      <!-- Next Artwork Mini Button -->
+      <!-- Next Artwork Mini Button with MorphIcon -->
       {#if onNextArtwork}
         <button
           type="button"
@@ -184,9 +209,13 @@
           aria-label="Đổi tranh tiếp theo"
           title="Xem tác phẩm tiếp theo trong phòng tranh"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5" aria-hidden="true">
-            <path fill-rule="evenodd" d="M4.755 10.059a7.5 7.5 0 0 1 12.548-3.364l1.903 1.903h-3.183a.75.75 0 1 0 0 1.5h4.992a.75.75 0 0 0 .75-.75V4.356a.75.75 0 0 0-1.5 0v3.18l-1.9-1.9A9 9 0 0 0 3.306 9.67a.75.75 0 1 0 1.45.388Zm15.408 3.352a.75.75 0 0 0-.919.53 7.5 7.5 0 0 1-12.548 3.364l-1.902-1.903h3.183a.75.75 0 0 0 0-1.5H2.985a.75.75 0 0 0-.75.75v4.992a.75.75 0 0 0 1.5 0v-3.18l1.9 1.9a9 9 0 0 0 15.059-4.035.75.75 0 0 0-.53-.918Z" clip-rule="evenodd" />
-          </svg>
+          <MorphIcon
+            icon={RefreshCw}
+            size={13}
+            strokeWidth={2}
+            spring="smooth"
+            reducedMotion="user"
+          />
         </button>
       {/if}
     </div>
@@ -196,7 +225,7 @@
 
     <!-- 3. Action Buttons & Zen Mode -->
     <div class="flex items-center gap-1 sm:gap-1.5">
-      <!-- Viết nhật ký -->
+      <!-- Viết nhật ký with MorphIcon -->
       <button
         type="button"
         onclick={onOpenJournalWrite}
@@ -204,14 +233,17 @@
         aria-label="Viết nhật ký"
         title="Mở bảng ghi lại suy ngẫm an yên"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5" aria-hidden="true">
-          <path d="m5.433 13.917 1.262-3.155A4 4 0 0 1 7.58 9.42l6.92-6.918a2.121 2.121 0 0 1 3 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 0 1-.65-.65Z" />
-          <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0 0 10 3H4.75A2.75 2.75 0 0 0 2 5.75v9.5A2.75 2.75 0 0 0 4.75 18h9.5A2.75 2.75 0 0 0 17 15.25V10a.75.75 0 0 0-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5Z" />
-        </svg>
+        <MorphIcon
+          icon={Pen}
+          size={13}
+          strokeWidth={2}
+          spring="smooth"
+          reducedMotion="user"
+        />
         <span class="hidden sm:inline">Viết nhật ký</span>
       </button>
 
-      <!-- Danh sách bài viết -->
+      <!-- Danh sách bài viết with MorphIcon -->
       <button
         type="button"
         onclick={onOpenJournalList}
@@ -219,13 +251,17 @@
         aria-label="Danh sách bài viết"
         title="Xem lại các trang nhật ký đã lưu"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5" aria-hidden="true">
-          <path fill-rule="evenodd" d="M2 4.75A.75.75 0 0 1 2.75 4h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75ZM2 10a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 10Zm0 5.25a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z" clip-rule="evenodd" />
-        </svg>
+        <MorphIcon
+          icon={BookOpen}
+          size={13}
+          strokeWidth={2}
+          spring="smooth"
+          reducedMotion="user"
+        />
         <span class="hidden md:inline">Nhật ký</span>
       </button>
 
-      <!-- Zen / Immersion Mode Button -->
+      <!-- Zen / Immersion Mode Button with MorphIcon -->
       {#if onToggleZenMode}
         <button
           type="button"
@@ -234,10 +270,13 @@
           aria-label="Ẩn bảng điều khiển để tận hưởng tranh toàn màn hình"
           title="Chế độ tĩnh lặng: Ẩn bảng điều khiển để ngắm trọn vẹn bức tranh"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5" aria-hidden="true">
-            <path d="M10 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" />
-            <path fill-rule="evenodd" d="M.664 10.59a1.651 1.651 0 0 1 0-1.186A10.004 10.004 0 0 1 10 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0 1 10 17c-4.257 0-7.893-2.66-9.336-6.41ZM14 10a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" clip-rule="evenodd" />
-          </svg>
+          <MorphIcon
+            icon={isZenMode ? EyeOff : Eye}
+            size={14}
+            strokeWidth={2}
+            spring="smooth"
+            reducedMotion="user"
+          />
         </button>
       {/if}
     </div>

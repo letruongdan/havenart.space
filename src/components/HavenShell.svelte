@@ -19,6 +19,8 @@
     selectNextTrack,
   } from '../lib/audio/track-selector';
   import { ALL_HAVEN_AUDIO_TRACKS } from '../lib/audio/ambient-catalog';
+  import { MorphIcon } from 'morphicons/svelte';
+  import { X } from 'lucide';
 
   let experienceState = $state<'gate' | 'haven'>('gate');
   let activeModal = $state<'write' | 'list' | null>(null);
@@ -490,9 +492,13 @@
             class="w-8 h-8 rounded-full flex items-center justify-center text-white/60 hover:text-white bg-white/5 hover:bg-white/15 border border-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer"
             aria-label="Đóng bảng nhật ký"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4" aria-hidden="true">
-              <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-            </svg>
+            <MorphIcon
+              icon={X}
+              size={15}
+              strokeWidth={2}
+              spring="smooth"
+              reducedMotion="user"
+            />
           </button>
         </div>
 
