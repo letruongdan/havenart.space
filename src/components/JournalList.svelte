@@ -13,6 +13,9 @@
   } from '../lib/journal/timeline';
   import { BackupManager } from '../lib/export/backup';
 
+  import { t } from '../lib/i18n/store';
+  import { DEFAULT_LANGUAGE, type SupportedLanguage } from '../lib/i18n/types';
+
   export function normalizeVietnamese(text: string): string {
     if (!text) return '';
     return text
@@ -33,10 +36,12 @@
     onEntryUndo?: (entry: JournalEntry) => void;
     onSelectEntry?: (entry: JournalEntry) => void;
     onEditEntry?: (entry: JournalEntry) => void;
+    lang?: SupportedLanguage;
   }
 
   let props: Props = $props();
 
+  let activeLang = $derived(props.lang || DEFAULT_LANGUAGE);
   let activeRepo = $derived(props.repo || props.repository);
   let internalEntries = $state<JournalEntry[]>([]);
   let searchQuery = $state('');
@@ -55,21 +60,21 @@
   let undoTimeoutId: ReturnType<typeof setTimeout> | null = null;
   let undoIntervalId: ReturnType<typeof setInterval> | null = null;
 
-  const MOOD_MAP: Record<string, { label: string; icon: string }> = {
-    calm: { label: 'Bình an', icon: '🍃' },
-    grateful: { label: 'Biết ơn', icon: '✨' },
-    reflective: { label: 'Trầm tư', icon: '🌙' },
-    peaceful: { label: 'Tĩnh lặng', icon: '🕊️' },
-    hopeful: { label: 'Hy vọng', icon: '☀️' },
-  };
+  let moodMap = $derived<Record<string, { label: string; icon: string }>>({
+    calm: { label: t('moods.calm', activeLang), icon: '🍃' },
+    grateful: { label: t('moods.grateful', activeLang), icon: '✨' },
+    reflective: { label: t('moods.reflective', activeLang), icon: '🌙' },
+    peaceful: { label: t('moods.peaceful', activeLang), icon: '🕊️' },
+    hopeful: { label: t('moods.hopeful', activeLang), icon: '☀️' },
+  });
 
-  const MOOD_LIST = [
-    { id: 'calm', label: 'Bình an', icon: '🍃' },
-    { id: 'grateful', label: 'Biết ơn', icon: '✨' },
-    { id: 'reflective', label: 'Trầm tư', icon: '🌙' },
-    { id: 'peaceful', label: 'Tĩnh lặng', icon: '🕊️' },
-    { id: 'hopeful', label: 'Hy vọng', icon: '☀️' },
-  ];
+  let moodList = $derived([
+    { id: 'calm', label: t('moods.calm', activeLang), icon: '🍃' },
+    { id: 'grateful', label: t('moods.grateful', activeLang), icon: '✨' },
+    { id: 'reflective', label: t('moods.reflective', activeLang), icon: '🌙' },
+    { id: 'peaceful', label: t('moods.peaceful', activeLang), icon: '🕊️' },
+    { id: 'hopeful', label: t('moods.hopeful', activeLang), icon: '☀️' },
+  ]);
 
   export async function refresh() {
     const targetRepo = activeRepo;
@@ -230,13 +235,13 @@
       URL.revokeObjectURL(url);
 
       backupStatus = 'success';
-      backupMessage = 'Đã tải tệp sao lưu JSON thành công';
+      backupMessage = activeLang === 'vi' ? 'Đã tải tệp sao lưu JSON thành công' : 'Backup JSON exported successfully';
       setTimeout(() => {
         backupMessage = '';
       }, 4000);
     } catch (err) {
       backupStatus = 'error';
-      backupMessage = 'Không thể xuất tệp sao lưu';
+      backupMessage = activeLang === 'vi' ? 'Không thể xuất tệp sao lưu' : 'Failed to export backup';
       setTimeout(() => {
         backupMessage = '';
       }, 4000);
@@ -260,13 +265,15 @@
       await refresh();
 
       backupStatus = 'success';
-      backupMessage = `Khôi phục thành công ${result.importedCount} bài viết (${result.skippedCount} đã trùng)`;
+      backupMessage = activeLang === 'vi'
+        ? `Khôi phục thành công ${result.importedCount} bài viết (${result.skippedCount} đã trùng)`
+        : `Successfully imported ${result.importedCount} entries (${result.skippedCount} skipped)`;
       setTimeout(() => {
         backupMessage = '';
       }, 4000);
     } catch (err) {
       backupStatus = 'error';
-      backupMessage = 'Tệp sao lưu không hợp lệ';
+      backupMessage = activeLang === 'vi' ? 'Tệp sao lưu không hợp lệ' : 'Invalid backup file';
       setTimeout(() => {
         backupMessage = '';
       }, 4000);
@@ -317,6 +324,34 @@
     }
     return total;
   });
+
+  function getPeriodLabel(group: { periodKey: string; label: string }): string {
+    if (group.periodKey === 'today') return t('journal.today', activeLang);
+    if (group.periodKey === 'yesterday') return t('journal.yesterday', activeLang);
+    if (group.periodKey === 'this-week') return t('journal.thisWeek', activeLang);
+    try {
+      const [yearStr, monthStr] = group.periodKey.split('-');
+      if (yearStr && monthStr) {
+        const year = parseInt(yearStr, 10);
+        const month = parseInt(monthStr, 10);
+        const date = new Date(year, month - 1, 1);
+        const localeMap: Record<string, string> = {
+          vi: 'vi-VN',
+          en: 'en-US',
+          ja: 'ja-JP',
+          fr: 'fr-FR',
+          ko: 'ko-KR',
+          zh: 'zh-CN',
+          de: 'de-DE',
+          es: 'es-ES',
+        };
+        return date.toLocaleDateString(localeMap[activeLang] || 'en-US', { month: 'long', year: 'numeric' });
+      }
+    } catch {
+      // fallback
+    }
+    return group.label;
+  }
 </script>
 
 <div class="w-full space-y-4 font-sans select-text">
@@ -344,7 +379,7 @@
       </div>
       <input
         type="text"
-        placeholder="Tìm kiếm bài viết, ngày tháng..."
+        placeholder={t('journal.searchPlaceholder', activeLang)}
         bind:value={searchQuery}
         class="w-full pl-10 pr-9 py-2 rounded-2xl bg-white/5 hover:bg-white/10 focus:bg-white/10 border border-white/15 focus:border-white/40 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/40 text-sm font-light transition-colors backdrop-blur-md"
       />
@@ -353,7 +388,7 @@
           type="button"
           onclick={handleClearSearch}
           class="absolute inset-y-0 right-0 pr-3 flex items-center text-white/40 hover:text-white cursor-pointer"
-          title="Xóa tìm kiếm"
+          title={t('journal.close', activeLang)}
         >
           <MorphIcon icon={X} size={14} strokeWidth={2} />
         </button>
@@ -370,10 +405,10 @@
           class="px-2.5 py-1 rounded-full text-xs font-light transition-all cursor-pointer flex items-center gap-1.5 {viewMode === 'timeline'
             ? 'bg-white/20 text-white shadow-sm'
             : 'text-white/60 hover:text-white'}"
-          title="Xem theo dòng thời gian ngày tháng"
+          title={t('journal.timeline', activeLang)}
         >
           <MorphIcon icon={Calendar} size={13} strokeWidth={1.75} />
-          <span class="hidden md:inline">Thời gian</span>
+          <span class="hidden md:inline">{t('journal.timeline', activeLang)}</span>
         </button>
         <button
           type="button"
@@ -381,10 +416,10 @@
           class="px-2.5 py-1 rounded-full text-xs font-light transition-all cursor-pointer flex items-center gap-1.5 {viewMode === 'list'
             ? 'bg-white/20 text-white shadow-sm'
             : 'text-white/60 hover:text-white'}"
-          title="Xem danh sách liên tục"
+          title={t('journal.list', activeLang)}
         >
           <MorphIcon icon={List} size={13} strokeWidth={1.75} />
-          <span class="hidden md:inline">Danh sách</span>
+          <span class="hidden md:inline">{t('journal.list', activeLang)}</span>
         </button>
       </div>
 
@@ -394,19 +429,19 @@
           type="button"
           onclick={handleExport}
           class="p-1.5 sm:px-2.5 sm:py-1 rounded-full bg-white/5 hover:bg-white/15 border border-white/15 text-white/70 hover:text-white text-xs font-light transition-all flex items-center gap-1 cursor-pointer"
-          title="Xuất bản sao lưu dữ liệu JSON"
+          title={t('journal.exportJson', activeLang)}
         >
           <MorphIcon icon={Download} size={13} strokeWidth={1.75} />
-          <span class="hidden lg:inline">Sao lưu</span>
+          <span class="hidden lg:inline">{t('journal.exportJson', activeLang)}</span>
         </button>
         <button
           type="button"
           onclick={handleTriggerImport}
           class="p-1.5 sm:px-2.5 sm:py-1 rounded-full bg-white/5 hover:bg-white/15 border border-white/15 text-white/70 hover:text-white text-xs font-light transition-all flex items-center gap-1 cursor-pointer"
-          title="Khôi phục nhật ký từ tệp JSON"
+          title={t('journal.importJson', activeLang)}
         >
           <MorphIcon icon={Upload} size={13} strokeWidth={1.75} />
-          <span class="hidden lg:inline">Nhập</span>
+          <span class="hidden lg:inline">{t('journal.importJson', activeLang)}</span>
         </button>
       {/if}
     </div>
@@ -433,9 +468,9 @@
         ? 'bg-white/20 border-white/40 text-white font-medium shadow-[0_0_10px_rgba(255,255,255,0.15)]'
         : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/70 hover:text-white'}"
     >
-      Tất cả ({internalEntries.length})
+      {t('journal.filterAll', activeLang)} ({internalEntries.length})
     </button>
-    {#each MOOD_LIST as m}
+    {#each moodList as m}
       <button
         type="button"
         onclick={() => handleSelectMood(m.id)}
@@ -454,12 +489,12 @@
   {#if searchQuery || selectedMood !== null}
     <div class="flex items-center justify-between px-2 text-xs text-white/60 font-light">
       <span>
-        Tìm thấy <strong class="text-white font-medium">{filteredEntries.length}</strong> bài viết
+        {filteredEntries.length} {t('journal.searchFound', activeLang)}
         {#if selectedMood}
-          với tâm trạng <span class="text-white">{MOOD_MAP[selectedMood]?.label}</span>
+          • <span class="text-white">{moodMap[selectedMood]?.label}</span>
         {/if}
         {#if searchQuery}
-          cho từ khóa <span class="text-white font-serif italic">"{searchQuery}"</span>
+          • <span class="text-white font-serif italic">"{searchQuery}"</span>
         {/if}
       </span>
       <button
@@ -470,13 +505,12 @@
         }}
         class="text-xs text-white/50 hover:text-white underline cursor-pointer"
       >
-        Đặt lại bộ lọc
+        {activeLang === 'vi' ? 'Đặt lại bộ lọc' : 'Reset filters'}
       </button>
     </div>
   {:else if internalEntries.length > 0}
     <div class="flex items-center justify-between px-2 text-[11px] text-white/50 font-light">
-      <span>Tổng cộng {internalEntries.length} bài viết • {totalWordCount.toLocaleString()} từ an yên</span>
-      <span>Nhấp vào bài viết để đọc lại toàn văn</span>
+      <span>{internalEntries.length} {activeLang === 'vi' ? 'bài viết' : 'entries'} • {totalWordCount.toLocaleString()} {t('journal.wordsCount', activeLang)}</span>
     </div>
   {/if}
 
@@ -488,14 +522,15 @@
     >
       <div class="flex items-center gap-2 text-xs sm:text-sm font-light">
         <span class="inline-block w-2 h-2 rounded-full bg-white/80 animate-ping"></span>
-        <span>Đã xóa bài viết. Tự động xoá vĩnh viễn sau {undoCountdown}s</span>
+        <span>{t('journal.confirmDelete', activeLang)} ({undoCountdown}s)</span>
       </div>
       <button
         type="button"
         onclick={handleUndo}
+        aria-label="{t('journal.undoButton', activeLang)} - Hoàn tác"
         class="text-xs sm:text-sm font-medium text-white underline hover:text-white/80 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 rounded"
       >
-        Hoàn tác
+        {t('journal.undoButton', activeLang)}
       </button>
     </div>
   {/if}
@@ -509,7 +544,7 @@
           onclick={handleCloseDetail}
           class="text-xs font-light text-white/70 hover:text-white px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/15 border border-white/15 transition-all cursor-pointer"
         >
-          ← Quay lại danh sách
+          ← {t('journal.close', activeLang)}
         </button>
         <div class="flex items-center gap-2">
           <button
@@ -517,14 +552,14 @@
             onclick={() => handleEditClick(selectedEntry!)}
             class="text-xs font-light text-white/85 hover:text-white px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 transition-all cursor-pointer"
           >
-            Chỉnh sửa
+            {t('journal.editButton', activeLang)}
           </button>
           <button
             type="button"
             onclick={() => handleDelete(selectedEntry!)}
             class="text-xs font-light text-rose-300 hover:text-rose-200 px-3 py-1.5 rounded-full bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition-all cursor-pointer"
           >
-            Xóa bài
+            {t('journal.deleteButton', activeLang)}
           </button>
         </div>
       </div>
@@ -532,21 +567,23 @@
       <!-- Full Entry Heading -->
       <div>
         <h2 class="text-2xl font-serif font-medium text-white leading-snug">
-          {selectedEntry.title || 'Không tiêu đề'}
+          {selectedEntry.title || t('journal.untitled', activeLang)}
         </h2>
         <div class="flex flex-wrap items-center gap-2.5 mt-2 text-xs text-white/60 font-light">
           <time datetime={new Date(selectedEntry.createdAt).toISOString()}>
-            {formatFullDateTime(selectedEntry.createdAt)}
+            {formatFullDateTime(selectedEntry.createdAt, activeLang)}
           </time>
-          {#if selectedEntry.mood && MOOD_MAP[selectedEntry.mood]}
+          {#if selectedEntry.mood && moodMap[selectedEntry.mood]}
             <span>•</span>
             <span class="inline-flex items-center gap-1 text-white/85">
-              <span>{MOOD_MAP[selectedEntry.mood].icon}</span>
-              <span>{MOOD_MAP[selectedEntry.mood].label}</span>
+              <span>{moodMap[selectedEntry.mood].icon}</span>
+              <span>{moodMap[selectedEntry.mood].label}</span>
             </span>
           {/if}
           <span>•</span>
-          <span>{calculateReadingStats(selectedEntry.body).words} từ</span>
+          <span>{calculateReadingStats(selectedEntry.body).words} {t('journal.wordsCount', activeLang)}</span>
+          <span>•</span>
+          <span>{calculateReadingStats(selectedEntry.body).minutes} {t('journal.minRead', activeLang)}</span>
         </div>
       </div>
 
@@ -560,8 +597,8 @@
     {#if filteredEntries.length === 0}
       <div class="py-12 text-center text-white/80 font-normal text-sm leading-relaxed">
         {searchQuery || selectedMood
-          ? 'Không tìm thấy bài viết nào phù hợp với bộ lọc.'
-          : 'Chưa có bài viết nào. Hãy lưu lại khoảnh khắc đầu tiên của bạn.'}
+          ? (activeLang === 'vi' ? 'Không tìm thấy bài viết nào phù hợp với bộ lọc.' : 'No entries found matching filters.')
+          : t('journal.emptySubtitle', activeLang)}
       </div>
     {:else}
       <div class="space-y-5 max-h-[60vh] overflow-y-auto pr-1">
@@ -573,9 +610,9 @@
               <div class="sticky top-0 z-10 py-1 px-1 flex items-center justify-between text-xs font-serif font-medium text-white/70 tracking-wider uppercase border-b border-white/10 backdrop-blur-md bg-black/40">
                 <span class="flex items-center gap-1.5">
                   <span class="w-1.5 h-1.5 rounded-full bg-amber-300"></span>
-                  <span>{group.label}</span>
+                  <span>{getPeriodLabel(group)}</span>
                 </span>
-                <span class="text-[11px] font-sans text-white/40 normal-case">{group.entries.length} bài</span>
+                <span class="text-[11px] font-sans text-white/40 normal-case">{group.entries.length} {activeLang === 'vi' ? 'bài' : (group.entries.length === 1 ? 'entry' : 'entries')}</span>
               </div>
 
               <!-- Entries in this Period -->
@@ -593,20 +630,20 @@
                             onclick={() => handleOpenDetail(entry)}
                             class="text-left hover:text-amber-300 transition-colors focus:outline-none focus-visible:underline cursor-pointer"
                           >
-                            {entry.title || 'Không tiêu đề'}
+                            {entry.title || t('journal.untitled', activeLang)}
                           </button>
                         </h3>
                         <div class="flex flex-wrap items-center gap-2 mt-1 text-xs text-white/50 font-light">
-                          <time datetime={new Date(entry.createdAt).toISOString()}>{formatShortDate(entry.createdAt)}</time>
-                          {#if entry.mood && MOOD_MAP[entry.mood]}
+                          <time datetime={new Date(entry.createdAt).toISOString()}>{formatShortDate(entry.createdAt, activeLang)}</time>
+                          {#if entry.mood && moodMap[entry.mood]}
                             <span>•</span>
                             <span class="inline-flex items-center gap-1 text-white/80">
-                              <span>{MOOD_MAP[entry.mood].icon}</span>
-                              <span>{MOOD_MAP[entry.mood].label}</span>
+                              <span>{moodMap[entry.mood].icon}</span>
+                              <span>{moodMap[entry.mood].label}</span>
                             </span>
                           {/if}
                           <span>•</span>
-                          <span>{calculateReadingStats(entry.body).words} từ</span>
+                          <span>{calculateReadingStats(entry.body).words} {t('journal.wordsCount', activeLang)}</span>
                         </div>
                       </div>
 
@@ -615,26 +652,26 @@
                         <button
                           type="button"
                           onclick={() => handleOpenDetail(entry)}
-                          aria-label="Xem chi tiết"
+                          aria-label="{t('journal.viewButton', activeLang)} - Xem"
                           class="text-xs text-white/60 hover:text-white px-2 py-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
                         >
-                          Xem
+                          {t('journal.viewButton', activeLang)}
                         </button>
                         <button
                           type="button"
                           onclick={() => handleEditClick(entry)}
-                          aria-label="Sửa bài viết"
+                          aria-label="{t('journal.editButton', activeLang)} - Sửa"
                           class="text-xs text-white/60 hover:text-white px-2 py-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
                         >
-                          Sửa
+                          {t('journal.editButton', activeLang)}
                         </button>
                         <button
                           type="button"
                           onclick={() => handleDelete(entry)}
-                          aria-label="Xóa bài viết"
+                          aria-label="{t('journal.deleteButton', activeLang)} - Xóa"
                           class="text-xs text-white/40 hover:text-rose-400 px-2 py-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
                         >
-                          Xóa
+                          {t('journal.deleteButton', activeLang)}
                         </button>
                       </div>
                     </div>
@@ -667,20 +704,20 @@
                         onclick={() => handleOpenDetail(entry)}
                         class="text-left hover:text-amber-300 transition-colors focus:outline-none focus-visible:underline cursor-pointer"
                       >
-                        {entry.title || 'Không tiêu đề'}
+                        {entry.title || t('journal.untitled', activeLang)}
                       </button>
                     </h3>
                     <div class="flex items-center gap-2 mt-1 text-xs text-white/50 font-light">
-                      <time datetime={new Date(entry.createdAt).toISOString()}>{formatShortDate(entry.createdAt)}</time>
-                      {#if entry.mood && MOOD_MAP[entry.mood]}
+                      <time datetime={new Date(entry.createdAt).toISOString()}>{formatShortDate(entry.createdAt, activeLang)}</time>
+                      {#if entry.mood && moodMap[entry.mood]}
                         <span>•</span>
                         <span class="inline-flex items-center gap-1 text-white/80">
-                          <span>{MOOD_MAP[entry.mood].icon}</span>
-                          <span>{MOOD_MAP[entry.mood].label}</span>
+                          <span>{moodMap[entry.mood].icon}</span>
+                          <span>{moodMap[entry.mood].label}</span>
                         </span>
                       {/if}
                       <span>•</span>
-                      <span>{calculateReadingStats(entry.body).words} từ</span>
+                      <span>{calculateReadingStats(entry.body).words} {t('journal.wordsCount', activeLang)}</span>
                     </div>
                   </div>
 
@@ -688,26 +725,26 @@
                     <button
                       type="button"
                       onclick={() => handleOpenDetail(entry)}
-                      aria-label="Xem chi tiết"
+                      aria-label="{t('journal.viewButton', activeLang)} - Xem"
                       class="text-xs text-white/60 hover:text-white px-2 py-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
                     >
-                      Xem
+                      {t('journal.viewButton', activeLang)}
                     </button>
                     <button
                       type="button"
                       onclick={() => handleEditClick(entry)}
-                      aria-label="Sửa bài viết"
+                      aria-label="{t('journal.editButton', activeLang)} - Sửa"
                       class="text-xs text-white/60 hover:text-white px-2 py-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
                     >
-                      Sửa
+                      {t('journal.editButton', activeLang)}
                     </button>
                     <button
                       type="button"
                       onclick={() => handleDelete(entry)}
-                      aria-label="Xóa bài viết"
+                      aria-label="{t('journal.deleteButton', activeLang)} - Xóa"
                       class="text-xs text-white/40 hover:text-rose-400 px-2 py-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
                     >
-                      Xóa
+                      {t('journal.deleteButton', activeLang)}
                     </button>
                   </div>
                 </div>

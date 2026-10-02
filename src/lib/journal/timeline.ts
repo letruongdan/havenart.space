@@ -49,17 +49,28 @@ export function countEntriesByMood(entries: JournalEntry[]): Record<string, numb
 }
 
 /**
- * Formats timestamp into an elegant Vietnamese date string (e.g. 10:45 • Thứ Sáu, 02/10/2026).
+ * Formats timestamp into an elegant date string in the chosen language.
  */
-export function formatFullDateTime(timestamp: number): string {
+export function formatFullDateTime(timestamp: number, lang: string = 'vi'): string {
   try {
+    const localeMap: Record<string, string> = {
+      vi: 'vi-VN',
+      en: 'en-US',
+      ja: 'ja-JP',
+      fr: 'fr-FR',
+      ko: 'ko-KR',
+      zh: 'zh-CN',
+      de: 'de-DE',
+      es: 'es-ES',
+    };
+    const locale = localeMap[lang] || 'en-US';
     const d = new Date(timestamp);
-    const timeStr = d.toLocaleTimeString('vi-VN', {
+    const timeStr = d.toLocaleTimeString(locale, {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
     });
-    const dateStr = d.toLocaleDateString('vi-VN', {
+    const dateStr = d.toLocaleDateString(locale, {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -72,15 +83,26 @@ export function formatFullDateTime(timestamp: number): string {
 }
 
 /**
- * Formats a short date for cards (e.g. "02 thg 10, 2026 • 10:45").
+ * Formats a short date for cards (e.g. "02/10/2026 • 10:45").
  */
-export function formatShortDate(timestamp: number): string {
+export function formatShortDate(timestamp: number, lang: string = 'vi'): string {
   try {
+    const localeMap: Record<string, string> = {
+      vi: 'vi-VN',
+      en: 'en-US',
+      ja: 'ja-JP',
+      fr: 'fr-FR',
+      ko: 'ko-KR',
+      zh: 'zh-CN',
+      de: 'de-DE',
+      es: 'es-ES',
+    };
+    const locale = localeMap[lang] || 'en-US';
     const d = new Date(timestamp);
     const day = String(d.getDate()).padStart(2, '0');
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const year = d.getFullYear();
-    const time = d.toLocaleTimeString('vi-VN', {
+    const time = d.toLocaleTimeString(locale, {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,

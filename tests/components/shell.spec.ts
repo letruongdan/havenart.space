@@ -41,10 +41,10 @@ describe('HavenShell Experience State Machine', () => {
 
     // Modal opens
     expect(getByRole('dialog')).toBeDefined();
-    expect(getByRole('heading', { name: /nhật ký/i })).toBeDefined();
+    expect(getByRole('heading', { name: /nhật ký|reflection/i })).toBeDefined();
 
     // Close button works
-    const closeBtn = getByRole('button', { name: /đóng/i });
+    const closeBtn = getByRole('button', { name: /đóng|close/i });
     await fireEvent.click(closeBtn);
     expect(queryByRole('dialog')).toBeNull();
   });
@@ -60,10 +60,10 @@ describe('HavenShell Experience State Machine', () => {
 
     // WritePanel is mounted with its textarea
     expect(document.querySelector('#journal-write-container')).not.toBeNull();
-    expect(getByPlaceholderText(/viết những suy nghĩ của bạn/i)).toBeDefined();
+    expect(getByPlaceholderText(/viết những suy nghĩ|thoughts/i)).toBeDefined();
 
     // Close write modal
-    const closeBtn = getByRole('button', { name: /đóng/i });
+    const closeBtn = getByRole('button', { name: /đóng|close/i });
     await fireEvent.click(closeBtn);
 
     // Open List modal
@@ -72,6 +72,19 @@ describe('HavenShell Experience State Machine', () => {
 
     // JournalList is mounted with its search input
     expect(document.querySelector('#journal-list-container')).not.toBeNull();
-    expect(getByPlaceholderText(/tìm kiếm bài viết/i)).toBeDefined();
+    expect(getByPlaceholderText(/tìm kiếm bài viết|search/i)).toBeDefined();
+  });
+
+  it('supports language selection via initialLang and LanguagePicker', async () => {
+    const { getByRole } = render(HavenShell, { initialLang: 'vi' });
+    const enterBtn = getByRole('button', { name: /bước vào/i });
+    expect(enterBtn).toBeDefined();
+    await fireEvent.click(enterBtn);
+
+    // Header LanguagePicker is present
+    await waitFor(() => {
+      const langBtn = getByRole('button', { name: /chọn ngôn ngữ|select language/i });
+      expect(langBtn).toBeDefined();
+    });
   });
 });

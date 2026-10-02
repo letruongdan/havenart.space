@@ -75,8 +75,8 @@ describe('Journal XSS Defense & Safe Rendering', () => {
     it('debounces autosave for 2000ms idle and saves draft to DraftRepository', async () => {
       const { getByPlaceholderText, getByText } = render(WritePanel, { repo: testRepo });
 
-      const titleInput = getByPlaceholderText(/tiêu đề/i);
-      const bodyTextarea = getByPlaceholderText(/viết những suy nghĩ/i);
+      const titleInput = getByPlaceholderText(/tiêu đề|title/i);
+      const bodyTextarea = getByPlaceholderText(/viết những suy nghĩ|thoughts/i);
 
       // Initially no draft
       const initialDraft = await testRepo.getDraft(DEFAULT_DRAFT_ID);
@@ -102,7 +102,7 @@ describe('Journal XSS Defense & Safe Rendering', () => {
       );
 
       // Check for serene "Đã lưu nháp" status indicator
-      expect(getByText(/đã lưu nháp/i)).toBeDefined();
+      expect(getByText(/đã lưu nháp|draft saved/i)).toBeDefined();
     });
 
     it('loads existing draft on mount if available', async () => {
@@ -117,8 +117,8 @@ describe('Journal XSS Defense & Safe Rendering', () => {
       const { getByPlaceholderText } = render(WritePanel, { repo: testRepo });
 
       await waitFor(() => {
-        const titleInput = getByPlaceholderText(/tiêu đề/i) as HTMLInputElement;
-        const bodyTextarea = getByPlaceholderText(/viết những suy nghĩ/i) as HTMLTextAreaElement;
+        const titleInput = getByPlaceholderText(/tiêu đề|title/i) as HTMLInputElement;
+        const bodyTextarea = getByPlaceholderText(/viết những suy nghĩ|thoughts/i) as HTMLTextAreaElement;
         expect(titleInput.value).toBe('Bản nháp từ hôm qua');
         expect(bodyTextarea.value).toBe('Nội dung tiếp tục suy ngẫm');
       });
@@ -133,13 +133,13 @@ describe('Journal XSS Defense & Safe Rendering', () => {
         },
       });
 
-      const titleInput = getByPlaceholderText(/tiêu đề/i);
-      const bodyTextarea = getByPlaceholderText(/viết những suy nghĩ/i);
+      const titleInput = getByPlaceholderText(/tiêu đề|title/i);
+      const bodyTextarea = getByPlaceholderText(/viết những suy nghĩ|thoughts/i);
 
       await fireEvent.input(titleInput, { target: { value: 'Hôm nay an yên' } });
       await fireEvent.input(bodyTextarea, { target: { value: 'Mọi âu lo tan biến vào không gian.' } });
 
-      const saveButton = getByRole('button', { name: /lưu bài viết/i });
+      const saveButton = getByRole('button', { name: /lưu bài viết|save entry/i });
       await fireEvent.click(saveButton);
 
       await waitFor(async () => {
@@ -228,7 +228,7 @@ describe('Journal XSS Defense & Safe Rendering', () => {
         entries,
       });
 
-      const searchInput = getByPlaceholderText(/tìm kiếm/i);
+      const searchInput = getByPlaceholderText(/tìm kiếm|search/i);
 
       // Search with unaccented lower: "binh yen" -> should match "Bình Yên Giữa Đời"
       await fireEvent.input(searchInput, { target: { value: 'binh yen' } });

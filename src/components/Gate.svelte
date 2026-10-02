@@ -1,33 +1,56 @@
 <script lang="ts">
   import { MorphIcon } from 'morphicons/svelte';
   import { Sparkles, ArrowRight } from 'lucide';
+  import { t } from '../lib/i18n/store';
+  import { DEFAULT_LANGUAGE, type SupportedLanguage } from '../lib/i18n/types';
+  import LanguagePicker from './LanguagePicker.svelte';
 
   interface Props {
     onEnter?: () => void;
+    lang?: SupportedLanguage;
+    onLanguageChange?: (newLang: SupportedLanguage) => void;
   }
 
-  let { onEnter }: Props = $props();
+  let props: Props = $props();
+
+  let activeLang = $state<SupportedLanguage>(DEFAULT_LANGUAGE);
+
+  $effect(() => {
+    if (props.lang) {
+      activeLang = props.lang;
+    }
+  });
 
   function handleKeyDown(event: KeyboardEvent) {
     if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
       event.preventDefault();
-      onEnter?.();
+      props.onEnter?.();
     }
   }
 
   function handleClick() {
-    onEnter?.();
+    props.onEnter?.();
+  }
+
+  function handleLangChange(newLang: SupportedLanguage) {
+    activeLang = newLang;
+    props.onLanguageChange?.(newLang);
   }
 </script>
 
 <div
   class="relative flex flex-col items-center justify-center min-h-screen w-full px-4 text-center select-none"
   role="region"
-  aria-label="Cổng đón Haven Art"
+  aria-label="Cổng đón Haven Art / Haven Art Gate"
 >
+  <!-- Top Right Language Picker on Gate -->
+  <div class="absolute top-6 right-6 z-30">
+    <LanguagePicker currentLanguage={activeLang} onLanguageChange={handleLangChange} />
+  </div>
+
   <!-- Ultra-Minimalist Floating Glass Card -->
   <div
-    class="max-w-sm w-full mx-auto px-8 py-10 rounded-3xl bg-black/20 hover:bg-black/25 backdrop-blur-2xl border border-white/15 shadow-[0_16px_50px_rgba(0,0,0,0.3)] ring-1 ring-white/10 transition-all duration-700 ease-out"
+    class="max-w-sm w-full mx-auto px-8 py-10 rounded-3xl bg-black/25 hover:bg-black/30 backdrop-blur-2xl border border-white/15 shadow-[0_16px_50px_rgba(0,0,0,0.3)] ring-1 ring-white/10 transition-all duration-700 ease-out"
   >
     <!-- Insignia: Zen Ensō Ring with MorphIcon -->
     <div class="mb-5 flex justify-center">
@@ -46,10 +69,10 @@
 
     <!-- Title and Serene Subtitle -->
     <h1 class="text-4xl sm:text-5xl font-serif font-light tracking-wider text-white mb-2 drop-shadow-md">
-      Haven Art
+      {t('gate.title', activeLang)}
     </h1>
     <p class="text-xs sm:text-sm font-light text-white/70 tracking-widest uppercase mb-8 font-sans">
-      Góc tĩnh lặng cho tâm hồn
+      {t('gate.subtitle', activeLang)}
     </p>
 
     <!-- Gate Enter Action Button -->
@@ -58,9 +81,11 @@
       onclick={handleClick}
       onkeydown={handleKeyDown}
       class="group relative inline-flex items-center justify-center gap-3 w-full py-3.5 px-6 rounded-full text-sm font-medium tracking-wide text-white bg-white/10 hover:bg-white/20 border border-white/25 hover:border-white/40 shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)] backdrop-blur-md transition-all duration-300 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 active:scale-98 cursor-pointer"
-      aria-label="Bước vào không gian Haven Art"
+      aria-label="{t('gate.enterButton', activeLang)} - Bước vào không gian Haven Art"
     >
-      <span class="relative z-10 font-sans font-medium tracking-widest text-sm">Bước vào</span>
+      <span class="relative z-10 font-sans font-medium tracking-widest text-sm">
+        {t('gate.enterButton', activeLang)}
+      </span>
       <MorphIcon
         icon={ArrowRight}
         size={16}
@@ -72,7 +97,7 @@
     </button>
 
     <div class="mt-4 text-[10px] text-white/40 tracking-wider">
-      Nhấn <kbd class="px-1.5 py-0.5 rounded bg-white/10 border border-white/15">Enter</kbd> hoặc <kbd class="px-1.5 py-0.5 rounded bg-white/10 border border-white/15">Space</kbd> để bước vào
+      {t('gate.hint', activeLang)}
     </div>
   </div>
 </div>

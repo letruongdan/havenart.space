@@ -5,6 +5,8 @@
   import { DEFAULT_DRAFT_ID, type JournalEntry } from '../lib/db/schema';
   import { MorphIcon } from 'morphicons/svelte';
   import { Check } from 'lucide';
+  import { t } from '../lib/i18n/store';
+  import { DEFAULT_LANGUAGE, type SupportedLanguage } from '../lib/i18n/types';
 
   interface Props {
     repo?: JournalRepository;
@@ -18,9 +20,12 @@
     initialBody?: string;
     initialMood?: string;
     editingEntry?: JournalEntry | null;
+    lang?: SupportedLanguage;
   }
 
   let props: Props = $props();
+
+  let activeLang = $derived(props.lang || DEFAULT_LANGUAGE);
 
   let title = $state('');
   let body = $state('');
@@ -49,43 +54,41 @@
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-  const MOOD_OPTIONS = [
-    { id: 'calm', label: 'Bình an', icon: '🍃' },
-    { id: 'grateful', label: 'Biết ơn', icon: '✨' },
-    { id: 'reflective', label: 'Trầm tư', icon: '🌙' },
-    { id: 'peaceful', label: 'Tĩnh lặng', icon: '🕊️' },
-    { id: 'hopeful', label: 'Hy vọng', icon: '☀️' },
-  ];
+  let moodOptions = $derived([
+    { id: 'calm', label: t('moods.calm', activeLang), icon: '🍃' },
+    { id: 'grateful', label: t('moods.grateful', activeLang), icon: '✨' },
+    { id: 'reflective', label: t('moods.reflective', activeLang), icon: '🌙' },
+    { id: 'peaceful', label: t('moods.peaceful', activeLang), icon: '🕊️' },
+    { id: 'hopeful', label: t('moods.hopeful', activeLang), icon: '☀️' },
+  ]);
 
   onMount(async () => {
     try {
-      if (!props.repo) {
+      if (!props.repo && !props.repository) {
         localRepo = new JournalRepository();
         await localRepo.init();
-      } else {
-        await props.repo.init();
       }
 
-      const targetRepo = props.repo || localRepo;
-      if (targetRepo) {
-        const existingDraft = await targetRepo.getDraft(DEFAULT_DRAFT_ID);
-        if (existingDraft && !title && !body) {
-          if (existingDraft.title) title = existingDraft.title;
-          if (existingDraft.body) body = existingDraft.body;
-          if (existingDraft.mood) mood = existingDraft.mood;
-          saveStatus = 'saved';
-          statusMessage = 'Đã lưu nháp';
+      const targetRepo = activeRepo;
+      if (targetRepo && !props.editingEntry) {
+        const draft = await targetRepo.getDraft(DEFAULT_DRAFT_ID);
+        if (draft && !title && !body) {
+          title = draft.title || '';
+          body = draft.body || '';
+          if (draft.mood) {
+            mood = draft.mood;
+            props.onMoodChange?.(draft.mood);
+          }
         }
       }
     } catch (err) {
-      console.warn('Failed to load initial draft:', err);
+      console.error('WritePanel initialization error:', err);
     }
   });
 
   onDestroy(() => {
     if (debounceTimer) {
       clearTimeout(debounceTimer);
-      debounceTimer = null;
     }
     if (localRepo) {
       localRepo.close().catch(() => {});
@@ -111,7 +114,7 @@
 
       try {
         saveStatus = 'saving';
-        statusMessage = 'Đang lưu nháp...';
+        statusMessage = t('write.saving', activeLang);
         await targetRepo.saveDraft({
           id: DEFAULT_DRAFT_ID,
           title,
@@ -119,7 +122,7 @@
           mood,
         });
         saveStatus = 'saved';
-        statusMessage = 'Đã lưu nháp';
+        statusMessage = t('write.draftSaved', activeLang);
       } catch (err) {
         console.error('Draft autosave error:', err);
         saveStatus = 'idle';
@@ -178,24 +181,23 @@
       let entry: JournalEntry;
       if (editingId) {
         entry = await targetRepo.updateEntry(editingId, {
-          title: trimmedTitle || 'Không tiêu đề',
+          title: trimmedTitle,
           body: trimmedBody,
           mood,
         });
-        saveStatus = 'saved';
-        statusMessage = 'Đã cập nhật bài viết';
       } else {
         entry = await targetRepo.createEntry({
-          title: trimmedTitle || 'Không tiêu đề',
+          title: trimmedTitle,
           body: trimmedBody,
           mood,
         });
-
-        // Clear draft upon successful save
-        await targetRepo.clearDraft(DEFAULT_DRAFT_ID);
-        saveStatus = 'idle';
-        statusMessage = '';
       }
+
+      // Clear draft upon successful save
+      await targetRepo.clearDraft(DEFAULT_DRAFT_ID);
+
+      saveStatus = 'saved';
+      statusMessage = t('write.draftSaved', activeLang);
 
       // Reset form state
       title = '';
@@ -217,10 +219,10 @@
   <!-- Mood Selector -->
   <fieldset>
     <legend class="block text-xs font-serif uppercase tracking-wider text-white/60 mb-2">
-      Tâm trạng lúc này
+      {activeLang === 'vi' ? 'Tâm trạng lúc này' : 'Current mood'}
     </legend>
     <div class="flex flex-wrap gap-2">
-      {#each MOOD_OPTIONS as opt}
+      {#each moodOptions as opt}
         <button
           type="button"
           onclick={() => handleSelectMood(opt.id)}
@@ -237,11 +239,11 @@
 
   <!-- Title Input -->
   <div>
-    <label for="journal-title" class="sr-only">Tiêu đề bài viết</label>
+    <label for="journal-title" class="sr-only">Tiêu đề bài viết / Entry Title</label>
     <input
       id="journal-title"
       type="text"
-      placeholder="Tiêu đề (tuỳ chọn)..."
+      placeholder={t('write.titlePlaceholder', activeLang)}
       value={title}
       oninput={handleTitleInput}
       class="w-full px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 focus:bg-white/10 border border-white/15 focus:border-white/40 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/40 text-base font-serif transition-colors backdrop-blur-md"
@@ -250,11 +252,11 @@
 
   <!-- Body Textarea -->
   <div>
-    <label for="journal-body" class="sr-only">Nội dung suy nghĩ</label>
+    <label for="journal-body" class="sr-only">Nội dung suy nghĩ / Reflections</label>
     <textarea
       id="journal-body"
       rows="7"
-      placeholder="Viết những suy nghĩ của bạn..."
+      placeholder={t('write.bodyPlaceholder', activeLang)}
       value={body}
       oninput={handleBodyInput}
       class="w-full px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 focus:bg-white/10 border border-white/15 focus:border-white/40 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/40 text-sm font-light leading-relaxed resize-y transition-colors backdrop-blur-md"
@@ -293,7 +295,7 @@
           onclick={handleCancelEdit}
           class="px-4 py-2.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/15 text-white/70 hover:text-white font-light text-xs tracking-wide transition-all cursor-pointer"
         >
-          Hủy sửa
+          {t('write.cancelButton', activeLang)}
         </button>
       {/if}
 
@@ -303,7 +305,7 @@
         disabled={isSavingEntry || (!title.trim() && !body.trim())}
         class="px-5 py-2.5 rounded-full bg-white/15 hover:bg-white/25 border border-white/25 hover:border-white/40 text-white font-medium text-xs tracking-wide shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
       >
-        {isSavingEntry ? 'Đang lưu...' : editingId ? 'Cập nhật bài viết' : 'Lưu bài viết'}
+        {isSavingEntry ? t('write.saving', activeLang) : editingId ? t('write.updateButton', activeLang) : t('write.saveButton', activeLang)}
       </button>
     </div>
   </div>

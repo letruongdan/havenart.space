@@ -21,7 +21,23 @@
   import { ALL_HAVEN_AUDIO_TRACKS } from '../lib/audio/ambient-catalog';
   import { MorphIcon } from 'morphicons/svelte';
   import { X, Activity } from 'lucide';
+  import LanguagePicker from './LanguagePicker.svelte';
+  import { detectUserLanguage, t } from '../lib/i18n/store';
+  import type { SupportedLanguage } from '../lib/i18n/types';
 
+  interface Props {
+    initialLang?: SupportedLanguage;
+  }
+
+  let shellProps: Props = $props();
+
+  let currentLang = $state<SupportedLanguage>(detectUserLanguage());
+
+  $effect(() => {
+    if (shellProps.initialLang) {
+      currentLang = shellProps.initialLang;
+    }
+  });
   let experienceState = $state<'gate' | 'haven'>('gate');
   let activeModal = $state<'write' | 'list' | null>(null);
   let journalRepo = $state<JournalRepository | null>(null);
@@ -44,9 +60,17 @@
 
   // Weather & Mood Context
   let weatherInfo = $state<WeatherInfo | null>(null);
-  let weatherLabel = $state<string>('');
   let selectionReason = $state<string>('');
   let activeMood = $state<string | null>(null);
+
+  let weatherDisplay = $derived.by(() => {
+    if (!weatherInfo) return '';
+    const conditionText = t(`weather.${weatherInfo.condition}` as any, currentLang) || (currentLang === 'vi' ? weatherInfo.descriptionVi : weatherInfo.condition);
+    if (weatherInfo.temperature !== undefined) {
+      return `${conditionText} • ${Math.round(weatherInfo.temperature)}°C`;
+    }
+    return conditionText;
+  });
 
   let audioEngine: AudioEngine | null = null;
   let visualController: VisualController | null = null;
@@ -140,11 +164,6 @@
     detectWeather()
       .then((info) => {
         weatherInfo = info;
-        if (info.temperature !== undefined) {
-          weatherLabel = `${info.descriptionVi} • ${Math.round(info.temperature)}°C`;
-        } else {
-          weatherLabel = info.descriptionVi;
-        }
 
         // If no explicit journal mood is prioritized, adapt to local weather & time of day
         if (!activeMood) {
@@ -172,6 +191,19 @@
       .catch((err) => {
         console.warn('Weather detection notice:', err);
       });
+
+    function onLanguageChangeEvent(event: Event) {
+      const customEvent = event as CustomEvent<{ lang: SupportedLanguage }>;
+      if (customEvent.detail?.lang) {
+        currentLang = customEvent.detail.lang;
+      }
+    }
+
+    window.addEventListener('haven:language-change', onLanguageChangeEvent);
+
+    return () => {
+      window.removeEventListener('haven:language-change', onLanguageChangeEvent);
+    };
   });
 
   let isIdle = $state(false);
@@ -419,7 +451,7 @@
     <div
       class="relative z-20 w-full min-h-screen flex items-center justify-center transition-opacity duration-700 ease-out"
     >
-      <Gate onEnter={handleEnter} />
+      <Gate onEnter={handleEnter} lang={currentLang} />
     </div>
   {:else}
     <!-- Experience State: Haven Main View -->
@@ -436,19 +468,27 @@
           <span class="text-xs sm:text-sm font-sans tracking-[0.2em] uppercase font-medium text-white drop-shadow-sm">Haven Art</span>
         </div>
 
-        <!-- Header Controls: Weather Whisper & Admin Portal Link -->
+        <!-- Header Controls: Weather Whisper, Language Picker & Admin Portal Link -->
         <div class="flex items-center gap-2">
-          {#if weatherLabel}
+          {#if weatherDisplay}
             <div class="hidden sm:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/25 hover:bg-black/40 border border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.25)] backdrop-blur-md select-none transition-all duration-300 font-sans">
-              <span class="text-xs sm:text-sm font-normal text-white/95 tracking-wide drop-shadow-sm">{weatherLabel}</span>
+              <span class="text-xs sm:text-sm font-normal text-white/95 tracking-wide drop-shadow-sm">{weatherDisplay}</span>
             </div>
           {/if}
+
+          <!-- Language Picker -->
+          <LanguagePicker
+            currentLanguage={currentLang}
+            onLanguageChange={(l) => {
+              currentLang = l;
+            }}
+          />
 
           <a
             href="/admin"
             class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-black/25 hover:bg-black/45 border border-white/20 hover:border-white/40 text-white/70 hover:text-white shadow-[0_4px_20px_rgba(0,0,0,0.25)] backdrop-blur-md transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60"
-            title="Bảng điều khiển & Giám sát hệ thống (Admin)"
-            aria-label="Bảng điều khiển hệ thống"
+            title="{t('brand.adminPortal', currentLang)} (Admin)"
+            aria-label="{t('brand.adminPortal', currentLang)} / Bảng điều khiển hệ thống"
           >
             <MorphIcon icon={Activity} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
           </a>
@@ -472,8 +512,9 @@
           artworkArtist={currentArtwork?.artist}
           {activeModal}
           {isZenMode}
-          {weatherLabel}
+          weatherLabel={weatherDisplay}
           {selectionReason}
+          lang={currentLang}
           onTogglePlay={handleTogglePlay}
           onVolumeChange={handleVolumeChange}
           onNextTrack={handleNextTrack}
@@ -503,13 +544,13 @@
         <div class="flex items-center justify-between pb-4 border-b border-white/10">
           <h2 id="haven-modal-title" class="text-xl sm:text-2xl font-serif font-medium text-white flex items-center gap-2.5 drop-shadow-sm">
             <span class="w-2 h-2 rounded-full bg-amber-300/90 shadow-[0_0_8px_#fbbf24]"></span>
-            <span>{activeModal === 'write' ? (editingEntry ? 'Chỉnh sửa nhật ký' : 'Góc viết nhật ký') : 'Danh sách bài viết'}</span>
+            <span>{activeModal === 'write' ? (editingEntry ? t('write.editTitle', currentLang) : t('write.title', currentLang)) : t('journal.title', currentLang)}</span>
           </h2>
           <button
             type="button"
             onclick={handleCloseModal}
             class="w-8 h-8 rounded-full flex items-center justify-center text-white/80 hover:text-white bg-white/10 hover:bg-white/20 border border-white/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer shadow-sm"
-            aria-label="Đóng bảng nhật ký"
+            aria-label="{t('journal.close', currentLang)} / Đóng bảng nhật ký"
           >
             <MorphIcon
               icon={X}
@@ -526,8 +567,9 @@
           {#if activeModal === 'write'}
             <div id="journal-write-container">
               <WritePanel
-                repository={journalRepo}
+                repository={journalRepo || undefined}
                 editingEntry={editingEntry}
+                lang={currentLang}
                 onSaved={(savedEntry) => {
                   editingEntry = null;
                   handleJournalSaved(savedEntry);
@@ -542,8 +584,9 @@
           {:else if activeModal === 'list'}
             <div id="journal-list-container">
               <JournalList
-                repository={journalRepo}
+                repository={journalRepo || undefined}
                 refreshTrigger={journalRefreshTrigger}
+                lang={currentLang}
                 onEditEntry={(entry) => {
                   editingEntry = entry;
                   activeModal = 'write';

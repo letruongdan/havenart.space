@@ -14,6 +14,8 @@
     Eye,
     EyeOff,
   } from 'lucide';
+  import { t } from '../lib/i18n/store';
+  import { DEFAULT_LANGUAGE, type SupportedLanguage } from '../lib/i18n/types';
 
   interface Props {
     isPlaying?: boolean;
@@ -29,6 +31,7 @@
     selectionReason?: string;
     audioReason?: string;
     soundCategory?: 'all' | 'piano' | 'ambient';
+    lang?: SupportedLanguage;
     onTogglePlay?: () => void;
     onVolumeChange?: (volume: number) => void;
     onNextTrack?: () => void;
@@ -41,44 +44,22 @@
     onToggleSoundCategory?: () => void;
   }
 
-  let {
-    isPlaying = false,
-    volume = 0.4,
-    trackTitle = '',
-    trackArtist = '',
-    visualMode = 'static',
-    artworkTitle = '',
-    artworkArtist = '',
-    activeModal = null,
-    isZenMode = false,
-    weatherLabel = '',
-    selectionReason = '',
-    audioReason = '',
-    soundCategory = 'all',
-    onTogglePlay,
-    onVolumeChange,
-    onNextTrack,
-    onPreviousTrack,
-    onToggleVisualMode,
-    onNextArtwork,
-    onOpenJournalWrite,
-    onOpenJournalList,
-    onToggleZenMode,
-    onToggleSoundCategory,
-  }: Props = $props();
+  let props: Props = $props();
+
+  let activeLang = $derived(props.lang || DEFAULT_LANGUAGE);
 
   function handleVolumeInput(event: Event) {
     const target = event.target as HTMLInputElement;
     const val = parseFloat(target.value);
     if (!Number.isNaN(val)) {
-      onVolumeChange?.(val);
+      props.onVolumeChange?.(val);
     }
   }
 </script>
 
 <nav
-  class="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 max-w-5xl w-[95%] sm:w-auto transition-all duration-700 ease-out {isZenMode ? 'translate-y-24 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}"
-  aria-label="Bảng điều khiển Haven Art"
+  class="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 max-w-5xl w-[95%] sm:w-auto transition-all duration-700 ease-out {props.isZenMode ? 'translate-y-24 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}"
+  aria-label="Haven Art Controls / Bảng điều khiển Haven Art"
 >
   <!-- Floating Ultra-Transparent Crystal Glass Island -->
   <div
@@ -89,28 +70,28 @@
       <!-- Play/Pause Button with MorphIcon Spring Physics -->
       <button
         type="button"
-        onclick={onTogglePlay}
-        class="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 cursor-pointer {isPlaying ? 'bg-white/20 text-white border border-white/40 shadow-[0_0_15px_rgba(255,255,255,0.25)] scale-105' : 'bg-white/10 hover:bg-white/20 text-white/90 border border-white/25'}"
-        aria-label={isPlaying ? 'Tạm dừng nhạc' : 'Phát nhạc'}
+        onclick={props.onTogglePlay}
+        class="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 cursor-pointer {props.isPlaying ? 'bg-white/20 text-white border border-white/40 shadow-[0_0_15px_rgba(255,255,255,0.25)] scale-105' : 'bg-white/10 hover:bg-white/20 text-white/90 border border-white/25'}"
+        aria-label={props.isPlaying ? `${t('dock.pause', activeLang)} / Tạm dừng nhạc` : `${t('dock.play', activeLang)} / Phát nhạc`}
       >
         <MorphIcon
-          icon={isPlaying ? Pause : Play}
+          icon={props.isPlaying ? Pause : Play}
           size={16}
           strokeWidth={2}
           spring="smooth"
           reducedMotion="user"
-          class={isPlaying ? '' : 'translate-x-0.5'}
+          class={props.isPlaying ? '' : 'translate-x-0.5'}
         />
       </button>
 
       <!-- Next Track Button with MorphIcon -->
-      {#if onNextTrack}
+      {#if props.onNextTrack}
         <button
           type="button"
-          onclick={onNextTrack}
+          onclick={props.onNextTrack}
           class="w-7 h-7 rounded-full text-white/70 hover:text-white hover:bg-white/10 hidden sm:flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 cursor-pointer"
-          aria-label="Bài nhạc tiếp theo"
-          title="Chuyển bài thiền định tiếp theo"
+          aria-label="{t('dock.nextTrack', activeLang)} / Bài nhạc tiếp theo"
+          title="{t('dock.nextTrack', activeLang)}"
         >
           <MorphIcon
             icon={SkipForward}
@@ -123,29 +104,37 @@
       {/if}
 
       <!-- Sound Category Toggle (All / Piano / Ambient) -->
-      {#if onToggleSoundCategory}
+      {#if props.onToggleSoundCategory}
         <button
           type="button"
-          onclick={onToggleSoundCategory}
+          onclick={props.onToggleSoundCategory}
           class="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-light text-white/80 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
-          title="Chuyển thể loại âm nhạc: Đa dạng / Độc tấu Piano / Âm thanh tự nhiên"
-          aria-label="Chuyển thể loại âm nhạc: {soundCategory === 'piano' ? 'Độc tấu Piano' : soundCategory === 'ambient' ? 'Ambient tự nhiên' : 'Đa dạng'}"
+          title="{t('dock.toggleSoundCategory', activeLang)}"
+          aria-label="{t('dock.toggleSoundCategory', activeLang)}: {props.soundCategory === 'piano' ? t('dock.soundCategoryPiano', activeLang) : props.soundCategory === 'ambient' ? t('dock.soundCategoryAmbient', activeLang) : t('dock.soundCategoryAll', activeLang)}"
         >
-          <span>{soundCategory === 'piano' ? '🎹 Piano' : soundCategory === 'ambient' ? '🍃 Ambient' : '🎵 Đa dạng'}</span>
+          <span>
+            {#if props.soundCategory === 'piano'}
+              🎹 {t('dock.soundCategoryPiano', activeLang)}
+            {:else if props.soundCategory === 'ambient'}
+              🍃 {t('dock.soundCategoryAmbient', activeLang)}
+            {:else}
+              🎵 {t('dock.soundCategoryAll', activeLang)}
+            {/if}
+          </span>
         </button>
       {/if}
 
       <!-- Track Title & Artwork Poetic Caption -->
-      {#if trackTitle || artworkTitle}
+      {#if props.trackTitle || props.artworkTitle}
         <div class="hidden md:flex flex-col text-left leading-tight pl-1 pr-1 max-w-[130px] lg:max-w-[180px]">
-          {#if trackTitle}
-            <span class="text-xs text-white/95 font-light truncate drop-shadow-sm" title={audioReason ? `${trackTitle} • ${audioReason}` : trackTitle}>
-              {trackTitle}
+          {#if props.trackTitle}
+            <span class="text-xs text-white/95 font-light truncate drop-shadow-sm" title={props.audioReason ? `${props.trackTitle} • ${props.audioReason}` : props.trackTitle}>
+              {props.trackTitle}
             </span>
           {/if}
-          {#if artworkTitle}
-            <span class="text-[10px] text-white/60 font-serif italic truncate drop-shadow-sm" title="{artworkTitle} - {artworkArtist}">
-              {artworkTitle}
+          {#if props.artworkTitle}
+            <span class="text-[10px] text-white/60 font-serif italic truncate drop-shadow-sm" title="{props.artworkTitle} - {props.artworkArtist}">
+              {props.artworkTitle}
             </span>
           {/if}
         </div>
@@ -155,7 +144,7 @@
       <div class="flex items-center gap-1.5 ml-0.5">
         <label for="haven-dock-volume" class="text-white/60 hover:text-white flex items-center cursor-pointer">
           <MorphIcon
-            icon={volume <= 0.01 ? VolumeX : Volume2}
+            icon={(props.volume ?? 0.4) <= 0.01 ? VolumeX : Volume2}
             size={14}
             strokeWidth={2}
             spring="smooth"
@@ -168,9 +157,9 @@
           min="0"
           max="1"
           step="0.05"
-          value={volume}
+          value={props.volume ?? 0.4}
           oninput={handleVolumeInput}
-          aria-label="Điều chỉnh âm lượng"
+          aria-label="{t('dock.volume', activeLang)} / Điều chỉnh âm lượng"
           class="w-12 sm:w-16 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-white focus:outline-none focus-visible:ring-1 focus-visible:ring-white/40"
         />
       </div>
@@ -184,30 +173,30 @@
       <!-- Visual Switch Button with MorphIcon -->
       <button
         type="button"
-        onclick={onToggleVisualMode}
+        onclick={props.onToggleVisualMode}
         class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-light text-white/80 hover:text-white hover:bg-white/10 transition-all focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 cursor-pointer"
-        aria-label="Chuyển chế độ hình nền: {visualMode === 'shader' ? 'Đổi sang ảnh tĩnh' : 'Đổi sang shader động'}"
-        title="Chuyển giữa kiệt tác tranh tĩnh và shader dòng chảy"
+        aria-label="{t('dock.toggleVisualMode', activeLang)} - Chế độ hình nền ({props.visualMode === 'shader' ? 'Shader' : 'Tranh tĩnh'})"
+        title="{t('dock.toggleVisualMode', activeLang)}"
       >
         <MorphIcon
-          icon={visualMode === 'shader' ? Sparkles : Image}
+          icon={props.visualMode === 'shader' ? Sparkles : Image}
           size={13}
           strokeWidth={2}
           spring="smooth"
           reducedMotion="user"
-          class={visualMode === 'shader' ? 'text-emerald-400' : 'text-amber-300'}
+          class={props.visualMode === 'shader' ? 'text-emerald-400' : 'text-amber-300'}
         />
-        <span>{visualMode === 'shader' ? 'Shader' : 'Tranh tĩnh'}</span>
+        <span>{props.visualMode === 'shader' ? 'Shader' : activeLang === 'vi' ? 'Tranh tĩnh' : 'Canvas'}</span>
       </button>
 
       <!-- Next Artwork Mini Button with MorphIcon -->
-      {#if onNextArtwork}
+      {#if props.onNextArtwork}
         <button
           type="button"
-          onclick={onNextArtwork}
+          onclick={props.onNextArtwork}
           class="w-7 h-7 rounded-full text-white/70 hover:text-white hover:bg-white/10 hidden sm:flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 cursor-pointer"
-          aria-label="Đổi tranh tiếp theo"
-          title="Xem tác phẩm tiếp theo trong phòng tranh"
+          aria-label="{t('dock.nextArtwork', activeLang)} / Đổi tranh tiếp theo"
+          title="{t('dock.nextArtwork', activeLang)}"
         >
           <MorphIcon
             icon={RefreshCw}
@@ -228,10 +217,10 @@
       <!-- Viết nhật ký with MorphIcon -->
       <button
         type="button"
-        onclick={onOpenJournalWrite}
-        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-light tracking-wide text-white/85 hover:text-white hover:bg-white/10 transition-all focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 cursor-pointer {activeModal === 'write' ? 'bg-white/20 text-white shadow-[0_0_12px_rgba(255,255,255,0.2)]' : ''}"
-        aria-label="Viết nhật ký"
-        title="Mở bảng ghi lại suy ngẫm an yên"
+        onclick={props.onOpenJournalWrite}
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-light tracking-wide text-white/85 hover:text-white hover:bg-white/10 transition-all focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 cursor-pointer {props.activeModal === 'write' ? 'bg-white/20 text-white shadow-[0_0_12px_rgba(255,255,255,0.2)]' : ''}"
+        aria-label="{t('dock.writeJournal', activeLang)} - Viết nhật ký"
+        title="{t('dock.writeJournal', activeLang)}"
       >
         <MorphIcon
           icon={Pen}
@@ -240,16 +229,16 @@
           spring="smooth"
           reducedMotion="user"
         />
-        <span class="hidden sm:inline">Viết nhật ký</span>
+        <span class="hidden sm:inline">{t('dock.writeJournal', activeLang)}</span>
       </button>
 
       <!-- Danh sách bài viết with MorphIcon -->
       <button
         type="button"
-        onclick={onOpenJournalList}
-        class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-light text-white/85 hover:text-white hover:bg-white/10 transition-all focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 cursor-pointer {activeModal === 'list' ? 'bg-white/20 text-white shadow-[0_0_12px_rgba(255,255,255,0.2)]' : ''}"
-        aria-label="Danh sách bài viết"
-        title="Xem lại các trang nhật ký đã lưu"
+        onclick={props.onOpenJournalList}
+        class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-light text-white/85 hover:text-white hover:bg-white/10 transition-all focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 cursor-pointer {props.activeModal === 'list' ? 'bg-white/20 text-white shadow-[0_0_12px_rgba(255,255,255,0.2)]' : ''}"
+        aria-label="{t('dock.journalList', activeLang)} - Danh sách bài viết"
+        title="{t('dock.journalList', activeLang)}"
       >
         <MorphIcon
           icon={BookOpen}
@@ -258,39 +247,26 @@
           spring="smooth"
           reducedMotion="user"
         />
-        <span class="hidden md:inline">Nhật ký</span>
+        <span class="hidden sm:inline">{t('dock.journalList', activeLang)}</span>
       </button>
 
-      <!-- Zen / Immersion Mode Button with MorphIcon -->
-      {#if onToggleZenMode}
-        <button
-          type="button"
-          onclick={onToggleZenMode}
-          class="w-7 h-7 sm:w-8 sm:h-8 rounded-full text-white/70 hover:text-white hover:bg-white/10 flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 cursor-pointer ml-0.5"
-          aria-label="Ẩn bảng điều khiển để tận hưởng tranh toàn màn hình"
-          title="Chế độ tĩnh lặng: Ẩn bảng điều khiển để ngắm trọn vẹn bức tranh"
-        >
-          <MorphIcon
-            icon={isZenMode ? EyeOff : Eye}
-            size={14}
-            strokeWidth={2}
-            spring="smooth"
-            reducedMotion="user"
-          />
-        </button>
-      {/if}
+      <!-- Zen Immersion Toggle Button with MorphIcon -->
+      <button
+        type="button"
+        onclick={props.onToggleZenMode}
+        class="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 cursor-pointer {props.isZenMode ? 'bg-amber-400/30 text-amber-200 border border-amber-400/40 shadow-[0_0_15px_rgba(251,191,36,0.3)]' : 'bg-white/5 hover:bg-white/15 text-white/70 hover:text-white'}"
+        aria-label="{props.isZenMode ? t('dock.exitZenMode', activeLang) : t('dock.zenMode', activeLang)} - Chế độ tĩnh tâm"
+        title="{props.isZenMode ? t('dock.exitZenMode', activeLang) : t('dock.zenMode', activeLang)}"
+      >
+        <MorphIcon
+          icon={props.isZenMode ? EyeOff : Eye}
+          size={14}
+          strokeWidth={2}
+          spring="smooth"
+          reducedMotion="user"
+          class={props.isZenMode ? 'text-amber-300' : 'text-white/80'}
+        />
+      </button>
     </div>
   </div>
 </nav>
-
-<!-- Floating 'Show Dock' Indicator when Zen Mode is active -->
-{#if isZenMode}
-  <button
-    type="button"
-    onclick={onToggleZenMode}
-    class="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 px-4 py-1.5 rounded-full bg-black/25 hover:bg-black/40 text-white/70 hover:text-white border border-white/15 backdrop-blur-md text-xs font-light tracking-wide shadow-lg transition-all duration-300 cursor-pointer animate-fade-in"
-    aria-label="Hiện lại bảng điều khiển"
-  >
-    <span>✦ Hiện bảng điều khiển</span>
-  </button>
-{/if}
