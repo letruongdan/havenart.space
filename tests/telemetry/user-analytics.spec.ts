@@ -64,6 +64,14 @@ describe('User Analytics & Engagement Telemetry', () => {
   });
 
   describe('User Ratings & Feedback', () => {
+    it('returns empty list and 0 rating when no feedback exists (no mock data)', async () => {
+      expect(getUserFeedbacks()).toEqual([]);
+      const stats = await getUserAnalyticsSummary();
+      expect(stats.feedback.totalCount).toBe(0);
+      expect(stats.feedback.averageRating).toBe(0);
+      expect(stats.feedback.recentFeedbacks).toEqual([]);
+    });
+
     it('saves user feedback and calculates average rating', async () => {
       const fb1 = saveUserFeedback({
         rating: 5,

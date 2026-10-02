@@ -140,43 +140,6 @@ export function updateActiveDuration(secondsElapsed: number, isMusicPlaying: boo
 }
 
 /**
- * Default sample feedbacks for initial tranquil presentation.
- */
-function getInitialSampleFeedbacks(): UserFeedback[] {
-  const now = Date.now();
-  return [
-    {
-      id: 'fb-sample-1',
-      rating: 5,
-      category: 'peace',
-      comment: 'Không gian quá đỗi yên bình, giúp tôi giải tỏa mọi âu lo sau một ngày làm việc mệt mỏi.',
-      createdAt: now - 1000 * 60 * 60 * 3, // 3 hours ago
-    },
-    {
-      id: 'fb-sample-2',
-      rating: 5,
-      category: 'music',
-      comment: 'Âm thanh piano độc tấu kết hợp tiếng mưa êm dịu tạo cảm giác thư giãn tuyệt đối.',
-      createdAt: now - 1000 * 60 * 60 * 18, // 18 hours ago
-    },
-    {
-      id: 'fb-sample-3',
-      rating: 4,
-      category: 'journal',
-      comment: 'Góc viết nhật ký lưu cục bộ rất bảo mật và an tâm. Mong có thêm gợi ý chủ đề viết.',
-      createdAt: now - 1000 * 60 * 60 * 36, // 36 hours ago
-    },
-    {
-      id: 'fb-sample-4',
-      rating: 5,
-      category: 'visuals',
-      comment: 'Tranh tĩnh vật và hiệu ứng kính mờ cực kỳ sang trọng, trang nhã.',
-      createdAt: now - 1000 * 60 * 60 * 52, // 2 days ago
-    },
-  ];
-}
-
-/**
  * Save new user feedback & rating.
  */
 export function saveUserFeedback(input: {
@@ -208,24 +171,29 @@ export function saveUserFeedback(input: {
 }
 
 /**
- * Get all user feedbacks.
+ * Get all user feedbacks (real user data only, no mock/seed).
  */
 export function getUserFeedbacks(): UserFeedback[] {
   if (typeof window === 'undefined' || !window.localStorage) {
-    return getInitialSampleFeedbacks();
+    return [];
   }
 
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY_FEEDBACKS);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        // Filter out any legacy mock sample IDs
+        const realList = parsed.filter((f: UserFeedback) => !f.id?.startsWith('fb-sample-'));
+        if (realList.length !== parsed.length) {
+          window.localStorage.setItem(STORAGE_KEY_FEEDBACKS, JSON.stringify(realList));
+        }
+        return realList;
+      }
     }
-    // Seed initial feedbacks
-    const initial = getInitialSampleFeedbacks();
-    window.localStorage.setItem(STORAGE_KEY_FEEDBACKS, JSON.stringify(initial));
-    return initial;
+    return [];
   } catch {
-    return getInitialSampleFeedbacks();
+    return [];
   }
 }
 
@@ -290,7 +258,7 @@ export async function getUserAnalyticsSummary(options?: {
   // 2. Duration metrics
   let totalDurationSeconds = 0;
   let musicListeningSeconds = 0;
-  let totalSessionsCount = Math.max(1, uniqueSessions);
+  let totalSessionsCount = uniqueSessions;
 
   if (typeof window !== 'undefined' && window.localStorage) {
     try {
@@ -299,7 +267,7 @@ export async function getUserAnalyticsSummary(options?: {
         const parsed = JSON.parse(raw);
         totalDurationSeconds = parsed.totalDurationSeconds || 0;
         musicListeningSeconds = parsed.musicListeningSeconds || 0;
-        if (parsed.totalSessionsCount) {
+        if (parsed.totalSessionsCount !== undefined) {
           totalSessionsCount = parsed.totalSessionsCount;
         }
       }
@@ -308,7 +276,7 @@ export async function getUserAnalyticsSummary(options?: {
     }
   }
 
-  const averageSessionSeconds = Math.round(totalDurationSeconds / Math.max(1, totalSessionsCount));
+  const averageSessionSeconds = totalSessionsCount > 0 ? Math.round(totalDurationSeconds / totalSessionsCount) : 0;
 
   // 3. Journaling activity
   let totalEntries = 0;
@@ -365,7 +333,7 @@ export async function getUserAnalyticsSummary(options?: {
     ratingSum += star;
   }
 
-  const averageRating = feedbacks.length > 0 ? Math.round((ratingSum / feedbacks.length) * 10) / 10 : 5.0;
+  const averageRating = feedbacks.length > 0 ? Math.round((ratingSum / feedbacks.length) * 10) / 10 : 0;
 
   return {
     visits: {

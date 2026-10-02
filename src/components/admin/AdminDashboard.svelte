@@ -557,10 +557,10 @@
         </div>
         <div class="mt-1">
           <div class="text-xl sm:text-2xl font-serif font-medium text-white">
-            {telemetry?.audio.totalTracks || 8} <span class="text-sm font-sans text-white/60 font-normal">nhạc</span> • {telemetry?.visual.totalArtworks || 8} <span class="text-sm font-sans text-white/60 font-normal">tranh</span>
+            {telemetry?.audio.totalTracks ?? ALL_HAVEN_AUDIO_TRACKS.length} <span class="text-sm font-sans text-white/60 font-normal">nhạc</span> • {telemetry?.visual.totalArtworks ?? CURATED_ARTWORKS.length} <span class="text-sm font-sans text-white/60 font-normal">tranh</span>
           </div>
           <p class="text-xs text-white/50 mt-1">
-            {telemetry?.audio.pianoTracksCount || 3} Piano solo • {telemetry?.audio.ambientTracksCount || 5} Ambient calm
+            {telemetry?.audio.pianoTracksCount ?? ALL_HAVEN_AUDIO_TRACKS.filter((t) => t.category === 'piano').length} Piano solo • {telemetry?.audio.ambientTracksCount ?? ALL_HAVEN_AUDIO_TRACKS.filter((t) => t.category === 'ambient').length} Ambient calm
           </p>
         </div>
         <div class="w-full bg-white/10 rounded-full h-1.5 mt-3 overflow-hidden">
@@ -596,7 +596,7 @@
         </div>
         <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
           <span>DPR: {telemetry?.device.dpr || 1}x</span>
-          <span>{telemetry?.device.viewport || '1920x1080'}</span>
+          <span>{telemetry?.device.viewport || 'N/A'}</span>
         </div>
       </div>
 
@@ -611,10 +611,10 @@
         </div>
         <div class="mt-1">
           <div class="text-xl sm:text-2xl font-serif font-medium text-white">
-            {telemetry?.performance.firstContentfulPaintMs !== undefined ? `${telemetry.performance.firstContentfulPaintMs} ms` : 'Tối ưu'}
+            {telemetry?.performance.firstContentfulPaintMs !== undefined ? `${telemetry.performance.firstContentfulPaintMs} ms` : 'Đang đo...'}
           </div>
           <p class="text-xs text-white/50 mt-1">
-            FCP (Sơn nội dung đầu tiên) • Tải trang: {telemetry?.performance.pageLoadTimeMs !== undefined ? `${telemetry.performance.pageLoadTimeMs}ms` : '< 1s'}
+            FCP (Sơn nội dung đầu tiên) • Tải trang: {telemetry?.performance.pageLoadTimeMs !== undefined ? `${telemetry.performance.pageLoadTimeMs}ms` : 'Đang đo...'}
           </p>
         </div>
         <div class="w-full bg-white/10 rounded-full h-1.5 mt-3 overflow-hidden">
@@ -622,7 +622,9 @@
         </div>
         <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
           <span>Tài nguyên: {telemetry?.performance.resourcesCount || 0}</span>
-          <span class="text-emerald-300">Tốc độ A+</span>
+          <span class="{telemetry?.performance.firstContentfulPaintMs !== undefined && telemetry.performance.firstContentfulPaintMs < 1000 ? 'text-emerald-300' : 'text-amber-300'}">
+            {telemetry?.performance.firstContentfulPaintMs !== undefined && telemetry.performance.firstContentfulPaintMs < 1000 ? 'Tốc độ A+' : 'Tiêu chuẩn'}
+          </span>
         </div>
       </div>
     </div>
@@ -726,7 +728,7 @@
             <div class="p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 text-center">
               <span class="text-xs text-white/50 block mb-1">Tổng Thời Gian Tải</span>
               <span class="text-base sm:text-lg font-mono font-medium text-amber-300">
-                {telemetry?.performance.pageLoadTimeMs !== undefined ? `${telemetry.performance.pageLoadTimeMs} ms` : '< 1s'}
+                {telemetry?.performance.pageLoadTimeMs !== undefined ? `${telemetry.performance.pageLoadTimeMs} ms` : 'N/A'}
               </span>
               <span class="text-[10px] text-amber-400/80 block mt-1">Hoàn tất</span>
             </div>
@@ -944,21 +946,40 @@
               <span class="text-amber-400 font-mono">CSAT</span>
             </div>
             <div class="mt-1">
-              <div class="text-xl sm:text-2xl font-serif font-medium text-white flex items-center gap-2">
-                <span>{telemetry?.userAnalytics?.feedback.averageRating?.toFixed(1) || '5.0'}</span>
-                <span class="text-amber-400 text-lg">★</span>
-                <span class="text-xs font-sans text-white/50 font-normal">/ 5.0</span>
-              </div>
-              <p class="text-xs text-white/50 mt-1 truncate">
-                {telemetry?.userAnalytics?.feedback.totalCount || 0} lượt gửi cảm nhận
-              </p>
+              {#if (telemetry?.userAnalytics?.feedback.totalCount || 0) > 0}
+                <div class="text-xl sm:text-2xl font-serif font-medium text-white flex items-center gap-2">
+                  <span>{telemetry?.userAnalytics?.feedback.averageRating?.toFixed(1)}</span>
+                  <span class="text-amber-400 text-lg">★</span>
+                  <span class="text-xs font-sans text-white/50 font-normal">/ 5.0</span>
+                </div>
+                <p class="text-xs text-white/50 mt-1 truncate">
+                  {telemetry?.userAnalytics?.feedback.totalCount} lượt gửi cảm nhận thực tế
+                </p>
+              {:else}
+                <div class="text-lg sm:text-xl font-serif font-medium text-white/50 mt-1">
+                  Chưa có đánh giá
+                </div>
+                <p class="text-xs text-white/40 mt-1 truncate">
+                  0 lượt phản hồi
+                </p>
+              {/if}
             </div>
             <div class="w-full bg-white/10 rounded-full h-1.5 mt-3 overflow-hidden">
-              <div class="bg-amber-400 h-full rounded-full w-full"></div>
+              <div
+                class="bg-amber-400 h-full rounded-full transition-all duration-500"
+                style="width: {(telemetry?.userAnalytics?.feedback.totalCount || 0) > 0 ? Math.round(((telemetry?.userAnalytics?.feedback.averageRating || 0) / 5) * 100) : 0}%"
+              ></div>
             </div>
             <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
-              <span>5 sao: <strong class="text-white font-mono">{telemetry?.userAnalytics?.feedback.distribution[5] || 0}</strong></span>
-              <span class="text-amber-300">Rất hài lòng</span>
+              {#if (telemetry?.userAnalytics?.feedback.totalCount || 0) > 0}
+                <span>5 sao: <strong class="text-white font-mono">{telemetry?.userAnalytics?.feedback.distribution[5] || 0}</strong></span>
+                <span class="text-amber-300">
+                  {Math.round(((telemetry?.userAnalytics?.feedback.distribution[5] || 0) / (telemetry?.userAnalytics?.feedback.totalCount || 1)) * 100)}% 5 sao
+                </span>
+              {:else}
+                <span>5 sao: <strong class="text-white/40 font-mono">0</strong></span>
+                <span class="text-white/40">Chưa có số liệu</span>
+              {/if}
             </div>
           </div>
         </div>
@@ -1038,17 +1059,21 @@
                   <span class="w-2 h-2 rounded-full bg-amber-400"></span>
                   <span>Phân Bổ Xếp Hạng & Điểm Hài Lòng</span>
                 </h2>
-                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-400/10 border border-amber-400/20 text-amber-300 text-xs font-mono">
-                  <span>Trung bình:</span>
-                  <strong class="text-white">{telemetry?.userAnalytics?.feedback.averageRating?.toFixed(1) || '5.0'} ★</strong>
-                </div>
+                {#if (telemetry?.userAnalytics?.feedback.totalCount || 0) > 0}
+                  <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-400/10 border border-amber-400/20 text-amber-300 text-xs font-mono">
+                    <span>Trung bình:</span>
+                    <strong class="text-white">{telemetry?.userAnalytics?.feedback.averageRating?.toFixed(1)} ★</strong>
+                  </div>
+                {:else}
+                  <span class="text-xs text-white/40 font-mono">0 đánh giá</span>
+                {/if}
               </div>
 
               <!-- Rating 5 stars to 1 star bars -->
               <div class="space-y-3 mt-4">
                 {#each [5, 4, 3, 2, 1] as star}
                   {@const count = telemetry?.userAnalytics?.feedback.distribution[star] || 0}
-                  {@const total = telemetry?.userAnalytics?.feedback.totalCount || 1}
+                  {@const total = telemetry?.userAnalytics?.feedback.totalCount || 0}
                   {@const pct = total > 0 ? Math.round((count / total) * 100) : 0}
                   <div class="flex items-center gap-3 text-xs">
                     <div class="w-14 flex items-center gap-1 shrink-0 font-mono text-white/80">
@@ -1070,19 +1095,37 @@
             </div>
 
             <!-- Satisfaction Index Box -->
-            <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs space-y-2">
-              <div class="flex items-center gap-2 text-amber-300 font-medium">
-                <MorphIcon icon={Heart} size={15} strokeWidth={2} />
-                <span>Chỉ Số Trải Nghiệm & Bình An (CSAT Index)</span>
+            {#if (telemetry?.userAnalytics?.feedback.totalCount || 0) > 0}
+              {@const positiveCount = (telemetry?.userAnalytics?.feedback.distribution[4] || 0) + (telemetry?.userAnalytics?.feedback.distribution[5] || 0)}
+              {@const csatPct = Math.round((positiveCount / (telemetry?.userAnalytics?.feedback.totalCount || 1)) * 100)}
+              <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs space-y-2">
+                <div class="flex items-center gap-2 text-amber-300 font-medium">
+                  <MorphIcon icon={Heart} size={15} strokeWidth={2} />
+                  <span>Chỉ Số Hài Lòng Thực Tế (CSAT)</span>
+                </div>
+                <p class="text-white/80 leading-relaxed font-mono">
+                  Tỷ lệ đánh giá tích cực (4-5 sao): <strong class="text-amber-300 text-sm">{csatPct}%</strong> ({positiveCount}/{telemetry?.userAnalytics?.feedback.totalCount} lượt đánh giá thực tế).
+                </p>
+                <div class="pt-1 flex items-center justify-between text-[11px] text-white/50 border-t border-white/10">
+                  <span>Dữ liệu thu thập trực tiếp từ người dùng</span>
+                  <span class="text-emerald-300 font-mono">Xác thực</span>
+                </div>
               </div>
-              <p class="text-white/70 leading-relaxed">
-                Người dùng đánh giá rất tích cực về độ êm dịu, không gian âm nhạc không lời và tính năng viết nhật ký bảo mật hoàn toàn trong máy (Local-First).
-              </p>
-              <div class="pt-1 flex items-center justify-between text-[11px] text-white/50 border-t border-white/10">
-                <span>Bảo mật 100% không gửi về máy chủ</span>
-                <span class="text-emerald-300">Minh bạch</span>
+            {:else}
+              <div class="p-4 rounded-2xl bg-white/[0.02] border border-white/10 text-xs space-y-2">
+                <div class="flex items-center gap-2 text-white/60 font-medium">
+                  <MorphIcon icon={Heart} size={15} strokeWidth={2} />
+                  <span>Chỉ Số Hài Lòng Thực Tế (CSAT)</span>
+                </div>
+                <p class="text-white/40 leading-relaxed">
+                  Chưa có dữ liệu đánh giá từ người dùng. Khi người dùng bấm biểu tượng trái tim trên thanh điều hướng để gửi cảm nhận, điểm số CSAT sẽ được tính toán trực tiếp tại đây.
+                </p>
+                <div class="pt-1 flex items-center justify-between text-[11px] text-white/30 border-t border-white/5">
+                  <span>Chờ phản hồi từ người dùng</span>
+                  <span class="text-white/40 font-mono">0 lượt</span>
+                </div>
               </div>
-            </div>
+            {/if}
           </div>
         </div>
 
@@ -1105,7 +1148,10 @@
               <div class="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3 text-white/30">
                 <MorphIcon icon={MessageSquare} size={20} />
               </div>
-              <span>Chưa có cảm nhận nào được gửi từ người dùng.</span>
+              <p class="font-medium text-white/60">Chưa có cảm nhận nào được gửi từ người dùng.</p>
+              <p class="text-[11px] text-white/40 mt-1 max-w-sm mx-auto">
+                Khi người dùng trải nghiệm và gửi đánh giá từ biểu tượng Trái tim trên thanh điều hướng ở trang chính, các nhận xét thực tế sẽ hiển thị tại đây.
+              </p>
             </div>
           {:else}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

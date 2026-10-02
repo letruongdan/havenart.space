@@ -290,10 +290,10 @@ export async function getSystemTelemetry(options?: {
 
   const device = {
     userAgent: nav?.userAgent || 'Node/SSR',
-    screenResolution: isClient && window.screen ? `${window.screen.width}x${window.screen.height}` : '1920x1080',
-    viewport: isClient ? `${window.innerWidth}x${window.innerHeight}` : '1920x1080',
+    screenResolution: isClient && window.screen ? `${window.screen.width}x${window.screen.height}` : 'N/A',
+    viewport: isClient ? `${window.innerWidth}x${window.innerHeight}` : 'N/A',
     dpr: isClient ? window.devicePixelRatio || 1 : 1,
-    hardwareConcurrency: nav?.hardwareConcurrency || 4,
+    hardwareConcurrency: nav?.hardwareConcurrency || 1,
     deviceMemoryGb: (nav as any)?.deviceMemory,
     isOnline: nav?.onLine ?? true,
     connectionType: (nav as any)?.connection?.effectiveType,
