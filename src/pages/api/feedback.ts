@@ -1,9 +1,10 @@
 import type { APIRoute } from 'astro';
 import { addServerFeedback, getAllServerFeedbacks, getFeedbackStats } from '../../lib/server/db';
+import { extractClientInfo } from '../../lib/server/client-info';
 
 export const prerender = false;
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, clientAddress }) => {
   try {
     const body = await request.json();
     const { rating, category, comment, userId, userName, userEmail, device } = body || {};
@@ -15,6 +16,8 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
+    const clientInfo = extractClientInfo(request, clientAddress);
+
     const saved = addServerFeedback({
       rating,
       category,
@@ -22,7 +25,8 @@ export const POST: APIRoute = async ({ request }) => {
       userId,
       userName,
       userEmail,
-      device,
+      device: device || clientInfo.device,
+      clientInfo,
     });
 
     const stats = getFeedbackStats();

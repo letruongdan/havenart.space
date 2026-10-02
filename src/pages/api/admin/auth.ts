@@ -1,10 +1,11 @@
 import type { APIRoute } from 'astro';
 import { authenticateUser } from '../../../lib/server/db';
 import { verifyAdminRequest } from '../../../lib/server/admin-auth';
+import { extractClientInfo } from '../../../lib/server/client-info';
 
 export const prerender = false;
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, clientAddress }) => {
   try {
     const body = await request.json();
     const { username, password } = body || {};
@@ -16,7 +17,8 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    const auth = authenticateUser(username, password);
+    const clientInfo = extractClientInfo(request, clientAddress);
+    const auth = authenticateUser(username, password, clientInfo);
     if (!auth || auth.user.role !== 'admin') {
       return new Response(
         JSON.stringify({ success: false, error: 'Tên đăng nhập hoặc mật khẩu quản trị không chính xác.' }),

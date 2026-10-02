@@ -23,24 +23,38 @@ import {
   getServerAnalyticsSummary,
   exportServerDatabase,
   importServerDatabase,
+  closeDatabase,
 } from '../../src/lib/server/db';
 
 describe('Server Database & User Sync Storage', () => {
   const testDbDir = path.resolve(process.cwd(), 'data', 'test-data');
   const testDbPath = path.join(testDbDir, 'test-server-db.json');
+  const testSqlitePath = path.join(testDbDir, 'test-server-db.db');
   const originalEnv = process.env.HAVEN_SERVER_DB_PATH;
+
+  function cleanupFiles() {
+    closeDatabase();
+    for (const f of [
+      testDbPath,
+      testSqlitePath,
+      `${testSqlitePath}-wal`,
+      `${testSqlitePath}-shm`,
+    ]) {
+      if (fs.existsSync(f)) {
+        try {
+          fs.unlinkSync(f);
+        } catch {}
+      }
+    }
+  }
 
   beforeEach(() => {
     process.env.HAVEN_SERVER_DB_PATH = testDbPath;
-    if (fs.existsSync(testDbPath)) {
-      fs.unlinkSync(testDbPath);
-    }
+    cleanupFiles();
   });
 
   afterEach(() => {
-    if (fs.existsSync(testDbPath)) {
-      fs.unlinkSync(testDbPath);
-    }
+    cleanupFiles();
     if (fs.existsSync(testDbDir)) {
       try {
         fs.rmdirSync(testDbDir);

@@ -1,9 +1,10 @@
 import type { APIRoute } from 'astro';
 import { authenticateUser } from '../../../lib/server/db';
+import { extractClientInfo } from '../../../lib/server/client-info';
 
 export const prerender = false;
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, clientAddress }) => {
   try {
     const body = await request.json();
     const { email, password } = body || {};
@@ -15,7 +16,8 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    const auth = authenticateUser(email, password);
+    const clientInfo = extractClientInfo(request, clientAddress);
+    const auth = authenticateUser(email, password, clientInfo);
     if (!auth) {
       return new Response(
         JSON.stringify({ success: false, error: 'Email hoặc mật khẩu không chính xác.' }),

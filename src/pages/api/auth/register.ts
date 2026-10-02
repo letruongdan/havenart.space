@@ -1,9 +1,10 @@
 import type { APIRoute } from 'astro';
 import { createServerUser, findUserByEmail } from '../../../lib/server/db';
+import { extractClientInfo } from '../../../lib/server/client-info';
 
 export const prerender = false;
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, clientAddress }) => {
   try {
     const body = await request.json();
     const { email, password, name } = body || {};
@@ -35,10 +36,13 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
+    const clientInfo = extractClientInfo(request, clientAddress);
+
     const { user, token } = createServerUser({
       email,
       name: (name && typeof name === 'string') ? name : email.split('@')[0],
       password,
+      clientInfo,
     });
 
     return new Response(

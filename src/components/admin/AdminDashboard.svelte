@@ -77,6 +77,10 @@
     Search,
     FileText,
     Upload,
+    Laptop,
+    Smartphone,
+    Globe,
+    History,
   } from 'lucide';
 
   let repo = $state<JournalRepository | null>(null);
@@ -89,6 +93,8 @@
       visits: { total: number; today: number; thisWeek: number };
       duration: { averageSeconds: number; totalSeconds: number };
       devices: { desktop: number; mobile: number; tablet: number };
+      browsers?: Record<string, number>;
+      operatingSystems?: Record<string, number>;
       users: { total: number; activeToday: number };
       journal: { totalEntries: number; totalWords: number; moodBreakdown: Record<string, number> };
     };
@@ -120,6 +126,30 @@
     lastActiveAt?: number;
     entriesCount: number;
     totalWords: number;
+    createdIp?: string;
+    lastIp?: string;
+    lastUserAgent?: string;
+    lastBrowser?: string;
+    lastBrowserVersion?: string;
+    lastOs?: string;
+    lastDevice?: 'desktop' | 'mobile' | 'tablet';
+    lastLanguage?: string;
+    loginCount?: number;
+  }
+
+  export interface UserLoginHistoryItem {
+    id: string;
+    userId: string;
+    email: string;
+    ip: string;
+    userAgent?: string;
+    browser: string;
+    browserVersion?: string;
+    os: string;
+    device: 'desktop' | 'mobile' | 'tablet';
+    language: string;
+    status: 'success' | 'failed';
+    timestamp: number;
   }
 
   export interface ServerEntryItem {
@@ -675,6 +705,42 @@
     } catch {
       showNotice('Lỗi kết nối máy chủ', 'error');
     }
+  }
+
+  let selectedUserForHistory = $state<ServerUserItem | null>(null);
+  let userLoginHistory = $state<UserLoginHistoryItem[]>([]);
+  let isLoadingHistory = $state(false);
+  let showHistoryModal = $state(false);
+
+  async function openUserLoginHistory(u: ServerUserItem) {
+    selectedUserForHistory = u;
+    showHistoryModal = true;
+    isLoadingHistory = true;
+    userLoginHistory = [];
+    try {
+      const res = await fetch(`/api/admin/users?history=${encodeURIComponent(u.id)}`, {
+        headers: getAdminHeaders(),
+        credentials: 'same-origin',
+      });
+      if (res.status === 401) {
+        handleAdminUnauthorized();
+        return;
+      }
+      const data = await res.json();
+      if (res.ok && data.success && Array.isArray(data.history)) {
+        userLoginHistory = data.history;
+      }
+    } catch {
+      showNotice('Không thể tải lịch sử đăng nhập', 'error');
+    } finally {
+      isLoadingHistory = false;
+    }
+  }
+
+  function closeUserLoginHistory() {
+    showHistoryModal = false;
+    selectedUserForHistory = null;
+    userLoginHistory = [];
   }
 
   async function handleDeleteEntry(e: ServerEntryItem) {
@@ -1759,8 +1825,8 @@
                     <th class="py-3.5 px-4 font-medium">Người Dùng</th>
                     <th class="py-3.5 px-4 font-medium">Vai Trò</th>
                     <th class="py-3.5 px-4 font-medium">Trạng Thái</th>
+                    <th class="py-3.5 px-4 font-medium">Thiết Bị & Trình Duyệt</th>
                     <th class="py-3.5 px-4 font-medium">Bài Viết / Số Từ</th>
-                    <th class="py-3.5 px-4 font-medium">Ngày Đăng Ký</th>
                     <th class="py-3.5 px-4 font-medium">Đăng Nhập Cuối</th>
                     <th class="py-3.5 px-4 font-medium text-right">Thao Tác Quản Trị</th>
                   </tr>
@@ -1809,18 +1875,53 @@
                           </span>
                         {/if}
                       </td>
+                      <td class="py-3.5 px-4">
+                        <div class="space-y-1">
+                          <div class="flex items-center gap-1.5 text-white/90">
+                            {#if u.lastDevice === 'mobile'}
+                              <span class="text-cyan-400" title="Điện thoại di động">
+                                <MorphIcon icon={Smartphone} size={13} />
+                              </span>
+                            {:else}
+                              <span class="text-amber-300" title="Máy tính / Laptop">
+                                <MorphIcon icon={Laptop} size={13} />
+                              </span>
+                            {/if}
+                            <span class="font-medium text-[11px] text-white">
+                              {u.lastBrowser || 'Trình duyệt'}{u.lastBrowserVersion ? ` ${u.lastBrowserVersion.split('.')[0]}` : ''}
+                            </span>
+                            <span class="text-[10px] text-white/40">({u.lastOs || 'OS'})</span>
+                          </div>
+                          <div class="flex items-center gap-1.5 text-[10px] text-white/40 font-mono">
+                            <span class="flex items-center gap-1 text-white/60">
+                              <MorphIcon icon={Globe} size={10} />
+                              <span>{u.lastIp || '127.0.0.1'}</span>
+                            </span>
+                            <span>•</span>
+                            <span class="text-emerald-400/80">{u.loginCount || 1} lần đăng nhập</span>
+                          </div>
+                        </div>
+                      </td>
                       <td class="py-3.5 px-4 font-mono text-white/80">
                         <span class="font-medium text-white">{u.entriesCount}</span> bài
                         <span class="text-white/40">({u.totalWords} từ)</span>
                       </td>
                       <td class="py-3.5 px-4 font-mono text-white/60">
-                        {new Date(u.createdAt).toLocaleDateString('vi-VN')}
-                      </td>
-                      <td class="py-3.5 px-4 font-mono text-white/60">
-                        {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString('vi-VN') : 'Chưa đăng nhập'}
+                        <div>{u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString('vi-VN') : 'Chưa đăng nhập'}</div>
+                        <div class="text-[10px] text-white/40 font-mono mt-0.5">Tạo: {new Date(u.createdAt).toLocaleDateString('vi-VN')}</div>
                       </td>
                       <td class="py-3.5 px-4 text-right">
                         <div class="flex items-center justify-end gap-1.5">
+                          <!-- View Login History Audit -->
+                          <button
+                            type="button"
+                            onclick={() => openUserLoginHistory(u)}
+                            class="p-1.5 rounded-lg text-white/40 hover:text-amber-300 hover:bg-amber-400/10 transition-colors cursor-pointer"
+                            title="Xem chi tiết nhật ký đăng nhập, IP và thiết bị"
+                          >
+                            <MorphIcon icon={History} size={14} />
+                          </button>
+
                           <!-- Toggle Status (Lock / Unlock) -->
                           {#if u.email !== 'admin@havenart.space' && u.id !== 'user_root_admin'}
                             <button
@@ -2427,6 +2528,57 @@
               </div>
             </div>
           </div>
+
+          <!-- Browsers & Operating Systems Breakdown -->
+          {#if serverStats?.analytics.browsers && Object.keys(serverStats.analytics.browsers).length > 0}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-white/5">
+              <!-- Browsers breakdown -->
+              <div class="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs text-white/70 font-medium">Trình Duyệt Truy Cập (Browsers)</span>
+                  <span class="text-[10px] text-white/40">Phân tích telemetry</span>
+                </div>
+                <div class="space-y-2">
+                  {#each Object.entries(serverStats.analytics.browsers) as [browser, count]}
+                    {@const totalVisits = serverStats.analytics.visits.total || 1}
+                    {@const pct = Math.min(100, Math.max(1, Math.round((count / totalVisits) * 100)))}
+                    <div>
+                      <div class="flex items-center justify-between text-xs mb-1">
+                        <span class="text-white/80 font-mono">{browser}</span>
+                        <span class="font-mono text-cyan-300">{count} lượt ({pct}%)</span>
+                      </div>
+                      <div class="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
+                        <div class="h-full rounded-full bg-cyan-400" style="width: {pct}%"></div>
+                      </div>
+                    </div>
+                  {/each}
+                </div>
+              </div>
+
+              <!-- OS breakdown -->
+              <div class="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs text-white/70 font-medium">Hệ Điều Hành (Operating Systems)</span>
+                  <span class="text-[10px] text-white/40">Phân tích telemetry</span>
+                </div>
+                <div class="space-y-2">
+                  {#each Object.entries(serverStats?.analytics.operatingSystems || {}) as [os, count]}
+                    {@const totalVisits = serverStats.analytics.visits.total || 1}
+                    {@const pct = Math.min(100, Math.max(1, Math.round((count / totalVisits) * 100)))}
+                    <div>
+                      <div class="flex items-center justify-between text-xs mb-1">
+                        <span class="text-white/80 font-mono">{os}</span>
+                        <span class="font-mono text-amber-300">{count} lượt ({pct}%)</span>
+                      </div>
+                      <div class="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
+                        <div class="h-full rounded-full bg-amber-400" style="width: {pct}%"></div>
+                      </div>
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            </div>
+          {/if}
         </div>
       </div>
     {/if}
@@ -3255,6 +3407,112 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  {/if}
+
+  <!-- User Login & Device History Modal -->
+  {#if showHistoryModal && selectedUserForHistory}
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+      <div class="bg-[#121318] border border-white/15 rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl space-y-5 relative max-h-[88vh] flex flex-col">
+        <!-- Header -->
+        <div class="flex items-center justify-between border-b border-white/10 pb-4">
+          <div class="flex items-center gap-2.5">
+            <div class="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300">
+              <MorphIcon icon={History} size={18} strokeWidth={2} />
+            </div>
+            <div>
+              <h3 class="text-base font-serif font-medium text-white">Nhật Ký Đăng Nhập & Thiết Bị</h3>
+              <p class="text-xs text-white/50">{selectedUserForHistory.name} <span class="font-mono">({selectedUserForHistory.email})</span></p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onclick={closeUserLoginHistory}
+            class="p-1.5 rounded-xl hover:bg-white/10 text-white/60 hover:text-white cursor-pointer transition-colors"
+          >
+            <MorphIcon icon={X} size={18} />
+          </button>
+        </div>
+
+        <!-- Telemetry Highlights Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+          <div class="p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
+            <span class="text-white/40 text-[10px] block">Tổng Lần Đăng Nhập</span>
+            <span class="text-base font-medium text-white font-mono">{selectedUserForHistory.loginCount || 1} lần</span>
+          </div>
+          <div class="p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
+            <span class="text-white/40 text-[10px] block">Địa Chỉ IP Gần Nhất</span>
+            <span class="text-xs font-medium text-amber-300 font-mono truncate block" title={selectedUserForHistory.lastIp}>{selectedUserForHistory.lastIp || '127.0.0.1'}</span>
+          </div>
+          <div class="p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
+            <span class="text-white/40 text-[10px] block">Trình Duyệt & OS</span>
+            <span class="text-xs font-medium text-cyan-300 truncate block">{selectedUserForHistory.lastBrowser || 'Web'} / {selectedUserForHistory.lastOs || 'OS'}</span>
+          </div>
+          <div class="p-2.5 rounded-xl bg-white/[0.02] border border-white/5">
+            <span class="text-white/40 text-[10px] block">Ngôn Ngữ Thiết Bị</span>
+            <span class="text-xs font-medium text-white/80 font-mono">{selectedUserForHistory.lastLanguage || 'vi-VN'}</span>
+          </div>
+        </div>
+
+        <!-- History Records Table / List -->
+        <div class="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[180px]">
+          {#if isLoadingHistory}
+            <div class="py-14 text-center text-xs text-white/40 flex flex-col items-center justify-center gap-2">
+              <MorphIcon icon={RefreshCw} size={18} spin={true} />
+              <span>Đang truy xuất bản ghi SQLite từ bảng login_history...</span>
+            </div>
+          {:else if userLoginHistory.length === 0}
+            <div class="py-14 text-center text-xs text-white/40">
+              <p>Chưa có lịch sử đăng nhập nào được lưu lại cho tài khoản này.</p>
+            </div>
+          {:else}
+            {#each userLoginHistory as item (item.id)}
+              <div class="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div class="space-y-1">
+                  <div class="flex items-center gap-2">
+                    {#if item.status === 'success'}
+                      <span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-medium">Thành công</span>
+                    {:else}
+                      <span class="px-2 py-0.5 rounded-full text-[10px] bg-rose-500/15 border border-rose-500/30 text-rose-300 font-medium">Thất bại</span>
+                    {/if}
+                    <span class="font-mono text-white/80">{new Date(item.timestamp).toLocaleString('vi-VN')}</span>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2 text-[11px] text-white/50">
+                    <span class="font-mono text-amber-300/90 flex items-center gap-1">
+                      <MorphIcon icon={Globe} size={10} />
+                      <span>{item.ip}</span>
+                    </span>
+                    <span>•</span>
+                    <span class="text-white/80">{item.browser} {item.browserVersion ? `v${item.browserVersion}` : ''}</span>
+                    <span>•</span>
+                    <span>{item.os}</span>
+                    <span class="text-white/40">({item.device})</span>
+                  </div>
+                </div>
+                {#if item.userAgent}
+                  <div class="sm:text-right">
+                    <span class="text-[10px] text-white/30 font-mono max-w-[220px] truncate block" title={item.userAgent}>
+                      {item.userAgent}
+                    </span>
+                  </div>
+                {/if}
+              </div>
+            {/each}
+          {/if}
+        </div>
+
+        <!-- Footer -->
+        <div class="pt-3 border-t border-white/10 flex items-center justify-between text-xs text-white/40">
+          <span>Dữ liệu lưu an toàn trong SQLite (bảng login_history)</span>
+          <button
+            type="button"
+            onclick={closeUserLoginHistory}
+            class="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/80 hover:text-white cursor-pointer transition-colors"
+          >
+            Đóng
+          </button>
+        </div>
       </div>
     </div>
   {/if}

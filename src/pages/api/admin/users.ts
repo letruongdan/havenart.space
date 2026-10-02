@@ -1,6 +1,8 @@
 import type { APIRoute } from 'astro';
 import {
   getAllUsers,
+  getUserLoginHistory,
+  getRecentLoginHistory,
   updateUserStatus,
   updateUserRole,
   resetUserPassword,
@@ -20,6 +22,26 @@ export const GET: APIRoute = async ({ request }) => {
   }
 
   try {
+    const url = new URL(request.url);
+    const historyUserId = url.searchParams.get('history');
+    const recentHistory = url.searchParams.get('recentHistory');
+
+    if (historyUserId) {
+      const history = getUserLoginHistory(historyUserId);
+      return new Response(
+        JSON.stringify({ success: true, history }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (recentHistory === 'true' || recentHistory === '1') {
+      const history = getRecentLoginHistory();
+      return new Response(
+        JSON.stringify({ success: true, history }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     const users = getAllUsers();
     return new Response(
       JSON.stringify({ success: true, users }),
