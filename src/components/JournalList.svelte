@@ -225,7 +225,7 @@
 
   <!-- Journal Entries List -->
   {#if filteredEntries.length === 0}
-    <div class="py-12 text-center text-white/50 font-light text-sm">
+    <div class="py-12 text-center text-white/80 font-normal text-sm leading-relaxed">
       {searchQuery ? 'Không tìm thấy bài viết nào phù hợp.' : 'Chưa có bài viết nào. Hãy lưu lại khoảnh khắc đầu tiên của bạn.'}
     </div>
   {:else}

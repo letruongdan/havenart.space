@@ -420,18 +420,18 @@
     >
       <!-- Ethereal Minimal Top Bar (Auto-hides on Idle / Zen Mode) -->
       <header
-        class="pointer-events-auto flex items-center justify-between max-w-7xl w-full mx-auto px-2 transition-all duration-700 {isZenMode || (isIdle && activeModal === null) ? '-translate-y-12 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}"
+        class="pointer-events-auto flex items-center justify-between max-w-7xl w-full mx-auto px-2 pt-1 transition-all duration-700 {isZenMode || (isIdle && activeModal === null) ? '-translate-y-12 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}"
       >
-        <!-- Subtle Minimal Brand Mark -->
-        <div class="inline-flex items-center gap-2 select-none opacity-40 hover:opacity-90 transition-opacity duration-300">
-          <span class="w-1.5 h-1.5 rounded-full bg-white/60"></span>
-          <span class="text-[11px] font-sans tracking-[0.25em] uppercase font-light text-white/80">Haven Art</span>
+        <!-- Distinct Brand Mark with Frosted Glass Protection & High Contrast -->
+        <div class="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-black/25 hover:bg-black/40 border border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.25)] backdrop-blur-md select-none transition-all duration-300">
+          <span class="w-2 h-2 rounded-full bg-amber-300/90 shadow-[0_0_8px_#fbbf24]"></span>
+          <span class="text-xs sm:text-sm font-sans tracking-[0.2em] uppercase font-medium text-white drop-shadow-sm">Haven Art</span>
         </div>
 
-        <!-- Weather Whisper (Clean, subtle) -->
+        <!-- Weather Whisper with Matching Frosted Glass Pill -->
         {#if weatherLabel}
-          <div class="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-light text-white/50 tracking-wider select-none opacity-40 hover:opacity-90 transition-opacity duration-300 font-sans">
-            <span>{weatherLabel}</span>
+          <div class="hidden sm:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/25 hover:bg-black/40 border border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.25)] backdrop-blur-md select-none transition-all duration-300 font-sans">
+            <span class="text-xs sm:text-sm font-normal text-white/95 tracking-wide drop-shadow-sm">{weatherLabel}</span>
           </div>
         {/if}
       </header>
@@ -482,14 +482,14 @@
       >
         <!-- Modal Header -->
         <div class="flex items-center justify-between pb-4 border-b border-white/10">
-          <h2 id="haven-modal-title" class="text-xl font-serif font-light text-white/95 flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-white/40"></span>
+          <h2 id="haven-modal-title" class="text-xl sm:text-2xl font-serif font-medium text-white flex items-center gap-2.5 drop-shadow-sm">
+            <span class="w-2 h-2 rounded-full bg-amber-300/90 shadow-[0_0_8px_#fbbf24]"></span>
             <span>{activeModal === 'write' ? 'Góc viết nhật ký' : 'Danh sách bài viết'}</span>
           </h2>
           <button
             type="button"
             onclick={handleCloseModal}
-            class="w-8 h-8 rounded-full flex items-center justify-center text-white/60 hover:text-white bg-white/5 hover:bg-white/15 border border-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer"
+            class="w-8 h-8 rounded-full flex items-center justify-center text-white/80 hover:text-white bg-white/10 hover:bg-white/20 border border-white/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer shadow-sm"
             aria-label="Đóng bảng nhật ký"
           >
             <MorphIcon
