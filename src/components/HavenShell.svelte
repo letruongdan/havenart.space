@@ -72,9 +72,9 @@
     journalRepo?.close().catch(() => {});
   });
 
-  // When experience enters haven and canvas is mounted, initialize visual controller
+  // When canvas is mounted, initialize visual controller
   $effect(() => {
-    if (experienceState === 'haven' && canvasElement && visualController) {
+    if (canvasElement && visualController) {
       visualController.init(canvasElement).catch((err) => {
         console.warn('VisualController canvas init warning:', err);
       });

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "name": "Haven Art Asset Provenance and Legal Credits Ledger",
   "version": "1.0.0",
-  "updatedAt": "2026-09-30T00:00:00.000Z",
+  "updatedAt": "2026-10-02T01:13:47.574Z",
   "assets": [
     {
       "id": "haven-art-fuji-morning",
@@ -13,7 +13,7 @@
       "license": "Public Domain",
       "license_url": "https://creativecommons.org/publicdomain/mark/1.0/",
       "downloadedAt": "2026-09-30T00:00:00.000Z",
-      "checksum": "sha256:a90182da27400d1bee1fb29b382156a1f7c06b2f753ff2a29b74a3cedc436fc8",
+      "checksum": "sha256:205f636e54367cfc75f9e61171c97b1f7cef9029cd9e9570b27203ade74fcecc",
       "alt_vi": "Tranh khắc gỗ Nhật Bản Núi Phú Sĩ trong làn gió mát ban mai thanh khiết của Katsushika Hokusai"
     },
     {
@@ -25,7 +25,7 @@
       "license": "Public Domain",
       "license_url": "https://creativecommons.org/publicdomain/mark/1.0/",
       "downloadedAt": "2026-09-30T00:00:00.000Z",
-      "checksum": "sha256:a90182da27400d1bee1fb29b382156a1f7c06b2f753ff2a29b74a3cedc436fc8",
+      "checksum": "sha256:baf21c2ff514056ea36f1fe47b83e44cc66c78a16267440acf16daabffc693cc",
       "alt_vi": "Tranh sơn dầu hoa súng nở rộ trên mặt nước tĩnh lặng tại khu vườn Giverny của danh họa Claude Monet"
     },
     {
@@ -37,7 +37,7 @@
       "license": "Public Domain",
       "license_url": "https://creativecommons.org/publicdomain/mark/1.0/",
       "downloadedAt": "2026-09-30T00:00:00.000Z",
-      "checksum": "sha256:a90182da27400d1bee1fb29b382156a1f7c06b2f753ff2a29b74a3cedc436fc8",
+      "checksum": "sha256:dd69aad7f470738bc30a0b3cb9433faf65bec8322de3466ce0df7970e7f66cde",
       "alt_vi": "Tranh khắc gỗ Shin-hanga hồ Chūzenji Nikkō bảng lảng trong sương chiều trầm mặc của Kawase Hasui"
     },
     {
@@ -49,7 +49,7 @@
       "license": "Public Domain",
       "license_url": "https://creativecommons.org/publicdomain/mark/1.0/",
       "downloadedAt": "2026-09-30T00:00:00.000Z",
-      "checksum": "sha256:a90182da27400d1bee1fb29b382156a1f7c06b2f753ff2a29b74a3cedc436fc8",
+      "checksum": "sha256:9e3be6b3b8e7bf1e000e7480ebd49eecfcc4656813b51bd3ae94744f28b59aef",
       "alt_vi": "Tranh sơn dầu bờ biển lúc hoàng hôn với ánh sao hôm phản chiếu huyền ảo của J. M. W. Turner"
     },
     {
@@ -61,7 +61,7 @@
       "license": "Public Domain",
       "license_url": "https://creativecommons.org/publicdomain/mark/1.0/",
       "downloadedAt": "2026-09-30T00:00:00.000Z",
-      "checksum": "sha256:a90182da27400d1bee1fb29b382156a1f7c06b2f753ff2a29b74a3cedc436fc8",
+      "checksum": "sha256:5b701b94e568dbc230758a6ac9de9dc0f1a3dbb7bcb92cb29cc1ebd81e8be800",
       "alt_vi": "Tranh phong cảnh ánh nắng sớm dịu dàng rọi qua làn sương trên rặng núi của Caspar David Friedrich"
     },
     {
@@ -73,7 +73,7 @@
       "license": "CC0 1.0 Universal / Public Domain",
       "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
       "downloadedAt": "2026-09-30T00:00:00.000Z",
-      "checksum": "sha256:9dd66f4c731cc2cab23fddd7df8a833e520482978e15ff1591b2ae01a1aeed54",
+      "checksum": "sha256:d034e656902d94baa9187f983e20924657469f5d86787704adcf3d2383a98d5a",
       "alt_vi": "Âm thanh môi trường tổng hợp tiếng sương sớm thanh khiết mang lại sự tĩnh lặng và thư thái"
     },
     {
@@ -85,7 +85,7 @@
       "license": "CC0 1.0 Universal / Public Domain",
       "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
       "downloadedAt": "2026-09-30T00:00:00.000Z",
-      "checksum": "sha256:88e1c7487edda0985a6faa6f0b3d15f4f71e1b8a89e43ff635f9915f86b7e196",
+      "checksum": "sha256:2610e40c7a5a09c94eb34708d488ccf5b4c71e1de36a37f96d40fa2b025c66da",
       "alt_vi": "Âm hưởng không gian tĩnh mịch, ấm áp hỗ trợ khả năng tập trung và chiêm nghiệm sâu lắng"
     },
     {
@@ -97,7 +97,7 @@
       "license": "CC0 1.0 Universal / Public Domain",
       "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
       "downloadedAt": "2026-09-30T00:00:00.000Z",
-      "checksum": "sha256:ab486ebfeb69c71f707347db8d84ddca45a496b524c1295952ae20d03154dd79",
+      "checksum": "sha256:6fdefa36b9ba5337840708ac21d25d5e98f7830927789847a7ed71704d49b568",
       "alt_vi": "Âm điệu ban đêm êm dịu, nâng đỡ giấc ngủ và giải tỏa âu lo sau ngày dài"
     }
   ]
