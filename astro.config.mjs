@@ -10,7 +10,16 @@ export default defineConfig({
   integrations: [svelte(), tailwind()],
   vite: {
     optimizeDeps: {
-      include: ['morphicons/svelte', 'lucide'],
+      include: ['morphicons/svelte', 'lucide', 'idb'],
+      exclude: ['better-sqlite3'],
+    },
+    ssr: {
+      external: ['better-sqlite3'],
+    },
+    server: {
+      watch: {
+        ignored: ['**/data/**', '**/*.db*', '**/*.db-wal*', '**/*.db-shm*'],
+      },
     },
   },
 });
