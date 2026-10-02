@@ -9,6 +9,8 @@
     artworkArtist?: string;
     activeModal?: 'write' | 'list' | null;
     isZenMode?: boolean;
+    weatherLabel?: string;
+    selectionReason?: string;
     onTogglePlay?: () => void;
     onVolumeChange?: (volume: number) => void;
     onNextTrack?: () => void;
@@ -30,6 +32,8 @@
     artworkArtist = '',
     activeModal = null,
     isZenMode = false,
+    weatherLabel = '',
+    selectionReason = '',
     onTogglePlay,
     onVolumeChange,
     onNextTrack,
@@ -175,11 +179,18 @@
         </button>
       {/if}
 
-      <!-- Artwork Title Display -->
+      <!-- Artwork Title & Reason Display -->
       {#if artworkTitle}
-        <span class="hidden lg:inline-block text-xs text-stone-200/90 font-serif italic truncate max-w-[140px]" title="{artworkTitle} - {artworkArtist}">
-          {artworkTitle}
-        </span>
+        <div class="hidden lg:flex flex-col text-left leading-tight">
+          <span class="text-xs text-stone-200/90 font-serif italic truncate max-w-[150px]" title="{artworkTitle} - {artworkArtist}">
+            {artworkTitle}
+          </span>
+          {#if selectionReason}
+            <span class="text-[9px] text-amber-300/80 font-light truncate max-w-[150px]" title={selectionReason}>
+              {selectionReason}
+            </span>
+          {/if}
+        </div>
       {/if}
     </div>
 

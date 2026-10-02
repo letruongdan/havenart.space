@@ -6,8 +6,11 @@
 
   interface Props {
     repo?: JournalRepository;
+    repository?: JournalRepository;
     draftRepo?: DraftRepository;
     onSave?: (entry: JournalEntry) => void;
+    onSaved?: (entry: JournalEntry) => void;
+    onMoodChange?: (mood: string) => void;
     initialTitle?: string;
     initialBody?: string;
     initialMood?: string;
@@ -30,7 +33,7 @@
   let isSavingEntry = $state(false);
 
   let localRepo = $state<JournalRepository | null>(null);
-  let activeRepo = $derived(props.repo || localRepo);
+  let activeRepo = $derived(props.repo || props.repository || localRepo);
 
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -127,6 +130,7 @@
 
   function handleSelectMood(newMood: string) {
     mood = newMood;
+    props.onMoodChange?.(newMood);
     triggerAutosave();
   }
 
@@ -166,6 +170,7 @@
       statusMessage = '';
 
       props.onSave?.(entry);
+      props.onSaved?.(entry);
     } catch (err) {
       console.error('Error creating journal entry:', err);
     } finally {

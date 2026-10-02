@@ -8,6 +8,11 @@
   import JournalList from './JournalList.svelte';
   import { JournalRepository } from '../lib/db/repository';
   import type { JournalEntry } from '../lib/db/schema';
+  import { detectWeather, type WeatherInfo } from '../lib/weather/weather';
+  import {
+    selectArtworkForSession,
+    selectNextArtwork,
+  } from '../lib/visuals/artwork-selector';
 
   let experienceState = $state<'gate' | 'haven'>('gate');
   let activeModal = $state<'write' | 'list' | null>(null);
@@ -25,11 +30,18 @@
   let visualMode = $state<VisualMode>('static');
   let currentArtwork = $state<Artwork | null>(null);
 
+  // Weather & Mood Context
+  let weatherInfo = $state<WeatherInfo | null>(null);
+  let weatherLabel = $state<string>('');
+  let selectionReason = $state<string>('');
+  let activeMood = $state<string | null>(null);
+
   let audioEngine: AudioEngine | null = null;
   let visualController: VisualController | null = null;
   let canvasElement: HTMLCanvasElement | null = $state(null);
 
   onMount(() => {
+    // 1. Initialize Audio Engine
     try {
       audioEngine = new AudioEngine();
       volume = audioEngine.getVolume();
@@ -42,8 +54,15 @@
       console.warn('AudioEngine init warning:', e);
     }
 
+    // 2. Initialize Visual Controller & Select Unique Image for this Visit
     try {
+      // Pick a fresh image guaranteed to differ from previous visits
+      const initialSelection = selectArtworkForSession();
+      currentArtwork = initialSelection.artwork;
+      selectionReason = initialSelection.reason;
+
       visualController = new VisualController({
+        artworks: [initialSelection.artwork],
         onModeChange: (newMode) => {
           visualMode = newMode;
         },
@@ -51,22 +70,66 @@
           currentArtwork = newArt;
         },
       });
+
       // Default to static artwork display so the painting fills the screen
       visualController.setMode('static');
       visualMode = visualController.getActiveMode();
-      currentArtwork = visualController.getCurrentImage();
+      visualController.setArtwork(initialSelection.artwork);
     } catch (e) {
       console.warn('VisualController init warning:', e);
     }
 
+    // 3. Initialize Journal Repository & Adapt to Recent Journal Mood
     try {
       journalRepo = new JournalRepository();
-      journalRepo.init().catch((e) => {
-        console.warn('JournalRepository init warning:', e);
-      });
+      journalRepo
+        .init()
+        .then(async () => {
+          if (!journalRepo) return;
+          const entries = await journalRepo.listActiveEntries();
+          if (entries.length > 0 && entries[0].mood) {
+            activeMood = entries[0].mood;
+            const moodSelection = selectArtworkForSession({
+              mood: activeMood,
+              weather: weatherInfo?.condition,
+              timeOfDay: weatherInfo?.timeOfDay,
+            });
+            currentArtwork = moodSelection.artwork;
+            selectionReason = moodSelection.reason;
+            visualController?.setArtwork(moodSelection.artwork);
+          }
+        })
+        .catch((e) => {
+          console.warn('JournalRepository init warning:', e);
+        });
     } catch (e) {
       console.warn('JournalRepository init warning:', e);
     }
+
+    // 4. Detect Local Weather in Background & Adapt Image
+    detectWeather()
+      .then((info) => {
+        weatherInfo = info;
+        if (info.temperature !== undefined) {
+          weatherLabel = `${info.descriptionVi} • ${Math.round(info.temperature)}°C`;
+        } else {
+          weatherLabel = info.descriptionVi;
+        }
+
+        // If no explicit journal mood is prioritized, adapt to local weather & time of day
+        if (!activeMood) {
+          const weatherSelection = selectArtworkForSession({
+            weather: info.condition,
+            timeOfDay: info.timeOfDay,
+          });
+          currentArtwork = weatherSelection.artwork;
+          selectionReason = weatherSelection.reason;
+          visualController?.setArtwork(weatherSelection.artwork);
+        }
+      })
+      .catch((err) => {
+        console.warn('Weather detection notice:', err);
+      });
   });
 
   onDestroy(() => {
@@ -75,7 +138,7 @@
     journalRepo?.close().catch(() => {});
   });
 
-  // When canvas is mounted, initialize visual controller
+  // When canvas is mounted, initialize visual controller WebGL pipeline
   $effect(() => {
     if (canvasElement && visualController) {
       visualController.init(canvasElement).catch((err) => {
@@ -149,8 +212,27 @@
   }
 
   function handleNextArtwork() {
-    if (!visualController) return;
-    currentArtwork = visualController.nextImage();
+    const result = selectNextArtwork({
+      currentId: currentArtwork?.id,
+      weather: weatherInfo?.condition,
+      timeOfDay: weatherInfo?.timeOfDay,
+      mood: activeMood || undefined,
+    });
+    currentArtwork = result.artwork;
+    selectionReason = result.reason;
+    visualController?.setArtwork(result.artwork);
+  }
+
+  function handleMoodChange(newMood: string) {
+    activeMood = newMood;
+    const result = selectArtworkForSession({
+      mood: newMood,
+      weather: weatherInfo?.condition,
+      timeOfDay: weatherInfo?.timeOfDay,
+    });
+    currentArtwork = result.artwork;
+    selectionReason = result.reason;
+    visualController?.setArtwork(result.artwork);
   }
 
   function handleOpenJournalWrite() {
@@ -167,8 +249,11 @@
     activeModal = null;
   }
 
-  function handleJournalSaved(_savedEntry: JournalEntry) {
+  function handleJournalSaved(savedEntry: JournalEntry) {
     journalRefreshTrigger += 1;
+    if (savedEntry.mood) {
+      handleMoodChange(savedEntry.mood);
+    }
   }
 
   function handleToggleZenMode() {
@@ -228,20 +313,28 @@
     >
       <!-- Ethereal Top Glass Header (Auto-hides in Zen Mode) -->
       <header
-        class="pointer-events-auto flex items-center justify-between max-w-7xl w-full mx-auto transition-all duration-700 {isZenMode ? '-translate-y-16 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}"
+        class="pointer-events-auto flex items-center justify-between max-w-7xl w-full mx-auto gap-3 transition-all duration-700 {isZenMode ? '-translate-y-16 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}"
       >
         <!-- Brand Pill -->
-        <div class="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-black/35 backdrop-blur-xl border border-white/15 shadow-lg text-white">
+        <div class="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-black/35 backdrop-blur-xl border border-white/15 shadow-lg text-white shrink-0">
           <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_#fbbf24]"></span>
           <span class="text-xs font-serif tracking-wider font-medium">Haven Art</span>
         </div>
 
+        <!-- Weather / Mood Badge Capsule -->
+        {#if weatherLabel || selectionReason}
+          <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/35 backdrop-blur-xl border border-white/15 text-xs text-amber-200/90 shadow-lg truncate max-w-[280px] sm:max-w-md">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-300 shadow-[0_0_6px_#fcd34d] shrink-0"></span>
+            <span class="font-light truncate">{weatherLabel || selectionReason}</span>
+          </div>
+        {/if}
+
         <!-- Artwork Info Capsule -->
         {#if currentArtwork}
-          <div class="hidden sm:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/35 backdrop-blur-xl border border-white/15 text-xs text-stone-200 shadow-lg">
-            <span class="font-serif italic">{currentArtwork.title}</span>
+          <div class="hidden sm:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/35 backdrop-blur-xl border border-white/15 text-xs text-stone-200 shadow-lg shrink-0">
+            <span class="font-serif italic truncate max-w-[160px]">{currentArtwork.title}</span>
             <span class="text-white/40">•</span>
-            <span class="text-stone-300 font-light">{currentArtwork.artist}</span>
+            <span class="text-stone-300 font-light truncate max-w-[140px]">{currentArtwork.artist}</span>
           </div>
         {/if}
       </header>
@@ -261,6 +354,8 @@
           artworkArtist={currentArtwork?.artist}
           {activeModal}
           {isZenMode}
+          {weatherLabel}
+          {selectionReason}
           onTogglePlay={handleTogglePlay}
           onVolumeChange={handleVolumeChange}
           onNextTrack={handleNextTrack}
@@ -307,7 +402,11 @@
         <div class="pt-4">
           {#if activeModal === 'write'}
             <div id="journal-write-container">
-              <WritePanel repository={journalRepo} onSaved={handleJournalSaved} />
+              <WritePanel
+                repository={journalRepo}
+                onSaved={handleJournalSaved}
+                onMoodChange={handleMoodChange}
+              />
             </div>
           {:else if activeModal === 'list'}
             <div id="journal-list-container">

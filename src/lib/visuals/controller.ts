@@ -362,6 +362,22 @@ export class VisualController {
   }
 
   /**
+   * Sets the active artwork directly (e.g., from weather, mood, or smart session selector).
+   */
+  public setArtwork(artwork: Artwork): Artwork {
+    const existingIndex = this.artworks.findIndex((a) => a.id === artwork.id);
+    if (existingIndex !== -1) {
+      this.currentArtworkIndex = existingIndex;
+    } else {
+      this.artworks.push(artwork);
+      this.currentArtworkIndex = this.artworks.length - 1;
+    }
+    this.preloadNextImage();
+    this.options.onArtworkChange?.(artwork);
+    return artwork;
+  }
+
+  /**
    * Cleans up all WebGL resources, timers, animation loops, and DOM event listeners.
    */
   public destroy(): void {
