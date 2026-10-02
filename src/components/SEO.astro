@@ -1,0 +1,122 @@
+---
+import { SEO as AstroSEO } from 'astro-seo';
+
+export interface Props {
+  title?: string;
+  description?: string;
+  canonical?: string;
+  image?: string;
+  imageAlt?: string;
+  type?: string;
+  noindex?: boolean;
+}
+
+const {
+  title = 'Haven Art — Góc tĩnh lặng cho tâm hồn',
+  description = 'Không gian tĩnh lặng cho tâm hồn — Chiêm ngưỡng kiệt tác tranh kinh điển thích ứng thời tiết, lắng nghe âm hưởng thiền định và viết nhật ký an yên bảo mật cục bộ.',
+  canonical = 'https://havenart.space/',
+  image = 'https://havenart.space/images/artworks/hokusai-red-fuji.webp',
+  imageAlt = 'Kiệt tác hội họa thanh tịnh trên Haven Art',
+  type = 'website',
+  noindex = false,
+} = Astro.props;
+
+const siteUrl = 'https://havenart.space';
+const fullImageUrl = image.startsWith('http') ? image : `${siteUrl}${image}`;
+
+const jsonLdWebSite = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'Haven Art',
+  alternateName: 'Haven Art Space',
+  url: siteUrl,
+  description: description,
+  inLanguage: ['vi-VN', 'en-US'],
+  publisher: {
+    '@type': 'Organization',
+    name: 'Haven Art',
+    url: siteUrl,
+    logo: `${siteUrl}/favicon.svg`,
+  },
+};
+
+const jsonLdWebApp = {
+  '@context': 'https://schema.org',
+  '@type': 'WebApplication',
+  name: 'Haven Art — Góc tĩnh lặng cho tâm hồn',
+  url: siteUrl,
+  applicationCategory: 'LifestyleApplication',
+  operatingSystem: 'All',
+  browserRequirements: 'Requires JavaScript. Requires HTML5.',
+  offers: {
+    '@type': 'Offer',
+    price: '0',
+    priceCurrency: 'VND',
+  },
+  featureList: [
+    'Chiêm ngưỡng kiệt tác hội họa kinh điển thế giới',
+    'Âm thanh thiên nhiên và giai điệu ambient êm dịu thích ứng thời tiết',
+    'Nhật ký cảm xúc cá nhân mã hóa an toàn cục bộ chuẩn WebCrypto AES-GCM',
+    'Trải nghiệm ngoại tuyến PWA không cần kết nối mạng',
+  ],
+  screenshot: fullImageUrl,
+};
+---
+
+<!-- Primary Meta Tags & Open Graph via AstroSEO -->
+<AstroSEO
+  title={title}
+  description={description}
+  canonical={canonical}
+  noindex={noindex}
+  nofollow={noindex}
+  openGraph={{
+    basic: {
+      title: title,
+      type: type,
+      image: fullImageUrl,
+      url: canonical,
+    },
+    optional: {
+      siteName: 'Haven Art',
+      description: description,
+      locale: 'vi_VN',
+      localeAlternate: ['en_US'],
+    },
+    image: {
+      alt: imageAlt,
+      width: 1200,
+      height: 630,
+      type: 'image/webp',
+    },
+  }}
+  twitter={{
+    card: 'summary_large_image',
+    site: '@havenartspace',
+    creator: '@havenartspace',
+    title: title,
+    description: description,
+    image: fullImageUrl,
+    imageAlt: imageAlt,
+  }}
+  extend={{
+    meta: [
+      { name: 'keywords', content: 'haven art, không gian tĩnh lặng, âm nhạc thiền định, nhật ký an yên, tranh nghệ thuật kinh điển, giảm căng thẳng, chữa lành tâm hồn, ambient music, zen space, mindful web app' },
+      { name: 'author', content: 'Haven Art' },
+      { name: 'theme-color', content: '#121316' },
+      { name: 'apple-mobile-web-app-capable', content: 'yes' },
+      { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
+      { name: 'apple-mobile-web-app-title', content: 'Haven Art' },
+      { name: 'robots', content: noindex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1' },
+    ],
+    link: [
+      { rel: 'alternate', hreflang: 'vi', href: `${siteUrl}/` },
+      { rel: 'alternate', hreflang: 'en', href: `${siteUrl}/?lang=en` },
+      { rel: 'alternate', hreflang: 'x-default', href: `${siteUrl}/` },
+    ],
+  }}
+/>
+
+<!-- Schema.org JSON-LD Structured Data for Search Engine Rich Snippets -->
+<script type="application/ld+json" set:html={JSON.stringify(jsonLdWebSite)} />
+<script type="application/ld+json" set:html={JSON.stringify(jsonLdWebApp)} />

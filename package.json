@@ -12,13 +12,16 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "seo:audit": "node .agents/skills/seo/scripts/seo-audit.mjs"
   },
   "dependencies": {
+    "@astrojs/sitemap": "^3.7.4",
     "@astrojs/svelte": "7.2.5",
     "@astrojs/tailwind": "6.0.2",
     "ajv": "8.17.1",
     "astro": "5.18.2",
+    "astro-seo": "^1.2.0",
     "better-sqlite3": "^13.0.3",
     "idb": "8.0.3",
     "lucide": "^1.49.0",

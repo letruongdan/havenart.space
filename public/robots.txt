@@ -1,0 +1,8 @@
+# Robots.txt for Haven Art (https://havenart.space)
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+
+# XML Sitemap
+Sitemap: https://havenart.space/sitemap-index.xml
