@@ -171,7 +171,23 @@
       });
   });
 
+  let isIdle = $state(false);
+  let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function handleUserActivity() {
+    if (isIdle) isIdle = false;
+    if (idleTimer) clearTimeout(idleTimer);
+    if (activeModal !== null) return;
+
+    idleTimer = setTimeout(() => {
+      if (activeModal === null) {
+        isIdle = true;
+      }
+    }, 4500);
+  }
+
   onDestroy(() => {
+    if (idleTimer) clearTimeout(idleTimer);
     audioEngine?.destroy();
     visualController?.destroy();
     journalRepo?.close().catch(() => {});
@@ -316,16 +332,19 @@
   }
 
   function handleOpenJournalWrite() {
+    handleUserActivity();
     activeModal = activeModal === 'write' ? null : 'write';
     if (isZenMode) isZenMode = false;
   }
 
   function handleOpenJournalList() {
+    handleUserActivity();
     activeModal = activeModal === 'list' ? null : 'list';
     if (isZenMode) isZenMode = false;
   }
 
   function handleCloseModal() {
+    handleUserActivity();
     activeModal = null;
   }
 
@@ -337,10 +356,12 @@
   }
 
   function handleToggleZenMode() {
+    handleUserActivity();
     isZenMode = !isZenMode;
   }
 
   function handleWindowKeyDown(event: KeyboardEvent) {
+    handleUserActivity();
     if (event.key === 'Escape') {
       if (activeModal !== null) {
         handleCloseModal();
@@ -351,7 +372,11 @@
   }
 </script>
 
-<svelte:window onkeydown={handleWindowKeyDown} />
+<svelte:window
+  onkeydown={handleWindowKeyDown}
+  onpointermove={handleUserActivity}
+  ontouchstart={handleUserActivity}
+/>
 
 <div
   class="relative w-full min-h-screen overflow-hidden bg-[#0d0e12] text-white selection:bg-amber-400/30 font-sans"
@@ -375,7 +400,7 @@
 
     <!-- Subtle, ethereal vignette & gradient overlay to ensure UI elements pop while keeping image vivid -->
     <div
-      class="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/60 pointer-events-none"
+      class="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-black/25 pointer-events-none"
     ></div>
   </div>
 
@@ -391,30 +416,20 @@
     <div
       class="relative z-10 w-full min-h-screen flex flex-col justify-between p-4 sm:p-6 pointer-events-none transition-opacity duration-700 ease-out"
     >
-      <!-- Ethereal Top Glass Header (Auto-hides in Zen Mode) -->
+      <!-- Ethereal Minimal Top Bar (Auto-hides on Idle / Zen Mode) -->
       <header
-        class="pointer-events-auto flex items-center justify-between max-w-7xl w-full mx-auto gap-3 transition-all duration-700 {isZenMode ? '-translate-y-16 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}"
+        class="pointer-events-auto flex items-center justify-between max-w-7xl w-full mx-auto px-2 transition-all duration-700 {isZenMode || (isIdle && activeModal === null) ? '-translate-y-12 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}"
       >
-        <!-- Brand Pill -->
-        <div class="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-black/35 backdrop-blur-xl border border-white/15 shadow-lg text-white shrink-0">
-          <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_#fbbf24]"></span>
-          <span class="text-xs font-serif tracking-wider font-medium">Haven Art</span>
+        <!-- Subtle Minimal Brand Mark -->
+        <div class="inline-flex items-center gap-2 select-none opacity-40 hover:opacity-90 transition-opacity duration-300">
+          <span class="w-1.5 h-1.5 rounded-full bg-white/60"></span>
+          <span class="text-[11px] font-sans tracking-[0.25em] uppercase font-light text-white/80">Haven Art</span>
         </div>
 
-        <!-- Weather / Mood Badge Capsule -->
-        {#if weatherLabel || selectionReason}
-          <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/35 backdrop-blur-xl border border-white/15 text-xs text-amber-200/90 shadow-lg truncate max-w-[280px] sm:max-w-md">
-            <span class="w-1.5 h-1.5 rounded-full bg-amber-300 shadow-[0_0_6px_#fcd34d] shrink-0"></span>
-            <span class="font-light truncate">{weatherLabel || selectionReason}</span>
-          </div>
-        {/if}
-
-        <!-- Artwork Info Capsule -->
-        {#if currentArtwork}
-          <div class="hidden sm:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/35 backdrop-blur-xl border border-white/15 text-xs text-stone-200 shadow-lg shrink-0">
-            <span class="font-serif italic truncate max-w-[160px]">{currentArtwork.title}</span>
-            <span class="text-white/40">•</span>
-            <span class="text-stone-300 font-light truncate max-w-[140px]">{currentArtwork.artist}</span>
+        <!-- Weather Whisper (Clean, subtle) -->
+        {#if weatherLabel}
+          <div class="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-light text-white/50 tracking-wider select-none opacity-40 hover:opacity-90 transition-opacity duration-300 font-sans">
+            <span>{weatherLabel}</span>
           </div>
         {/if}
       </header>
@@ -423,7 +438,7 @@
       <main class="flex-1 flex items-center justify-center pointer-events-none"></main>
 
       <!-- Bottom Floating Frosted Glass Dock (Audio Player & Controls) -->
-      <div class="pointer-events-auto">
+      <div class="pointer-events-auto transition-all duration-700 {isIdle && activeModal === null ? 'opacity-0 translate-y-8 pointer-events-none' : 'opacity-100 translate-y-0'}">
         <Dock
           {isPlaying}
           {volume}
@@ -461,18 +476,18 @@
       aria-labelledby="haven-modal-title"
     >
       <div
-        class="relative w-full max-w-2xl bg-stone-950/80 text-stone-100 border border-white/20 rounded-3xl p-6 sm:p-8 shadow-[0_25px_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl max-h-[90vh] overflow-y-auto select-text font-sans"
+        class="relative w-full max-w-2xl bg-black/40 sm:bg-black/35 text-stone-100 border border-white/15 rounded-3xl p-6 sm:p-8 shadow-[0_25px_60px_rgba(0,0,0,0.5)] backdrop-blur-2xl max-h-[90vh] overflow-y-auto select-text font-sans ring-1 ring-white/10"
       >
         <!-- Modal Header -->
         <div class="flex items-center justify-between pb-4 border-b border-white/10">
-          <h2 id="haven-modal-title" class="text-xl font-serif font-light text-white flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+          <h2 id="haven-modal-title" class="text-xl font-serif font-light text-white/95 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-white/40"></span>
             <span>{activeModal === 'write' ? 'Góc viết nhật ký' : 'Danh sách bài viết'}</span>
           </h2>
           <button
             type="button"
             onclick={handleCloseModal}
-            class="w-8 h-8 rounded-full flex items-center justify-center text-stone-400 hover:text-white bg-white/5 hover:bg-white/15 border border-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 cursor-pointer"
+            class="w-8 h-8 rounded-full flex items-center justify-center text-white/60 hover:text-white bg-white/5 hover:bg-white/15 border border-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer"
             aria-label="Đóng bảng nhật ký"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4" aria-hidden="true">

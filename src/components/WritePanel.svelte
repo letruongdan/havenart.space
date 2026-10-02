@@ -182,7 +182,7 @@
 <div class="w-full space-y-5">
   <!-- Mood Selector -->
   <fieldset>
-    <legend class="block text-xs font-serif uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-2">
+    <legend class="block text-xs font-serif uppercase tracking-wider text-white/60 mb-2">
       Tâm trạng lúc này
     </legend>
     <div class="flex flex-wrap gap-2">
@@ -191,8 +191,8 @@
           type="button"
           onclick={() => handleSelectMood(opt.id)}
           class="px-3 py-1.5 rounded-full text-xs font-light transition-all duration-200 border cursor-pointer {mood === opt.id
-            ? 'bg-amber-100/80 dark:bg-amber-950/60 border-amber-400 dark:border-amber-600 text-amber-900 dark:text-amber-100 shadow-sm'
-            : 'bg-stone-100/60 dark:bg-stone-800/40 border-stone-200 dark:border-stone-700/60 text-stone-600 dark:text-stone-400 hover:bg-stone-200/50 dark:hover:bg-stone-800'}"
+            ? 'bg-white/20 border-white/40 text-white shadow-[0_0_10px_rgba(255,255,255,0.2)]'
+            : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/70 hover:text-white'}"
         >
           <span class="mr-1">{opt.icon}</span>
           {opt.label}
@@ -210,7 +210,7 @@
       placeholder="Tiêu đề (tuỳ chọn)..."
       value={title}
       oninput={handleTitleInput}
-      class="w-full px-4 py-2.5 rounded-2xl bg-stone-100/60 dark:bg-stone-800/50 border border-stone-200/80 dark:border-stone-700/60 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-400/70 text-base font-serif transition-colors"
+      class="w-full px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 focus:bg-white/10 border border-white/15 focus:border-white/40 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/40 text-base font-serif transition-colors backdrop-blur-md"
     />
   </div>
 
@@ -223,7 +223,7 @@
       placeholder="Viết những suy nghĩ của bạn..."
       value={body}
       oninput={handleBodyInput}
-      class="w-full px-4 py-3 rounded-2xl bg-stone-100/60 dark:bg-stone-800/50 border border-stone-200/80 dark:border-stone-700/60 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-400/70 text-sm font-light leading-relaxed resize-y transition-colors"
+      class="w-full px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 focus:bg-white/10 border border-white/15 focus:border-white/40 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/40 text-sm font-light leading-relaxed resize-y transition-colors backdrop-blur-md"
     ></textarea>
   </div>
 
@@ -233,15 +233,15 @@
       {#if statusMessage}
         <span
           class="flex items-center gap-1.5 transition-opacity duration-300 {saveStatus === 'saved'
-            ? 'text-emerald-700 dark:text-emerald-400'
-            : 'text-stone-500 dark:text-stone-400'}"
+            ? 'text-emerald-300'
+            : 'text-white/60'}"
         >
           {#if saveStatus === 'saved'}
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-3.5 h-3.5" aria-hidden="true">
               <path fill-rule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" />
             </svg>
           {:else if saveStatus === 'saving'}
-            <span class="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+            <span class="inline-block w-2 h-2 rounded-full bg-white/80 animate-pulse"></span>
           {/if}
           {statusMessage}
         </span>
@@ -252,7 +252,7 @@
       type="button"
       onclick={handleSaveEntry}
       disabled={isSavingEntry || (!title.trim() && !body.trim())}
-      class="px-5 py-2.5 rounded-full bg-amber-700 dark:bg-amber-600 hover:bg-amber-800 dark:hover:bg-amber-500 text-white font-medium text-xs tracking-wide shadow-sm hover:shadow transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+      class="px-5 py-2.5 rounded-full bg-white/15 hover:bg-white/25 border border-white/25 hover:border-white/40 text-white font-medium text-xs tracking-wide shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
     >
       {isSavingEntry ? 'Đang lưu...' : 'Lưu bài viết'}
     </button>

@@ -184,7 +184,7 @@
 <div class="w-full space-y-4">
   <!-- Search Filter Bar -->
   <div class="relative">
-    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400 dark:text-stone-500">
+    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-white/40">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4" aria-hidden="true">
         <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clip-rule="evenodd" />
       </svg>
@@ -193,7 +193,7 @@
       type="text"
       placeholder="Tìm kiếm bài viết..."
       bind:value={searchQuery}
-      class="w-full pl-10 pr-4 py-2 rounded-2xl bg-stone-100/60 dark:bg-stone-800/50 border border-stone-200/80 dark:border-stone-700/60 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-400/70 text-sm font-light transition-colors"
+      class="w-full pl-10 pr-4 py-2 rounded-2xl bg-white/5 hover:bg-white/10 focus:bg-white/10 border border-white/15 focus:border-white/40 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/40 text-sm font-light transition-colors backdrop-blur-md"
     />
   </div>
 
@@ -201,16 +201,16 @@
   {#if pendingUndoEntry}
     <div
       role="status"
-      class="flex items-center justify-between px-4 py-3 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-300/70 dark:border-amber-700/50 text-stone-800 dark:text-stone-200 shadow-sm transition-all duration-300"
+      class="flex items-center justify-between px-4 py-3 rounded-2xl bg-white/10 border border-white/20 text-white shadow-sm transition-all duration-300 backdrop-blur-md"
     >
       <div class="flex items-center gap-2 text-xs sm:text-sm font-light">
-        <span class="inline-block w-2 h-2 rounded-full bg-amber-600 animate-ping"></span>
+        <span class="inline-block w-2 h-2 rounded-full bg-white/80 animate-ping"></span>
         <span>Đã xóa bài viết. Tự động xoá vĩnh viễn sau {undoCountdown}s</span>
       </div>
       <button
         type="button"
         onclick={handleUndo}
-        class="text-xs sm:text-sm font-medium text-amber-800 dark:text-amber-300 underline hover:text-amber-950 dark:hover:text-amber-100 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+        class="text-xs sm:text-sm font-medium text-white underline hover:text-white/80 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 rounded"
       >
         Hoàn tác
       </button>
@@ -219,27 +219,27 @@
 
   <!-- Journal Entries List -->
   {#if filteredEntries.length === 0}
-    <div class="py-12 text-center text-stone-400 dark:text-stone-500 font-light text-sm">
+    <div class="py-12 text-center text-white/50 font-light text-sm">
       {searchQuery ? 'Không tìm thấy bài viết nào phù hợp.' : 'Chưa có bài viết nào. Hãy lưu lại khoảnh khắc đầu tiên của bạn.'}
     </div>
   {:else}
-    <div class="space-y-3.5 max-h-[60vh] overflow-y-auto pr-1">
+    <div class="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
       {#each filteredEntries as entry (entry.id)}
         <article
-          class="p-4 sm:p-5 rounded-2xl bg-stone-100/50 dark:bg-stone-800/40 border border-stone-200/70 dark:border-stone-700/50 hover:border-stone-300 dark:hover:border-stone-600 transition-all duration-200 group"
+          class="p-4 sm:p-5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-white/20 transition-all duration-200 backdrop-blur-md group"
         >
           <!-- Entry Header: Title, Mood, Date, Actions -->
           <div class="flex items-start justify-between gap-3 mb-2">
             <div class="flex-1 min-w-0">
               <!-- INVARIANT: ZERO innerHTML. Raw text interpolation only -->
-              <h3 class="text-base font-serif font-medium text-stone-900 dark:text-stone-100 truncate">
+              <h3 class="text-base font-serif font-medium text-white/95 truncate">
                 {entry.title || 'Không tiêu đề'}
               </h3>
-              <div class="flex items-center gap-2 mt-1 text-xs text-stone-400 dark:text-stone-500 font-light">
+              <div class="flex items-center gap-2 mt-1 text-xs text-white/50 font-light">
                 <time datetime={new Date(entry.createdAt).toISOString()}>{formatDate(entry.createdAt)}</time>
                 {#if entry.mood && MOOD_MAP[entry.mood]}
                   <span>•</span>
-                  <span class="inline-flex items-center gap-1 text-amber-800 dark:text-amber-300">
+                  <span class="inline-flex items-center gap-1 text-white/80">
                     <span>{MOOD_MAP[entry.mood].icon}</span>
                     <span>{MOOD_MAP[entry.mood].label}</span>
                   </span>
@@ -252,14 +252,14 @@
               type="button"
               onclick={() => handleDelete(entry)}
               aria-label="Xóa bài viết"
-              class="text-xs text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 px-2.5 py-1 rounded-lg hover:bg-stone-200/50 dark:hover:bg-stone-700/50 transition-colors opacity-80 sm:opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer"
+              class="text-xs text-white/40 hover:text-rose-400 px-2.5 py-1 rounded-lg hover:bg-white/10 transition-colors opacity-80 sm:opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer"
             >
               Xóa
             </button>
           </div>
 
           <!-- Entry Body: INVARIANT: ZERO innerHTML. Raw text interpolation only -->
-          <p class="text-sm font-light text-stone-600 dark:text-stone-300 leading-relaxed whitespace-pre-wrap break-words">
+          <p class="text-sm font-light text-white/80 leading-relaxed whitespace-pre-wrap break-words">
             {entry.body}
           </p>
         </article>
