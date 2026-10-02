@@ -15,10 +15,7 @@
     selectNextArtwork,
     registerLiveArtworks,
   } from '../lib/visuals/artwork-selector';
-  import {
-    searchPexelsLivePhotos,
-    hasPexelsApiKey,
-  } from '../lib/visuals/pexels-api';
+  import { searchAnyLivePhotos } from '../lib/visuals/multi-source';
   import {
     selectTrackForSession,
     selectNextTrack,
@@ -89,10 +86,9 @@
   let visualController: VisualController | null = null;
   let canvasElement: HTMLCanvasElement | null = $state(null);
 
-  async function loadLivePexelsIfAvailable() {
-    if (!hasPexelsApiKey()) return;
+  async function loadLivePhotosIfAvailable() {
     try {
-      const livePhotos = await searchPexelsLivePhotos({
+      const livePhotos = await searchAnyLivePhotos({
         weather: weatherInfo?.condition,
         mood: activeMood || undefined,
         perPage: 15,
@@ -101,12 +97,12 @@
         registerLiveArtworks(livePhotos);
       }
     } catch (e) {
-      console.warn('Pexels live fetch notice:', e);
+      console.warn('Live photos multi-source fetch notice:', e);
     }
   }
 
   onMount(() => {
-    loadLivePexelsIfAvailable();
+    loadLivePhotosIfAvailable();
     // 1. Initialize Audio Engine & Select Unique Ambient Track for this Visit
     try {
       const initialTrackSelection = selectTrackForSession();
@@ -217,7 +213,7 @@
           currentTrackArtist = weatherTrackSelection.track.artist;
           audioEngine?.setTrack(weatherTrackSelection.track);
         }
-        loadLivePexelsIfAvailable();
+        loadLivePhotosIfAvailable();
       })
       .catch((err) => {
         console.warn('Weather detection notice:', err);
@@ -238,8 +234,8 @@
       }
     }
 
-    function onPexelsKeyChangeEvent() {
-      loadLivePexelsIfAvailable();
+    function onPhotoKeysChangeEvent() {
+      loadLivePhotosIfAvailable();
     }
 
     function onAuthChangeEvent(event: Event) {
@@ -248,12 +244,14 @@
     }
 
     window.addEventListener('haven:language-change', onLanguageChangeEvent);
-    window.addEventListener('haven:pexels-key-changed', onPexelsKeyChangeEvent);
+    window.addEventListener('haven:pexels-key-changed', onPhotoKeysChangeEvent);
+    window.addEventListener('haven:photo-keys-changed', onPhotoKeysChangeEvent);
     window.addEventListener('haven:user-auth-changed', onAuthChangeEvent);
 
     return () => {
       window.removeEventListener('haven:language-change', onLanguageChangeEvent);
-      window.removeEventListener('haven:pexels-key-changed', onPexelsKeyChangeEvent);
+      window.removeEventListener('haven:pexels-key-changed', onPhotoKeysChangeEvent);
+      window.removeEventListener('haven:photo-keys-changed', onPhotoKeysChangeEvent);
       window.removeEventListener('haven:user-auth-changed', onAuthChangeEvent);
     };
   });
@@ -427,7 +425,7 @@
     currentArtwork = artResult.artwork;
     selectionReason = artResult.reason;
     visualController?.setArtwork(artResult.artwork);
-    loadLivePexelsIfAvailable();
+    loadLivePhotosIfAvailable();
 
     // Adapt audio soundscape to selected mood
     const trackResult = selectTrackForSession({

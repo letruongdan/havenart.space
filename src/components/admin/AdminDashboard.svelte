@@ -8,7 +8,16 @@
     setPexelsApiKey,
     hasPexelsApiKey,
     testPexelsApiKey,
-  } from '../../lib/visuals/pexels-api';
+    getPixabayApiKey,
+    setPixabayApiKey,
+    hasPixabayApiKey,
+    testPixabayApiKey,
+    getUnsplashApiKey,
+    setUnsplashApiKey,
+    hasUnsplashApiKey,
+    testUnsplashApiKey,
+    getProviderStatuses,
+  } from '../../lib/visuals/multi-source';
   import {
     getSystemTelemetry,
     formatBytes,
@@ -63,6 +72,7 @@
     LogOut,
     X,
     Lock,
+    Sparkles,
   } from 'lucide';
 
   let repo = $state<JournalRepository | null>(null);
@@ -91,18 +101,34 @@
   // Event log filter
   let eventLevelFilter = $state<string>('all');
 
-  // Pexels API & Catalog Filter State
+  // Multi-Provider Photo API & Catalog Filter State
   let pexelsApiKeyInput = $state(getPexelsApiKey() || '');
   let isTestingPexelsKey = $state(false);
   let pexelsTestResult = $state<{ success: boolean; message: string } | null>(null);
-  let artworkCategoryFilter = $state<'all' | 'pexels' | 'classical'>('all');
+
+  let pixabayApiKeyInput = $state(getPixabayApiKey() || '');
+  let isTestingPixabayKey = $state(false);
+  let pixabayTestResult = $state<{ success: boolean; message: string } | null>(null);
+
+  let unsplashApiKeyInput = $state(getUnsplashApiKey() || '');
+  let isTestingUnsplashKey = $state(false);
+  let unsplashTestResult = $state<{ success: boolean; message: string } | null>(null);
+
+  let activeProviderTab = $state<'pixabay' | 'unsplash' | 'pexels' | 'wikimedia'>('pixabay');
+  let artworkCategoryFilter = $state<'all' | 'unsplash' | 'pixabay' | 'pexels' | 'classical'>('all');
 
   let filteredArtworks = $derived.by(() => {
+    if (artworkCategoryFilter === 'unsplash') {
+      return ALL_HAVEN_ARTWORKS.filter((a) => a.provider === 'unsplash' || a.id.startsWith('unsplash-'));
+    }
+    if (artworkCategoryFilter === 'pixabay') {
+      return ALL_HAVEN_ARTWORKS.filter((a) => a.provider === 'pixabay' || a.id.startsWith('pixabay-'));
+    }
     if (artworkCategoryFilter === 'pexels') {
-      return ALL_HAVEN_ARTWORKS.filter((a) => a.id.startsWith('pexels_'));
+      return ALL_HAVEN_ARTWORKS.filter((a) => a.provider === 'pexels' || a.id.startsWith('pexels'));
     }
     if (artworkCategoryFilter === 'classical') {
-      return ALL_HAVEN_ARTWORKS.filter((a) => !a.id.startsWith('pexels_'));
+      return ALL_HAVEN_ARTWORKS.filter((a) => a.provider === 'classical' || (!a.id.startsWith('pexels') && !a.id.startsWith('unsplash') && !a.id.startsWith('pixabay')));
     }
     return ALL_HAVEN_ARTWORKS;
   });
@@ -151,7 +177,7 @@
       message: key ? 'Cập nhật cấu hình Pexels Live API Key' : 'Xóa cấu hình Pexels API Key',
     });
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('haven:pexels-key-changed'));
+      window.dispatchEvent(new CustomEvent('haven:photo-keys-changed'));
     }
   }
 
@@ -159,9 +185,125 @@
     pexelsApiKeyInput = '';
     setPexelsApiKey('');
     pexelsTestResult = null;
-    showNotice('Đã gỡ Pexels API Key, trở về kho ảnh mặc định', 'warn');
+    showNotice('Đã gỡ Pexels API Key', 'warn');
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('haven:pexels-key-changed'));
+      window.dispatchEvent(new CustomEvent('haven:photo-keys-changed'));
+    }
+  }
+
+  async function handleTestPixabayKey() {
+    const key = pixabayApiKeyInput.trim();
+    if (!key) {
+      pixabayTestResult = {
+        success: false,
+        message: 'Vui lòng nhập API Key Pixabay để kiểm tra.',
+      };
+      return;
+    }
+    isTestingPixabayKey = true;
+    pixabayTestResult = null;
+    try {
+      const res = await testPixabayApiKey(key);
+      if (res.valid) {
+        pixabayTestResult = {
+          success: true,
+          message: `Kết nối Pixabay API thành công! Mẫu ảnh: "${res.samplePhotographer || 'Pixabay Creator'}" (${res.totalResults || 0} kết quả).`,
+        };
+      } else {
+        pixabayTestResult = {
+          success: false,
+          message: res.error || 'API Key Pixabay không hợp lệ.',
+        };
+      }
+    } catch (err: any) {
+      pixabayTestResult = {
+        success: false,
+        message: err?.message || 'Không thể kết nối đến Pixabay API.',
+      };
+    } finally {
+      isTestingPixabayKey = false;
+    }
+  }
+
+  function handleSavePixabayKey() {
+    const key = pixabayApiKeyInput.trim();
+    setPixabayApiKey(key);
+    showNotice(key ? 'Đã lưu cấu hình Pixabay API Key thành công' : 'Đã gỡ Pixabay API Key', 'success');
+    logSystemEvent({
+      level: 'info',
+      category: 'system',
+      message: key ? 'Cập nhật cấu hình Pixabay Live API Key' : 'Xóa cấu hình Pixabay API Key',
+    });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('haven:photo-keys-changed'));
+    }
+  }
+
+  function handleClearPixabayKey() {
+    pixabayApiKeyInput = '';
+    setPixabayApiKey('');
+    pixabayTestResult = null;
+    showNotice('Đã gỡ Pixabay API Key', 'warn');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('haven:photo-keys-changed'));
+    }
+  }
+
+  async function handleTestUnsplashKey() {
+    const key = unsplashApiKeyInput.trim();
+    if (!key) {
+      unsplashTestResult = {
+        success: false,
+        message: 'Vui lòng nhập Access Key Unsplash để kiểm tra.',
+      };
+      return;
+    }
+    isTestingUnsplashKey = true;
+    unsplashTestResult = null;
+    try {
+      const res = await testUnsplashApiKey(key);
+      if (res.valid) {
+        unsplashTestResult = {
+          success: true,
+          message: `Kết nối Unsplash API thành công! Mẫu ảnh: "${res.samplePhotographer || 'Unsplash Creator'}" (${res.totalResults || 0} kết quả).`,
+        };
+      } else {
+        unsplashTestResult = {
+          success: false,
+          message: res.error || 'Access Key Unsplash không hợp lệ.',
+        };
+      }
+    } catch (err: any) {
+      unsplashTestResult = {
+        success: false,
+        message: err?.message || 'Không thể kết nối đến Unsplash API.',
+      };
+    } finally {
+      isTestingUnsplashKey = false;
+    }
+  }
+
+  function handleSaveUnsplashKey() {
+    const key = unsplashApiKeyInput.trim();
+    setUnsplashApiKey(key);
+    showNotice(key ? 'Đã lưu cấu hình Unsplash API Key thành công' : 'Đã gỡ Unsplash API Key', 'success');
+    logSystemEvent({
+      level: 'info',
+      category: 'system',
+      message: key ? 'Cập nhật cấu hình Unsplash Live API Key' : 'Xóa cấu hình Unsplash API Key',
+    });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('haven:photo-keys-changed'));
+    }
+  }
+
+  function handleClearUnsplashKey() {
+    unsplashApiKeyInput = '';
+    setUnsplashApiKey('');
+    unsplashTestResult = null;
+    showNotice('Đã gỡ Unsplash API Key', 'warn');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('haven:photo-keys-changed'));
     }
   }
 
@@ -1482,118 +1624,420 @@
           </div>
         </div>
 
-        <!-- Pexels Live API Configuration & Status -->
+        <!-- Multi-Provider Photo Hub & Live Photo APIs -->
         <div class="p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
             <div>
               <div class="flex items-center gap-2">
                 <span class="p-2 rounded-xl bg-amber-400/10 text-amber-300 border border-amber-400/20">
-                  <MorphIcon icon={Zap} size={18} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                  <MorphIcon icon={Image} size={18} strokeWidth={2} spring="smooth" reducedMotion="user" />
                 </span>
                 <div>
                   <h2 class="text-base sm:text-lg font-serif font-medium text-white flex items-center gap-2">
-                    <span>Tự Động Nạp Ảnh Live Pexels API</span>
+                    <span>Trung Tâm Nguồn Ảnh (Multi-Provider Photo Hub)</span>
                   </h2>
-                  <p class="text-xs text-white/50 mt-0.5">Tải ảnh phong cảnh thời gian thực trực tiếp từ Pexels theo thời tiết và tâm trạng</p>
+                  <p class="text-xs text-white/50 mt-0.5">Kết nối đa nền tảng ảnh phong cảnh HD: Pixabay, Unsplash, Wikimedia Commons & Pexels</p>
                 </div>
               </div>
             </div>
 
             <div>
-              {#if hasPexelsApiKey()}
+              {#if hasPixabayApiKey() || hasUnsplashApiKey() || hasPexelsApiKey()}
                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
                   <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  Đang bật Live API
+                  Đang Bật Nguồn Live API
                 </span>
               {:else}
-                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-500/15 text-blue-300 border border-blue-500/30">
-                  <span class="w-2 h-2 rounded-full bg-blue-400"></span>
-                  Kho 40 Ảnh Tuyển Chọn Sẵn
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-sky-500/15 text-sky-300 border border-sky-500/30">
+                  <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+                  Wikimedia Mở & 75 Ảnh Tuyển Sẵn
                 </span>
               {/if}
             </div>
           </div>
 
-          <div class="mt-5 space-y-4">
-            <div class="flex flex-col sm:flex-row gap-3">
-              <div class="relative flex-1">
-                <input
-                  type="password"
-                  bind:value={pexelsApiKeyInput}
-                  placeholder="Nhập Pexels API Key (ví dụ: aB39kL...)"
-                  class="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white placeholder-white/30 text-sm focus:outline-none focus:border-amber-400/50 focus:ring-1 focus:ring-amber-400/50 transition-all font-mono"
-                />
+          <!-- Quick Status Overview of Providers -->
+          <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <!-- Pixabay status -->
+            <button
+              type="button"
+              onclick={() => (activeProviderTab = 'pixabay')}
+              class="p-2.5 rounded-xl border text-left transition-all cursor-pointer {activeProviderTab === 'pixabay' ? 'bg-amber-400/10 border-amber-400/40' : 'bg-white/5 border-white/10 hover:bg-white/10'}"
+            >
+              <div class="flex items-center justify-between">
+                <span class="text-amber-300 font-medium text-xs">🌟 Pixabay</span>
+                <span class="text-[10px] font-mono {hasPixabayApiKey() ? 'text-emerald-300 font-bold' : 'text-white/40'}">
+                  {hasPixabayApiKey() ? '● Live' : '○ Chưa key'}
+                </span>
+              </div>
+              <div class="text-[11px] text-white/50 mt-1 truncate">Khuyên dùng, duyệt tức thì</div>
+            </button>
+
+            <!-- Unsplash status -->
+            <button
+              type="button"
+              onclick={() => (activeProviderTab = 'unsplash')}
+              class="p-2.5 rounded-xl border text-left transition-all cursor-pointer {activeProviderTab === 'unsplash' ? 'bg-purple-500/10 border-purple-400/40' : 'bg-white/5 border-white/10 hover:bg-white/10'}"
+            >
+              <div class="flex items-center justify-between">
+                <span class="text-purple-300 font-medium text-xs">📸 Unsplash</span>
+                <span class="text-[10px] font-mono {hasUnsplashApiKey() ? 'text-emerald-300 font-bold' : 'text-white/40'}">
+                  {hasUnsplashApiKey() ? '● Live' : '○ Chưa key'}
+                </span>
+              </div>
+              <div class="text-[11px] text-white/50 mt-1 truncate">Nghệ thuật HD 1920px</div>
+            </button>
+
+            <!-- Wikimedia Commons status -->
+            <button
+              type="button"
+              onclick={() => (activeProviderTab = 'wikimedia')}
+              class="p-2.5 rounded-xl border text-left transition-all cursor-pointer {activeProviderTab === 'wikimedia' ? 'bg-sky-500/10 border-sky-400/40' : 'bg-white/5 border-white/10 hover:bg-white/10'}"
+            >
+              <div class="flex items-center justify-between">
+                <span class="text-sky-300 font-medium text-xs">🏛️ Wikimedia</span>
+                <span class="text-[10px] font-mono text-sky-300 font-bold">
+                  ● Mở 100%
+                </span>
+              </div>
+              <div class="text-[11px] text-white/50 mt-1 truncate">Không cần API key</div>
+            </button>
+
+            <!-- Pexels status -->
+            <button
+              type="button"
+              onclick={() => (activeProviderTab = 'pexels')}
+              class="p-2.5 rounded-xl border text-left transition-all cursor-pointer {activeProviderTab === 'pexels' ? 'bg-emerald-500/10 border-emerald-400/40' : 'bg-white/5 border-white/10 hover:bg-white/10'}"
+            >
+              <div class="flex items-center justify-between">
+                <span class="text-emerald-300 font-medium text-xs">🌿 Pexels</span>
+                <span class="text-[10px] font-mono {hasPexelsApiKey() ? 'text-emerald-300 font-bold' : 'text-amber-400/80'}">
+                  {hasPexelsApiKey() ? '● Live' : 'Tạm dừng mới'}
+                </span>
+              </div>
+              <div class="text-[11px] text-white/50 mt-1 truncate">Dành cho key cũ</div>
+            </button>
+          </div>
+
+          <!-- Provider Sub-Tabs -->
+          <div class="mt-5 border-b border-white/10 flex items-center gap-2 overflow-x-auto pb-2">
+            <button
+              type="button"
+              onclick={() => (activeProviderTab = 'pixabay')}
+              class="px-3.5 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap {activeProviderTab === 'pixabay' ? 'bg-amber-400 text-black shadow-sm font-semibold' : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'}"
+            >
+              <span>🌟 Pixabay API</span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] {activeProviderTab === 'pixabay' ? 'bg-black/20 text-black font-bold' : 'bg-amber-400/20 text-amber-300'}">Khuyên dùng</span>
+            </button>
+
+            <button
+              type="button"
+              onclick={() => (activeProviderTab = 'unsplash')}
+              class="px-3.5 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap {activeProviderTab === 'unsplash' ? 'bg-purple-500 text-white shadow-sm font-semibold' : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'}"
+            >
+              <span>📸 Unsplash API</span>
+              {#if hasUnsplashApiKey()}
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              {/if}
+            </button>
+
+            <button
+              type="button"
+              onclick={() => (activeProviderTab = 'wikimedia')}
+              class="px-3.5 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap {activeProviderTab === 'wikimedia' ? 'bg-sky-500 text-white shadow-sm font-semibold' : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'}"
+            >
+              <span>🏛️ Wikimedia Commons</span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] {activeProviderTab === 'wikimedia' ? 'bg-white/20 text-white font-bold' : 'bg-sky-400/20 text-sky-300'}">Không cần key</span>
+            </button>
+
+            <button
+              type="button"
+              onclick={() => (activeProviderTab = 'pexels')}
+              class="px-3.5 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap {activeProviderTab === 'pexels' ? 'bg-emerald-500 text-white shadow-sm font-semibold' : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'}"
+            >
+              <span>🌿 Pexels API</span>
+              {#if hasPexelsApiKey()}
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-300"></span>
+              {/if}
+            </button>
+          </div>
+
+          <!-- TAB CONTENT: PIXABAY -->
+          {#if activeProviderTab === 'pixabay'}
+            <div class="mt-4 space-y-4">
+              <div class="p-3.5 rounded-2xl bg-amber-400/5 border border-amber-400/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                <div class="space-y-1">
+                  <p class="text-amber-200 font-medium">✨ Pixabay: Cấp API Key miễn phí ngay lập tức (100% không chờ duyệt)</p>
+                  <p class="text-white/60">Hạn mức lên tới 100 requests/phút. Cung cấp kho ảnh phong cảnh thiên nhiên, núi rừng, đại dương cực kỳ tráng lệ và mượt mà.</p>
+                </div>
+                <a
+                  href="https://pixabay.com/api/docs/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400 text-black font-medium shrink-0 hover:bg-amber-300 transition-colors"
+                >
+                  <span>Lấy Pixabay Key ngay</span>
+                  <MorphIcon icon={ExternalLink} size={12} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                </a>
               </div>
 
-              <div class="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onclick={handleTestPexelsKey}
-                  disabled={isTestingPexelsKey}
-                  class="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 disabled:opacity-50 text-white text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5"
-                >
-                  {#if isTestingPexelsKey}
-                    <div class="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                    <span>Đang kiểm tra...</span>
-                  {:else}
-                    <MorphIcon icon={RefreshCw} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
-                    <span>Kiểm tra kết nối</span>
-                  {/if}
-                </button>
+              <div class="flex flex-col sm:flex-row gap-3">
+                <div class="relative flex-1">
+                  <input
+                    type="password"
+                    bind:value={pixabayApiKeyInput}
+                    placeholder="Nhập Pixabay API Key (ví dụ: 49481928-09ac2b...)"
+                    class="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white placeholder-white/30 text-sm focus:outline-none focus:border-amber-400/50 focus:ring-1 focus:ring-amber-400/50 transition-all font-mono"
+                  />
+                </div>
 
-                <button
-                  type="button"
-                  onclick={handleSavePexelsKey}
-                  class="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-medium text-xs transition-all cursor-pointer shadow-sm flex items-center gap-1.5"
-                >
-                  <MorphIcon icon={CheckCircle2} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
-                  <span>Lưu cấu hình</span>
-                </button>
-
-                {#if pexelsApiKeyInput}
+                <div class="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
-                    onclick={handleClearPexelsKey}
-                    class="p-2.5 rounded-xl bg-white/5 hover:bg-rose-500/20 text-white/50 hover:text-rose-300 border border-white/10 transition-all cursor-pointer"
-                    title="Xóa Key"
+                    onclick={handleTestPixabayKey}
+                    disabled={isTestingPixabayKey}
+                    class="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 disabled:opacity-50 text-white text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5"
                   >
-                    <MorphIcon icon={Trash2} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                    {#if isTestingPixabayKey}
+                      <div class="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                      <span>Đang kiểm tra...</span>
+                    {:else}
+                      <MorphIcon icon={RefreshCw} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                      <span>Kiểm tra kết nối</span>
+                    {/if}
                   </button>
-                {/if}
-              </div>
-            </div>
 
-            <!-- Test Result Feedback Banner -->
-            {#if pexelsTestResult}
-              <div class="p-3.5 rounded-xl text-xs flex items-start gap-2.5 {pexelsTestResult.success ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-200' : 'bg-rose-500/10 border border-rose-500/20 text-rose-200'}">
-                <div class="shrink-0 mt-0.5">
-                  {#if pexelsTestResult.success}
+                  <button
+                    type="button"
+                    onclick={handleSavePixabayKey}
+                    class="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-medium text-xs transition-all cursor-pointer shadow-sm flex items-center gap-1.5"
+                  >
                     <MorphIcon icon={CheckCircle2} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
-                  {:else}
-                    <MorphIcon icon={AlertTriangle} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                    <span>Lưu cấu hình</span>
+                  </button>
+
+                  {#if pixabayApiKeyInput}
+                    <button
+                      type="button"
+                      onclick={handleClearPixabayKey}
+                      class="p-2.5 rounded-xl bg-white/5 hover:bg-rose-500/20 text-white/50 hover:text-rose-300 border border-white/10 transition-all cursor-pointer"
+                      title="Xóa Key"
+                    >
+                      <MorphIcon icon={Trash2} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                    </button>
                   {/if}
                 </div>
-                <div>
-                  <div class="font-medium">{pexelsTestResult.message}</div>
+              </div>
+
+              {#if pixabayTestResult}
+                <div class="p-3.5 rounded-xl text-xs flex items-start gap-2.5 {pixabayTestResult.success ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-200' : 'bg-rose-500/10 border border-rose-500/20 text-rose-200'}">
+                  <div class="shrink-0 mt-0.5">
+                    {#if pixabayTestResult.success}
+                      <MorphIcon icon={CheckCircle2} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                    {:else}
+                      <MorphIcon icon={AlertTriangle} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                    {/if}
+                  </div>
+                  <div class="font-medium">{pixabayTestResult.message}</div>
+                </div>
+              {/if}
+            </div>
+          {/if}
+
+          <!-- TAB CONTENT: UNSPLASH -->
+          {#if activeProviderTab === 'unsplash'}
+            <div class="mt-4 space-y-4">
+              <div class="p-3.5 rounded-2xl bg-purple-500/5 border border-purple-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                <div class="space-y-1">
+                  <p class="text-purple-200 font-medium">📸 Unsplash: Nền tảng ảnh nghệ thuật phong cảnh 1920px hàng đầu thế giới</p>
+                  <p class="text-white/60">Tạo ứng dụng miễn phí trên Unsplash Developer để nhận Access Key (50 requests/giờ trong chế độ demo, 5000 req/giờ khi duyệt).</p>
+                </div>
+                <a
+                  href="https://unsplash.com/developers"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500 text-white font-medium shrink-0 hover:bg-purple-400 transition-colors"
+                >
+                  <span>Mở Unsplash Developer</span>
+                  <MorphIcon icon={ExternalLink} size={12} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                </a>
+              </div>
+
+              <div class="flex flex-col sm:flex-row gap-3">
+                <div class="relative flex-1">
+                  <input
+                    type="password"
+                    bind:value={unsplashApiKeyInput}
+                    placeholder="Nhập Unsplash Access Key (ví dụ: client_id=...)"
+                    class="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white placeholder-white/30 text-sm focus:outline-none focus:border-purple-400/50 focus:ring-1 focus:ring-purple-400/50 transition-all font-mono"
+                  />
+                </div>
+
+                <div class="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onclick={handleTestUnsplashKey}
+                    disabled={isTestingUnsplashKey}
+                    class="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 disabled:opacity-50 text-white text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    {#if isTestingUnsplashKey}
+                      <div class="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                      <span>Đang kiểm tra...</span>
+                    {:else}
+                      <MorphIcon icon={RefreshCw} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                      <span>Kiểm tra kết nối</span>
+                    {/if}
+                  </button>
+
+                  <button
+                    type="button"
+                    onclick={handleSaveUnsplashKey}
+                    class="px-4 py-2.5 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-medium text-xs transition-all cursor-pointer shadow-sm flex items-center gap-1.5"
+                  >
+                    <MorphIcon icon={CheckCircle2} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                    <span>Lưu cấu hình</span>
+                  </button>
+
+                  {#if unsplashApiKeyInput}
+                    <button
+                      type="button"
+                      onclick={handleClearUnsplashKey}
+                      class="p-2.5 rounded-xl bg-white/5 hover:bg-rose-500/20 text-white/50 hover:text-rose-300 border border-white/10 transition-all cursor-pointer"
+                      title="Xóa Key"
+                    >
+                      <MorphIcon icon={Trash2} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                    </button>
+                  {/if}
                 </div>
               </div>
-            {/if}
 
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-white/40 gap-2 pt-1">
-              <p>
-                💡 Chưa có API Key? Đăng ký hoàn toàn miễn phí tại Pexels để nhận khóa API truy cập hàng triệu bức ảnh.
-              </p>
-              <a
-                href="https://www.pexels.com/api/"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="inline-flex items-center gap-1 text-amber-300 hover:text-amber-200 underline shrink-0 transition-colors"
-              >
-                <span>Nhận Pexels API Key miễn phí</span>
-                <MorphIcon icon={ExternalLink} size={11} strokeWidth={2} spring="smooth" reducedMotion="user" />
-              </a>
+              {#if unsplashTestResult}
+                <div class="p-3.5 rounded-xl text-xs flex items-start gap-2.5 {unsplashTestResult.success ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-200' : 'bg-rose-500/10 border border-rose-500/20 text-rose-200'}">
+                  <div class="shrink-0 mt-0.5">
+                    {#if unsplashTestResult.success}
+                      <MorphIcon icon={CheckCircle2} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                    {:else}
+                      <MorphIcon icon={AlertTriangle} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                    {/if}
+                  </div>
+                  <div class="font-medium">{unsplashTestResult.message}</div>
+                </div>
+              {/if}
             </div>
-          </div>
+          {/if}
+
+          <!-- TAB CONTENT: WIKIMEDIA COMMONS -->
+          {#if activeProviderTab === 'wikimedia'}
+            <div class="mt-4 space-y-4">
+              <div class="p-4 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-xs space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-sky-500/20 text-sky-200 border border-sky-400/30">
+                    <span class="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
+                    Sẵn Sàng Tự Động (Zero-Configuration)
+                  </span>
+                  <a
+                    href="https://commons.wikimedia.org/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-sky-300 hover:text-sky-200 underline inline-flex items-center gap-1 transition-colors"
+                  >
+                    <span>Khám phá Wikimedia Commons</span>
+                    <MorphIcon icon={ExternalLink} size={11} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                  </a>
+                </div>
+
+                <p class="text-white/80 leading-relaxed">
+                  Wikimedia Commons là kho lưu trữ tự do lớn nhất hành tinh. Haven Art tích hợp trực tiếp qua MediaWiki Open API mà <strong>không cần bất kỳ API key nào</strong>. Khi các nguồn khác chưa cấu hình hoặc tạm dừng, hệ thống tự động tìm nạp các kiệt tác danh họa (Monet, Van Gogh, Hokusai, Constable...) và ảnh thiên nhiên công cộng.
+                </p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                  <div class="p-2.5 rounded-xl bg-white/5 border border-white/10">
+                    <div class="font-medium text-white">🌐 100% Mở & Miễn Phí</div>
+                    <div class="text-[11px] text-white/50 mt-0.5">Không sợ hết hạn key hay tạm dừng cấp tài khoản mới.</div>
+                  </div>
+                  <div class="p-2.5 rounded-xl bg-white/5 border border-white/10">
+                    <div class="font-medium text-white">📜 Bản Quyền Minh Bạch</div>
+                    <div class="text-[11px] text-white/50 mt-0.5">Public Domain & Creative Commons tự do sử dụng.</div>
+                  </div>
+                  <div class="p-2.5 rounded-xl bg-white/5 border border-white/10">
+                    <div class="font-medium text-white">🛡️ Tự Động Fallback</div>
+                    <div class="text-[11px] text-white/50 mt-0.5">Đảm bảo màn hình luôn có ảnh tĩnh tâm sống động.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {/if}
+
+          <!-- TAB CONTENT: PEXELS -->
+          {#if activeProviderTab === 'pexels'}
+            <div class="mt-4 space-y-4">
+              <div class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs">
+                <p class="text-amber-200 font-medium">⚠️ Thông báo trạng thái Pexels API</p>
+                <p class="text-white/60 mt-1">Pexels hiện đang tạm dừng duyệt cấp API key cho các nhà phát triển mới. Nếu bạn đã có sẵn API key từ trước, bạn vẫn có thể dán vào bên dưới để kích hoạt bình thường.</p>
+              </div>
+
+              <div class="flex flex-col sm:flex-row gap-3">
+                <div class="relative flex-1">
+                  <input
+                    type="password"
+                    bind:value={pexelsApiKeyInput}
+                    placeholder="Nhập Pexels API Key nếu bạn đã có (ví dụ: aB39kL...)"
+                    class="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white placeholder-white/30 text-sm focus:outline-none focus:border-amber-400/50 focus:ring-1 focus:ring-amber-400/50 transition-all font-mono"
+                  />
+                </div>
+
+                <div class="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onclick={handleTestPexelsKey}
+                    disabled={isTestingPexelsKey}
+                    class="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 disabled:opacity-50 text-white text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    {#if isTestingPexelsKey}
+                      <div class="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                      <span>Đang kiểm tra...</span>
+                    {:else}
+                      <MorphIcon icon={RefreshCw} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                      <span>Kiểm tra kết nối</span>
+                    {/if}
+                  </button>
+
+                  <button
+                    type="button"
+                    onclick={handleSavePexelsKey}
+                    class="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-medium text-xs transition-all cursor-pointer shadow-sm flex items-center gap-1.5"
+                  >
+                    <MorphIcon icon={CheckCircle2} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                    <span>Lưu cấu hình</span>
+                  </button>
+
+                  {#if pexelsApiKeyInput}
+                    <button
+                      type="button"
+                      onclick={handleClearPexelsKey}
+                      class="p-2.5 rounded-xl bg-white/5 hover:bg-rose-500/20 text-white/50 hover:text-rose-300 border border-white/10 transition-all cursor-pointer"
+                      title="Xóa Key"
+                    >
+                      <MorphIcon icon={Trash2} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                    </button>
+                  {/if}
+                </div>
+              </div>
+
+              {#if pexelsTestResult}
+                <div class="p-3.5 rounded-xl text-xs flex items-start gap-2.5 {pexelsTestResult.success ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-200' : 'bg-rose-500/10 border border-rose-500/20 text-rose-200'}">
+                  <div class="shrink-0 mt-0.5">
+                    {#if pexelsTestResult.success}
+                      <MorphIcon icon={CheckCircle2} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                    {:else}
+                      <MorphIcon icon={AlertTriangle} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
+                    {/if}
+                  </div>
+                  <div class="font-medium">{pexelsTestResult.message}</div>
+                </div>
+              {/if}
+            </div>
+          {/if}
         </div>
 
         <!-- Artworks & Photography Gallery -->
@@ -1604,31 +2048,45 @@
                 <MorphIcon icon={Image} size={18} strokeWidth={2} spring="smooth" reducedMotion="user" />
                 <span>Kho Hình Nền Tuyển Chọn & Danh Họa ({filteredArtworks.length} / {ALL_HAVEN_ARTWORKS.length})</span>
               </h2>
-              <p class="text-xs text-white/50 mt-0.5">Ảnh thiên nhiên phân giải cao 1920px và kiệt tác cổ điển có bản quyền minh bạch</p>
+              <p class="text-xs text-white/50 mt-0.5">Ảnh thiên nhiên phân giải cao 1920px và kiệt tác cổ điển đa nguồn bản quyền tự do</p>
             </div>
 
             <!-- Category Filter Tabs -->
-            <div class="flex items-center gap-1.5 p-1 rounded-xl bg-white/5 border border-white/10 self-start sm:self-auto">
+            <div class="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-white/5 border border-white/10 self-start sm:self-auto">
               <button
                 type="button"
                 onclick={() => (artworkCategoryFilter = 'all')}
-                class="px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer {artworkCategoryFilter === 'all' ? 'bg-amber-400 text-black font-medium shadow-sm' : 'text-white/60 hover:text-white'}"
+                class="px-2.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer {artworkCategoryFilter === 'all' ? 'bg-amber-400 text-black font-medium shadow-sm' : 'text-white/60 hover:text-white'}"
               >
                 Tất cả ({ALL_HAVEN_ARTWORKS.length})
               </button>
               <button
                 type="button"
-                onclick={() => (artworkCategoryFilter = 'pexels')}
-                class="px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer {artworkCategoryFilter === 'pexels' ? 'bg-amber-400 text-black font-medium shadow-sm' : 'text-white/60 hover:text-white'}"
+                onclick={() => (artworkCategoryFilter = 'unsplash')}
+                class="px-2.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer {artworkCategoryFilter === 'unsplash' ? 'bg-purple-500 text-white font-medium shadow-sm' : 'text-white/60 hover:text-white'}"
               >
-                🌿 Pexels Thiên Nhiên (35)
+                📸 Unsplash (20)
+              </button>
+              <button
+                type="button"
+                onclick={() => (artworkCategoryFilter = 'pixabay')}
+                class="px-2.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer {artworkCategoryFilter === 'pixabay' ? 'bg-amber-400 text-black font-medium shadow-sm' : 'text-white/60 hover:text-white'}"
+              >
+                🌟 Pixabay (15)
+              </button>
+              <button
+                type="button"
+                onclick={() => (artworkCategoryFilter = 'pexels')}
+                class="px-2.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer {artworkCategoryFilter === 'pexels' ? 'bg-emerald-500 text-white font-medium shadow-sm' : 'text-white/60 hover:text-white'}"
+              >
+                🌿 Pexels (35)
               </button>
               <button
                 type="button"
                 onclick={() => (artworkCategoryFilter = 'classical')}
-                class="px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer {artworkCategoryFilter === 'classical' ? 'bg-amber-400 text-black font-medium shadow-sm' : 'text-white/60 hover:text-white'}"
+                class="px-2.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer {artworkCategoryFilter === 'classical' ? 'bg-sky-500 text-white font-medium shadow-sm' : 'text-white/60 hover:text-white'}"
               >
-                🎨 Danh Họa Cổ Điển (5)
+                🎨 Danh Họa (5)
               </button>
             </div>
           </div>
@@ -1644,9 +2102,23 @@
                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                   />
                   <div class="absolute top-2 left-2">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium backdrop-blur-md {artwork.id.startsWith('pexels_') ? 'bg-emerald-500/30 text-emerald-200 border border-emerald-400/30' : 'bg-amber-500/30 text-amber-200 border border-amber-400/30'}">
-                      {artwork.id.startsWith('pexels_') ? 'Pexels HD' : 'Danh Họa'}
-                    </span>
+                    {#if artwork.provider === 'unsplash' || artwork.id.startsWith('unsplash-')}
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium backdrop-blur-md bg-purple-500/40 text-purple-200 border border-purple-400/40">
+                        📸 Unsplash HD
+                      </span>
+                    {:else if artwork.provider === 'pixabay' || artwork.id.startsWith('pixabay-')}
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium backdrop-blur-md bg-amber-500/40 text-amber-200 border border-amber-400/40">
+                        🌟 Pixabay HD
+                      </span>
+                    {:else if artwork.provider === 'pexels' || artwork.id.startsWith('pexels')}
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium backdrop-blur-md bg-emerald-500/40 text-emerald-200 border border-emerald-400/40">
+                        🌿 Pexels HD
+                      </span>
+                    {:else}
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium backdrop-blur-md bg-sky-500/40 text-sky-200 border border-sky-400/40">
+                        🎨 Bảo Tàng
+                      </span>
+                    {/if}
                   </div>
                 </div>
                 <div class="p-3.5">
