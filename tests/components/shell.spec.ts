@@ -105,4 +105,27 @@ describe('HavenShell Experience State Machine', () => {
     await fireEvent.click(closeBtn);
     expect(queryByRole('dialog')).toBeNull();
   });
+
+  it('enters and exits Zen mode properly with floating exit button', async () => {
+    const { getByRole, getAllByRole, queryByRole } = render(HavenShell, { initialLang: 'vi' });
+    const enterBtn = getByRole('button', { name: /bước vào/i });
+    await fireEvent.click(enterBtn);
+
+    // Find and click Zen Mode toggle button on dock
+    const zenBtn = await waitFor(() => getByRole('button', { name: /chế độ tĩnh tâm|zen.*mode/i }));
+    await fireEvent.click(zenBtn);
+
+    // Floating Exit Zen Mode button appears
+    const exitZenBtns = await waitFor(() => getAllByRole('button', { name: /thoát chế độ tĩnh tâm|exit zen/i }));
+    expect(exitZenBtns.length).toBeGreaterThan(0);
+
+    // Click Exit Zen button to exit Zen mode
+    await fireEvent.click(exitZenBtns[0]);
+
+    // Floating exit pill disappears (only the dock toggle button remains)
+    await waitFor(() => {
+      const remaining = getAllByRole('button', { name: /chế độ tĩnh tâm/i });
+      expect(remaining.length).toBeGreaterThan(0);
+    });
+  });
 });

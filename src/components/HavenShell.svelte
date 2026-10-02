@@ -21,7 +21,7 @@
   } from '../lib/audio/track-selector';
   import { ALL_HAVEN_AUDIO_TRACKS, type HavenAudioTrack } from '../lib/audio/ambient-catalog';
   import { MorphIcon } from 'morphicons/svelte';
-  import { X } from 'lucide';
+  import { X, Eye } from 'lucide';
   import LanguagePicker from './LanguagePicker.svelte';
   import FeedbackModal from './FeedbackModal.svelte';
   import MusicLibraryModal from './MusicLibraryModal.svelte';
@@ -537,7 +537,38 @@
       </header>
 
       <!-- Center Space: Unobstructed, Pure Art Appreciation -->
-      <main class="flex-1 flex items-center justify-center pointer-events-none"></main>
+      <main class="flex-1 flex items-center justify-center pointer-events-none">
+        {#if isZenMode}
+          <!-- Ambient Backdrop Clickable Layer in Zen Mode: Tap anywhere to exit Zen Mode -->
+          <button
+            type="button"
+            onclick={() => (isZenMode = false)}
+            class="fixed inset-0 z-30 cursor-pointer pointer-events-auto bg-transparent border-0 w-full h-full text-left"
+            aria-label="Nhấn vào màn hình để hiện lại thanh điều khiển"
+            title="Nhấn vào màn hình để hiện lại thanh điều khiển"
+          >
+            <span class="sr-only">Nhấn vào màn hình để hiện lại thanh điều khiển</span>
+          </button>
+        {/if}
+      </main>
+
+      <!-- Dedicated Floating "Exit Zen Mode" Pill Button when in Zen Mode -->
+      {#if isZenMode}
+        <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 pointer-events-auto animate-fade-in">
+          <button
+            type="button"
+            onclick={() => (isZenMode = false)}
+            class="group inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-black/45 hover:bg-black/80 border border-white/25 hover:border-amber-400/60 shadow-[0_8px_32px_rgba(0,0,0,0.6)] backdrop-blur-xl text-xs text-white/90 hover:text-white transition-all duration-300 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60 scale-100 hover:scale-105 active:scale-95"
+            aria-label="{t('dock.exitZenMode', currentLang)} / Thoát chế độ tĩnh tâm"
+            title="{t('dock.exitZenMode', currentLang)}"
+          >
+            <span class="w-6 h-6 rounded-full bg-white/10 group-hover:bg-amber-400/20 text-amber-300 flex items-center justify-center transition-colors">
+              <MorphIcon icon={Eye} size={13} strokeWidth={2} />
+            </span>
+            <span class="font-medium tracking-wide drop-shadow-sm">{t('dock.exitZenMode', currentLang)}</span>
+          </button>
+        </div>
+      {/if}
 
       <!-- Bottom Floating Frosted Glass Dock (Audio Player & Controls) -->
       <div class="pointer-events-auto transition-all duration-700 {isIdle && activeModal === null ? 'opacity-0 translate-y-8 pointer-events-none' : 'opacity-100 translate-y-0'}">
