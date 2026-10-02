@@ -64,7 +64,7 @@ export class JournalRepository {
     const id = input.id || generateUlid();
     const now = Date.now();
     const createdAt = input.createdAt ?? now;
-    const updatedAt = createdAt;
+    const updatedAt = input.updatedAt ?? createdAt;
 
     const entry: JournalEntry = {
       id,

@@ -23,3 +23,7 @@ tests/reports/
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# Server persistent data & test data
+data/test-data/
+data/server-db.json

@@ -26,10 +26,12 @@
   } from '../lib/audio/track-selector';
   import { ALL_HAVEN_AUDIO_TRACKS, type HavenAudioTrack } from '../lib/audio/ambient-catalog';
   import { MorphIcon } from 'morphicons/svelte';
-  import { X, Eye } from 'lucide';
+  import { X, Eye, Cloud, User } from 'lucide';
   import LanguagePicker from './LanguagePicker.svelte';
   import FeedbackModal from './FeedbackModal.svelte';
   import MusicLibraryModal from './MusicLibraryModal.svelte';
+  import UserAuthModal from './UserAuthModal.svelte';
+  import { getCurrentUser, type AuthUser } from '../lib/auth/user-client';
   import { recordVisit, updateActiveDuration } from '../lib/telemetry/user-analytics';
   import { detectUserLanguage, t } from '../lib/i18n/store';
   import type { SupportedLanguage } from '../lib/i18n/types';
@@ -48,7 +50,8 @@
     }
   });
   let experienceState = $state<'gate' | 'haven'>('gate');
-  let activeModal = $state<'write' | 'list' | 'feedback' | 'music' | null>(null);
+  let activeModal = $state<'write' | 'list' | 'feedback' | 'music' | 'auth' | null>(null);
+  let authUser = $state<AuthUser | null>(getCurrentUser());
   let journalRepo = $state<JournalRepository | null>(null);
   let journalRefreshTrigger = $state(0);
   let isZenMode = $state(false);
@@ -239,12 +242,19 @@
       loadLivePexelsIfAvailable();
     }
 
+    function onAuthChangeEvent(event: Event) {
+      const customEvent = event as CustomEvent<{ session: any }>;
+      authUser = customEvent.detail?.session?.user || null;
+    }
+
     window.addEventListener('haven:language-change', onLanguageChangeEvent);
     window.addEventListener('haven:pexels-key-changed', onPexelsKeyChangeEvent);
+    window.addEventListener('haven:user-auth-changed', onAuthChangeEvent);
 
     return () => {
       window.removeEventListener('haven:language-change', onLanguageChangeEvent);
       window.removeEventListener('haven:pexels-key-changed', onPexelsKeyChangeEvent);
+      window.removeEventListener('haven:user-auth-changed', onAuthChangeEvent);
     };
   });
 
@@ -563,6 +573,22 @@
               currentLang = l;
             }}
           />
+
+          <!-- User Account / Cloud Sync Pill Button -->
+          <button
+            type="button"
+            onclick={() => (activeModal = activeModal === 'auth' ? null : 'auth')}
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/25 hover:bg-black/40 border border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.25)] backdrop-blur-md select-none transition-all duration-300 text-xs font-sans text-white/90 hover:text-white cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/50"
+            title={authUser ? (currentLang === 'vi' ? 'Tài khoản & Đồng bộ Cloud' : 'Account & Cloud Sync') : (currentLang === 'vi' ? 'Đăng nhập để lưu trên máy chủ' : 'Sign in to cloud')}
+          >
+            {#if authUser}
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span class="font-medium text-amber-200">{authUser.name.split(' ')[0]}</span>
+            {:else}
+              <MorphIcon icon={Cloud} size={13} strokeWidth={2} class="text-white/70" />
+              <span>{currentLang === 'vi' ? 'Đăng nhập' : 'Sign In'}</span>
+            {/if}
+          </button>
         </div>
       </header>
 
@@ -643,6 +669,15 @@
       lang={currentLang}
       onSelectTrack={handleSelectTrackFromLibrary}
       onClose={handleCloseModal}
+    />
+  {:else if activeModal === 'auth'}
+    <UserAuthModal
+      repo={journalRepo || undefined}
+      lang={currentLang}
+      onClose={handleCloseModal}
+      onUserChange={(u) => {
+        authUser = u;
+      }}
     />
   {:else if activeModal !== null}
     <div

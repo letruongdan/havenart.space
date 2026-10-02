@@ -47,6 +47,7 @@ export interface CreateJournalEntryInput {
   body: string;
   mood?: string;
   createdAt?: number;
+  updatedAt?: number;
 }
 
 /**
