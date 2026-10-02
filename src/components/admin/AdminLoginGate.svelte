@@ -72,6 +72,12 @@
     password = DEFAULT_ADMIN_PASSWORD;
     showHint = true;
   }
+
+  async function handleQuickAdminLogin() {
+    username = DEFAULT_ADMIN_USERNAME;
+    password = DEFAULT_ADMIN_PASSWORD;
+    await handleLogin();
+  }
 </script>
 
 <div class="min-h-screen w-full flex items-center justify-center p-4 relative overflow-hidden bg-[#090a0d] text-stone-100 font-sans selection:bg-amber-400/30">
@@ -190,21 +196,23 @@
       </form>
 
       <!-- Default Credentials Helper Banner -->
-      <div class="pt-2 border-t border-white/10 text-center">
-        {#if !showHint}
-          <button
-            type="button"
-            onclick={fillDefaultCredentials}
-            class="text-[11px] text-white/40 hover:text-amber-300/80 transition-colors underline cursor-pointer"
-          >
-            Quản trị viên lần đầu? Sử dụng tài khoản mặc định
-          </button>
-        {:else}
-          <div class="text-[11px] text-white/60 bg-white/5 border border-white/10 rounded-xl p-2.5 font-mono space-y-1">
-            <div>Tài khoản mặc định: <span class="text-amber-300 font-semibold">{DEFAULT_ADMIN_USERNAME}</span></div>
-            <div>Mật khẩu: <span class="text-amber-300 font-semibold">{DEFAULT_ADMIN_PASSWORD}</span></div>
+      <div class="pt-3 border-t border-white/10 space-y-2">
+        <div class="p-3 rounded-2xl bg-white/[0.03] border border-white/10 text-xs text-white/70 space-y-1.5">
+          <div class="flex items-center justify-between text-[11px] text-white/40 pb-1 border-b border-white/5">
+            <span>Tài khoản Quản trị viên</span>
+            <button
+              type="button"
+              onclick={fillDefaultCredentials}
+              class="text-amber-300 hover:text-amber-200 underline cursor-pointer"
+            >
+              Tự động điền
+            </button>
           </div>
-        {/if}
+          <div class="font-mono text-[11px] space-y-0.5">
+            <div>Root Admin: <span class="text-amber-300 font-semibold">{DEFAULT_ADMIN_USERNAME}</span> / <span class="text-amber-300 font-semibold">{DEFAULT_ADMIN_PASSWORD}</span></div>
+            <div class="text-[10px] text-white/40">Hoặc tài khoản cá nhân: <span class="text-cyan-300">danc3vh@gmail.com</span> (đã được cấp quyền Admin)</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
