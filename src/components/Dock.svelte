@@ -8,6 +8,7 @@
     artworkTitle?: string;
     artworkArtist?: string;
     activeModal?: 'write' | 'list' | null;
+    isZenMode?: boolean;
     onTogglePlay?: () => void;
     onVolumeChange?: (volume: number) => void;
     onNextTrack?: () => void;
@@ -16,6 +17,7 @@
     onNextArtwork?: () => void;
     onOpenJournalWrite?: () => void;
     onOpenJournalList?: () => void;
+    onToggleZenMode?: () => void;
   }
 
   let {
@@ -23,10 +25,11 @@
     volume = 0.4,
     trackTitle = '',
     trackArtist = '',
-    visualMode = 'shader',
+    visualMode = 'static',
     artworkTitle = '',
     artworkArtist = '',
     activeModal = null,
+    isZenMode = false,
     onTogglePlay,
     onVolumeChange,
     onNextTrack,
@@ -35,6 +38,7 @@
     onNextArtwork,
     onOpenJournalWrite,
     onOpenJournalList,
+    onToggleZenMode,
   }: Props = $props();
 
   function handleVolumeInput(event: Event) {
@@ -47,19 +51,20 @@
 </script>
 
 <nav
-  class="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 max-w-4xl w-[94%] sm:w-auto"
+  class="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 max-w-5xl w-[95%] sm:w-auto transition-all duration-700 ease-out {isZenMode ? 'translate-y-24 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}"
   aria-label="Bảng điều khiển Haven Art"
 >
+  <!-- Floating Frosted Glass Island -->
   <div
-    class="bg-stone-900/90 dark:bg-stone-950/90 text-stone-200 border border-stone-700/60 rounded-full px-3.5 py-2 sm:px-5 sm:py-2.5 shadow-2xl backdrop-blur-md flex items-center justify-between sm:justify-center gap-2 sm:gap-4 transition-all duration-300"
+    class="bg-stone-950/45 dark:bg-black/55 text-stone-100 border border-white/20 dark:border-white/10 rounded-full px-4 py-2 sm:px-6 sm:py-2.5 shadow-[0_16px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl ring-1 ring-white/10 flex items-center justify-between sm:justify-center gap-2 sm:gap-4 transition-all duration-500"
   >
-    <!-- Audio Section -->
-    <div class="flex items-center gap-1.5 sm:gap-2">
-      <!-- Play/Pause Button -->
+    <!-- 1. Audio Playback Section -->
+    <div class="flex items-center gap-2 sm:gap-3">
+      <!-- Play/Pause Button with Golden Ambient Halo -->
       <button
         type="button"
         onclick={onTogglePlay}
-        class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-stone-800 hover:bg-stone-700 flex items-center justify-center text-amber-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 cursor-pointer"
+        class="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 cursor-pointer {isPlaying ? 'bg-amber-400 text-stone-950 shadow-[0_0_20px_rgba(251,191,36,0.6)] scale-105' : 'bg-white/15 hover:bg-white/25 text-amber-200 border border-white/20 hover:border-amber-300/60'}"
         aria-label={isPlaying ? 'Tạm dừng nhạc' : 'Phát nhạc'}
       >
         {#if isPlaying}
@@ -73,13 +78,14 @@
         {/if}
       </button>
 
-      <!-- Next Track Mini Button -->
+      <!-- Next Track Button -->
       {#if onNextTrack}
         <button
           type="button"
           onclick={onNextTrack}
-          class="w-7 h-7 rounded-full text-stone-400 hover:text-stone-200 hover:bg-stone-800/60 hidden sm:flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-400 cursor-pointer"
+          class="w-7 h-7 rounded-full text-stone-300 hover:text-white hover:bg-white/10 hidden sm:flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-300 cursor-pointer"
           aria-label="Bài nhạc tiếp theo"
+          title="Chuyển bài thiền định tiếp theo"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5" aria-hidden="true">
             <path d="M5.055 7.06C3.805 6.347 2.25 7.25 2.25 8.69v8.622c0 1.44 1.555 2.343 2.805 1.628L12 14.471v4.34c0 1.44 1.555 2.343 2.805 1.628l7.108-4.061c1.26-.72 1.26-2.536 0-3.256L14.805 9.06C13.555 8.347 12 9.25 12 10.69v4.34L5.055 7.06Z" />
@@ -87,20 +93,36 @@
         </button>
       {/if}
 
-      <!-- Track info -->
-      {#if trackTitle}
-        <span class="hidden md:inline-block text-xs text-stone-300 font-light truncate max-w-[110px]" title={trackTitle}>
-          {trackTitle}
-        </span>
-      {/if}
+      <!-- Ambient Soundwave / Track Title -->
+      <div class="hidden md:flex items-center gap-2 pl-1">
+        {#if isPlaying}
+          <!-- Mini pulsating equalizer bars -->
+          <div class="flex items-end gap-0.5 h-3.5 w-3" aria-hidden="true">
+            <span class="w-0.5 bg-amber-300 rounded-full animate-[pulse_1s_ease-in-out_infinite] h-2"></span>
+            <span class="w-0.5 bg-amber-400 rounded-full animate-[pulse_1.4s_ease-in-out_infinite] h-3.5"></span>
+            <span class="w-0.5 bg-amber-300 rounded-full animate-[pulse_0.8s_ease-in-out_infinite] h-2.5"></span>
+          </div>
+        {/if}
+        {#if trackTitle}
+          <div class="flex flex-col text-left leading-tight">
+            <span class="text-xs text-white/95 font-medium truncate max-w-[130px]" title={trackTitle}>
+              {trackTitle}
+            </span>
+            {#if trackArtist}
+              <span class="text-[10px] text-stone-300/80 font-light truncate max-w-[130px]">
+                {trackArtist}
+              </span>
+            {/if}
+          </div>
+        {/if}
+      </div>
 
       <!-- Volume Slider -->
       <div class="flex items-center gap-1.5 ml-1">
-        <label for="haven-dock-volume" class="text-stone-400 hover:text-stone-200 flex items-center cursor-pointer">
+        <label for="haven-dock-volume" class="text-stone-300 hover:text-white flex items-center cursor-pointer">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5" aria-hidden="true">
             <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.5A2.25 2.25 0 0 0 2.25 9.75v4.5A2.25 2.25 0 0 0 4.5 16.5h1.94l4.5 4.5c.944.945 2.56.276 2.56-1.06V4.06ZM18.584 5.106a.75.75 0 0 1 1.06 0c3.808 3.807 3.808 9.98 0 13.788a.75.75 0 0 1-1.06-1.06 8.25 8.25 0 0 0 0-11.668.75.75 0 0 1 0-1.06Z" />
           </svg>
-          <span class="sr-only">Điều chỉnh âm lượng</span>
         </label>
         <input
           id="haven-dock-volume"
@@ -111,65 +133,68 @@
           value={volume}
           oninput={handleVolumeInput}
           aria-label="Điều chỉnh âm lượng"
-          class="w-14 sm:w-16 h-1 bg-stone-700 rounded-lg appearance-none cursor-pointer accent-amber-400 focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-400"
+          class="w-14 sm:w-16 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-amber-300 focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-300"
         />
       </div>
     </div>
 
-    <!-- Divider -->
-    <div class="w-px h-5 bg-stone-700/60 hidden sm:block" aria-hidden="true"></div>
+    <!-- Glass Divider -->
+    <div class="w-px h-6 bg-white/15 hidden sm:block" aria-hidden="true"></div>
 
-    <!-- Visual / Artwork Section -->
-    <div class="flex items-center gap-1.5 sm:gap-2">
+    <!-- 2. Visual / Artwork Presentation Section -->
+    <div class="flex items-center gap-1.5 sm:gap-2.5">
       <!-- Visual Switch Button -->
       <button
         type="button"
         onclick={onToggleVisualMode}
-        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-light bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 cursor-pointer"
+        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-light bg-white/10 hover:bg-white/20 text-stone-200 border border-white/15 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 cursor-pointer"
         aria-label="Chuyển chế độ hình nền: {visualMode === 'shader' ? 'Đổi sang ảnh tĩnh' : 'Đổi sang shader động'}"
+        title="Chuyển giữa kiệt tác tranh tĩnh và shader dòng chảy"
       >
         {#if visualMode === 'shader'}
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]"></span>
           <span>Shader</span>
         {:else}
-          <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-          <span>Ảnh tĩnh</span>
+          <span class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24]"></span>
+          <span>Tranh tĩnh</span>
         {/if}
       </button>
-
-      <!-- Artwork Title Display -->
-      {#if artworkTitle}
-        <span class="hidden lg:inline-block text-xs text-stone-300 font-light truncate max-w-[120px]" title={artworkTitle}>
-          {artworkTitle}
-        </span>
-      {/if}
 
       <!-- Next Artwork Mini Button -->
       {#if onNextArtwork}
         <button
           type="button"
           onclick={onNextArtwork}
-          class="w-7 h-7 rounded-full text-stone-400 hover:text-stone-200 hover:bg-stone-800/60 hidden sm:flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-400 cursor-pointer"
+          class="w-7 h-7 rounded-full text-stone-300 hover:text-white hover:bg-white/10 hidden sm:flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-300 cursor-pointer"
           aria-label="Đổi tranh tiếp theo"
+          title="Xem tác phẩm tiếp theo trong phòng tranh"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5" aria-hidden="true">
             <path fill-rule="evenodd" d="M4.755 10.059a7.5 7.5 0 0 1 12.548-3.364l1.903 1.903h-3.183a.75.75 0 1 0 0 1.5h4.992a.75.75 0 0 0 .75-.75V4.356a.75.75 0 0 0-1.5 0v3.18l-1.9-1.9A9 9 0 0 0 3.306 9.67a.75.75 0 1 0 1.45.388Zm15.408 3.352a.75.75 0 0 0-.919.53 7.5 7.5 0 0 1-12.548 3.364l-1.902-1.903h3.183a.75.75 0 0 0 0-1.5H2.985a.75.75 0 0 0-.75.75v4.992a.75.75 0 0 0 1.5 0v-3.18l1.9 1.9a9 9 0 0 0 15.059-4.035.75.75 0 0 0-.53-.918Z" clip-rule="evenodd" />
           </svg>
         </button>
       {/if}
+
+      <!-- Artwork Title Display -->
+      {#if artworkTitle}
+        <span class="hidden lg:inline-block text-xs text-stone-200/90 font-serif italic truncate max-w-[140px]" title="{artworkTitle} - {artworkArtist}">
+          {artworkTitle}
+        </span>
+      {/if}
     </div>
 
-    <!-- Divider -->
-    <div class="w-px h-5 bg-stone-700/60" aria-hidden="true"></div>
+    <!-- Glass Divider -->
+    <div class="w-px h-6 bg-white/15" aria-hidden="true"></div>
 
-    <!-- Action Buttons -->
+    <!-- 3. Action Buttons & Zen Mode -->
     <div class="flex items-center gap-1.5 sm:gap-2">
       <!-- Viết nhật ký -->
       <button
         type="button"
         onclick={onOpenJournalWrite}
-        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium tracking-wide transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 cursor-pointer {activeModal === 'write' ? 'bg-amber-400 text-stone-900 font-semibold shadow' : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/30'}"
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium tracking-wide transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 cursor-pointer {activeModal === 'write' ? 'bg-amber-400 text-stone-950 font-semibold shadow-[0_0_15px_rgba(251,191,36,0.5)]' : 'bg-white/10 hover:bg-white/20 text-amber-200 border border-amber-300/30'}"
         aria-label="Viết nhật ký"
+        title="Mở bảng ghi lại suy ngẫm an yên"
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5" aria-hidden="true">
           <path d="m5.433 13.917 1.262-3.155A4 4 0 0 1 7.58 9.42l6.92-6.918a2.121 2.121 0 0 1 3 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 0 1-.65-.65Z" />
@@ -182,14 +207,43 @@
       <button
         type="button"
         onclick={onOpenJournalList}
-        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium tracking-wide transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 cursor-pointer {activeModal === 'list' ? 'bg-stone-200 text-stone-900 font-semibold shadow' : 'bg-stone-800/80 hover:bg-stone-700/80 text-stone-200 border border-stone-700/60'}"
+        class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-light transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 cursor-pointer {activeModal === 'list' ? 'bg-amber-400 text-stone-950 font-semibold shadow-[0_0_15px_rgba(251,191,36,0.5)]' : 'bg-white/10 hover:bg-white/20 text-stone-200 border border-white/15'}"
         aria-label="Danh sách bài viết"
+        title="Xem lại các trang nhật ký đã lưu"
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5" aria-hidden="true">
           <path fill-rule="evenodd" d="M2 4.75A.75.75 0 0 1 2.75 4h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 4.75ZM2 10a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75A.75.75 0 0 1 2 10Zm0 5.25a.75.75 0 0 1 .75-.75h14.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1-.75-.75Z" clip-rule="evenodd" />
         </svg>
-        <span class="hidden sm:inline">Danh sách bài viết</span>
+        <span class="hidden md:inline">Nhật ký</span>
       </button>
+
+      <!-- Zen / Immersion Mode Button -->
+      {#if onToggleZenMode}
+        <button
+          type="button"
+          onclick={onToggleZenMode}
+          class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 hover:bg-white/20 text-stone-300 hover:text-amber-200 border border-white/15 flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-300 cursor-pointer ml-0.5"
+          aria-label="Ẩn bảng điều khiển để tận hưởng tranh toàn màn hình"
+          title="Chế độ tĩnh lặng: Ẩn bảng điều khiển để ngắm trọn vẹn bức tranh"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5" aria-hidden="true">
+            <path d="M10 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" />
+            <path fill-rule="evenodd" d="M.664 10.59a1.651 1.651 0 0 1 0-1.186A10.004 10.004 0 0 1 10 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0 1 10 17c-4.257 0-7.893-2.66-9.336-6.41ZM14 10a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" clip-rule="evenodd" />
+          </svg>
+        </button>
+      {/if}
     </div>
   </div>
 </nav>
+
+<!-- Floating Floating 'Show Dock' Indicator when Zen Mode is active -->
+{#if isZenMode}
+  <button
+    type="button"
+    onclick={onToggleZenMode}
+    class="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 px-4 py-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white/80 hover:text-white border border-white/20 backdrop-blur-md text-xs font-light tracking-wide shadow-lg transition-all duration-300 cursor-pointer animate-fade-in"
+    aria-label="Hiện lại bảng điều khiển"
+  >
+    <span>✦ Hiện bảng điều khiển</span>
+  </button>
+{/if}

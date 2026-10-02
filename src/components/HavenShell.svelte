@@ -13,6 +13,7 @@
   let activeModal = $state<'write' | 'list' | null>(null);
   let journalRepo = $state<JournalRepository | null>(null);
   let journalRefreshTrigger = $state(0);
+  let isZenMode = $state(false);
 
   // Audio state
   let isPlaying = $state(false);
@@ -20,8 +21,8 @@
   let currentTrackTitle = $state('');
   let currentTrackArtist = $state('');
 
-  // Visual state
-  let visualMode = $state<VisualMode>('shader');
+  // Visual state: Start with static artwork for full-screen immersive painting experience
+  let visualMode = $state<VisualMode>('static');
   let currentArtwork = $state<Artwork | null>(null);
 
   let audioEngine: AudioEngine | null = null;
@@ -50,6 +51,8 @@
           currentArtwork = newArt;
         },
       });
+      // Default to static artwork display so the painting fills the screen
+      visualController.setMode('static');
       visualMode = visualController.getActiveMode();
       currentArtwork = visualController.getCurrentImage();
     } catch (e) {
@@ -152,10 +155,12 @@
 
   function handleOpenJournalWrite() {
     activeModal = activeModal === 'write' ? null : 'write';
+    if (isZenMode) isZenMode = false;
   }
 
   function handleOpenJournalList() {
     activeModal = activeModal === 'list' ? null : 'list';
+    if (isZenMode) isZenMode = false;
   }
 
   function handleCloseModal() {
@@ -166,9 +171,17 @@
     journalRefreshTrigger += 1;
   }
 
+  function handleToggleZenMode() {
+    isZenMode = !isZenMode;
+  }
+
   function handleWindowKeyDown(event: KeyboardEvent) {
-    if (event.key === 'Escape' && activeModal !== null) {
-      handleCloseModal();
+    if (event.key === 'Escape') {
+      if (activeModal !== null) {
+        handleCloseModal();
+      } else if (isZenMode) {
+        isZenMode = false;
+      }
     }
   }
 </script>
@@ -176,15 +189,17 @@
 <svelte:window onkeydown={handleWindowKeyDown} />
 
 <div
-  class="relative w-full min-h-screen overflow-hidden bg-[#fbf9f5] dark:bg-[#121316] text-[#1c1917] dark:text-[#f5f5f4] transition-colors duration-700"
+  class="relative w-full min-h-screen overflow-hidden bg-[#0d0e12] text-white selection:bg-amber-400/30 select-none"
 >
-  <!-- Background Visual Presentation (Shader Canvas or Static Artwork) -->
+  <!-- Full-Screen Artwork & Visual Presentation -->
   <div class="fixed inset-0 w-full h-full pointer-events-none z-0" aria-hidden="true">
+    <!-- WebGL2 Shader Canvas -->
     <canvas
       bind:this={canvasElement}
       class="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-out {visualMode === 'shader' ? 'opacity-100' : 'opacity-0'}"
     ></canvas>
 
+    <!-- Curated Masterpiece Artwork (Full-Bleed Cover) -->
     {#if currentArtwork}
       <img
         src={currentArtwork.src}
@@ -193,13 +208,13 @@
       />
     {/if}
 
-    <!-- Calm vignette overlay ensuring high contrast and zero eye strain -->
+    <!-- Subtle, ethereal vignette & gradient overlay to ensure UI elements pop while keeping image vivid -->
     <div
-      class="absolute inset-0 bg-stone-900/10 dark:bg-stone-950/30 backdrop-blur-[0.5px]"
+      class="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/60 pointer-events-none"
     ></div>
   </div>
 
-  <!-- Experience State: Gate -->
+  <!-- Experience State: Gate Entrance -->
   {#if experienceState === 'gate'}
     <div
       class="relative z-20 w-full min-h-screen flex items-center justify-center transition-opacity duration-700 ease-out"
@@ -209,52 +224,32 @@
   {:else}
     <!-- Experience State: Haven Main View -->
     <div
-      class="relative z-10 w-full min-h-screen flex flex-col justify-between p-6 pointer-events-none transition-opacity duration-700 ease-out"
+      class="relative z-10 w-full min-h-screen flex flex-col justify-between p-4 sm:p-6 pointer-events-none transition-opacity duration-700 ease-out"
     >
-      <!-- Top Serene Navigation Bar -->
-      <header class="pointer-events-auto flex items-center justify-between max-w-7xl w-full mx-auto select-none">
-        <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-full bg-amber-100/60 dark:bg-amber-950/40 border border-amber-300/40 dark:border-amber-700/30 flex items-center justify-center text-amber-800 dark:text-amber-200">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4" aria-hidden="true">
-              <path d="M10 2a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 10 2ZM10 15a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 10 15ZM10 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6ZM15.657 5.404a.75.75 0 1 0-1.06-1.06l-1.061 1.06a.75.75 0 0 0 1.06 1.061l1.06-1.06ZM6.464 14.596a.75.75 0 1 0-1.06-1.06l-1.06 1.06a.75.75 0 0 0 1.06 1.061l1.06-1.06ZM18 10a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1 0-1.5h1.5A.75.75 0 0 1 10 18ZM4.25 10a.75.75 0 0 1-.75.75H2a.75.75 0 0 1 0-1.5h1.5a.75.75 0 0 1 .75.75ZM14.596 15.657a.75.75 0 0 0 1.06-1.06l-1.06-1.061a.75.75 0 1 0-1.06 1.06l1.06 1.061ZM5.404 6.464a.75.75 0 0 0 1.06-1.06l-1.06-1.06a.75.75 0 1 0-1.061 1.06l1.06 1.06Z" />
-            </svg>
-          </div>
-          <div>
-            <h1 class="text-sm font-serif font-medium tracking-wide text-stone-900/90 dark:text-stone-100/90">
-              Haven Art
-            </h1>
-            <p class="text-[11px] text-stone-500 dark:text-stone-400 font-light">
-              Góc tĩnh lặng cho tâm hồn
-            </p>
-          </div>
+      <!-- Ethereal Top Glass Header (Auto-hides in Zen Mode) -->
+      <header
+        class="pointer-events-auto flex items-center justify-between max-w-7xl w-full mx-auto transition-all duration-700 {isZenMode ? '-translate-y-16 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}"
+      >
+        <!-- Brand Pill -->
+        <div class="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-black/35 backdrop-blur-xl border border-white/15 shadow-lg text-white">
+          <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_#fbbf24]"></span>
+          <span class="text-xs font-serif tracking-wider font-medium">Haven Art</span>
         </div>
 
-        <!-- Serene Status / Quote Indicator -->
-        <div class="hidden sm:block text-right">
-          <p class="text-xs text-stone-600/80 dark:text-stone-300/80 font-serif italic">
-            "Trong tĩnh lặng, tâm an."
-          </p>
-          {#if currentArtwork}
-            <p class="text-[11px] text-stone-400 dark:text-stone-500 font-light">
-              {currentArtwork.title} — {currentArtwork.artist}
-            </p>
-          {/if}
-        </div>
-      </header>
-
-      <!-- Center Space (Uncluttered, calm) -->
-      <main class="flex-1 flex items-center justify-center pointer-events-none select-none">
-        <!-- Calm breathing visual prompt if no modal is active -->
-        {#if activeModal === null}
-          <div class="text-center opacity-40 hover:opacity-80 transition-opacity duration-500 pointer-events-auto">
-            <p class="text-sm font-light tracking-widest text-stone-600 dark:text-stone-300 uppercase">
-              Thở sâu & Tĩnh tại
-            </p>
+        <!-- Artwork Info Capsule -->
+        {#if currentArtwork}
+          <div class="hidden sm:inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/35 backdrop-blur-xl border border-white/15 text-xs text-stone-200 shadow-lg">
+            <span class="font-serif italic">{currentArtwork.title}</span>
+            <span class="text-white/40">•</span>
+            <span class="text-stone-300 font-light">{currentArtwork.artist}</span>
           </div>
         {/if}
-      </main>
+      </header>
 
-      <!-- Bottom Floating Calm Dock -->
+      <!-- Center Space: Unobstructed, Pure Art Appreciation -->
+      <main class="flex-1 flex items-center justify-center pointer-events-none"></main>
+
+      <!-- Bottom Floating Frosted Glass Dock (Audio Player & Controls) -->
       <div class="pointer-events-auto">
         <Dock
           {isPlaying}
@@ -265,6 +260,7 @@
           artworkTitle={currentArtwork?.title}
           artworkArtist={currentArtwork?.artist}
           {activeModal}
+          {isZenMode}
           onTogglePlay={handleTogglePlay}
           onVolumeChange={handleVolumeChange}
           onNextTrack={handleNextTrack}
@@ -272,48 +268,50 @@
           onNextArtwork={handleNextArtwork}
           onOpenJournalWrite={handleOpenJournalWrite}
           onOpenJournalList={handleOpenJournalList}
+          onToggleZenMode={handleToggleZenMode}
         />
       </div>
     </div>
   {/if}
 
-  <!-- Modals / Overlays for Journal Write and Journal List -->
+  <!-- Modals / Overlays: Styled as Translucent Frosted Glass Over the Artwork -->
   {#if activeModal !== null}
     <div
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/60 backdrop-blur-sm transition-opacity duration-300"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md transition-opacity duration-300"
       role="dialog"
       aria-modal="true"
       aria-labelledby="haven-modal-title"
     >
       <div
-        class="relative w-full max-w-2xl bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 sm:p-8 shadow-2xl text-stone-900 dark:text-stone-100 max-h-[90vh] overflow-y-auto"
+        class="relative w-full max-w-2xl bg-stone-950/75 text-stone-100 border border-white/20 rounded-3xl p-6 sm:p-8 shadow-[0_25px_60px_rgba(0,0,0,0.6)] backdrop-blur-2xl max-h-[90vh] overflow-y-auto"
       >
         <!-- Modal Header -->
-        <div class="flex items-center justify-between pb-4 border-b border-stone-200/80 dark:border-stone-800">
-          <h2 id="haven-modal-title" class="text-xl font-serif font-light text-stone-900 dark:text-stone-100">
-            {activeModal === 'write' ? 'Góc viết nhật ký' : 'Danh sách bài viết'}
+        <div class="flex items-center justify-between pb-4 border-b border-white/10">
+          <h2 id="haven-modal-title" class="text-xl font-serif font-light text-white flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+            <span>{activeModal === 'write' ? 'Góc viết nhật ký' : 'Danh sách bài viết'}</span>
           </h2>
           <button
             type="button"
             onclick={handleCloseModal}
-            class="w-8 h-8 rounded-full flex items-center justify-center text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200/50 dark:hover:bg-stone-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 cursor-pointer"
+            class="w-8 h-8 rounded-full flex items-center justify-center text-stone-400 hover:text-white bg-white/5 hover:bg-white/15 border border-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 cursor-pointer"
             aria-label="Đóng bảng nhật ký"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4" aria-hidden="true">
               <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
             </svg>
           </button>
         </div>
 
-        <!-- Modal Body Content -->
-        <div class="py-6">
+        <!-- Modal Body Container -->
+        <div class="pt-4">
           {#if activeModal === 'write'}
-            <div id="journal-write-container" class="space-y-4">
-              <WritePanel repo={journalRepo ?? undefined} onSave={handleJournalSaved} />
+            <div id="journal-write-container">
+              <WritePanel repository={journalRepo} onSaved={handleJournalSaved} />
             </div>
           {:else if activeModal === 'list'}
-            <div id="journal-list-container" class="space-y-4">
-              <JournalList repo={journalRepo ?? undefined} refreshTrigger={journalRefreshTrigger} />
+            <div id="journal-list-container">
+              <JournalList repository={journalRepo} refreshTrigger={journalRefreshTrigger} />
             </div>
           {/if}
         </div>
