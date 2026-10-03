@@ -20,6 +20,9 @@ COPY . .
 ENV NODE_ENV=production
 RUN npm run build
 
+# Remove development dependencies, retaining only production packages with native compiled bindings
+RUN npm prune --omit=dev
+
 # Stage 2: Production Runtime
 FROM node:22-alpine AS runner
 
@@ -39,16 +42,12 @@ RUN addgroup -S haven && adduser -S haven -G haven && \
     mkdir -p /app/data && \
     chown -R haven:haven /app
 
-# Copy production package manifests and install only production dependencies
-COPY package*.json ./
-RUN apk add --no-cache python3 make g++ && \
-    npm ci --omit=dev && \
-    apk del python3 make g++
-
-# Copy built application output from builder stage
+# Copy production node_modules from builder (already pruned and containing native better-sqlite3)
+COPY --from=builder --chown=haven:haven /app/node_modules ./node_modules
 COPY --from=builder --chown=haven:haven /app/dist ./dist
 COPY --from=builder --chown=haven:haven /app/public ./public
 COPY --from=builder --chown=haven:haven /app/scripts ./scripts
+COPY --from=builder --chown=haven:haven /app/package.json ./package.json
 
 # Persistent volume for SQLite database and server storage
 VOLUME ["/app/data"]
