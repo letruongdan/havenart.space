@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { modal } from '../lib/ui/modal';
   import { MorphIcon } from 'morphicons/svelte';
   import { X, Play, Pause, Music, Search, Volume2, Sparkles } from 'lucide';
   import { ALL_HAVEN_AUDIO_TRACKS, type HavenAudioTrack } from '../lib/audio/ambient-catalog';
@@ -59,6 +60,7 @@
 <!-- Fullscreen Backdrop -->
 <div
   class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-md animate-fade-in"
+  use:modal
   role="dialog"
   aria-modal="true"
   aria-labelledby="music-library-title"
@@ -85,6 +87,7 @@
 
       <button
         type="button"
+        data-modal-close
         onclick={props.onClose}
         class="w-8 h-8 rounded-full text-stone-400 hover:text-white hover:bg-white/10 flex items-center justify-center transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-white/40"
         aria-label="Đóng thư viện âm nhạc"
@@ -217,6 +220,7 @@
       </div>
       <button
         type="button"
+        data-modal-close
         onclick={props.onClose}
         class="px-3 py-1 bg-white/10 hover:bg-white/15 text-white rounded-lg transition-colors cursor-pointer"
       >

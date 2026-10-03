@@ -28,3 +28,4 @@ Thumbs.db
 data/test-data/
 data/server-db.json
 data/*.db*
+data/media-quarantine/

@@ -9,12 +9,15 @@ export interface Props {
   imageAlt?: string;
   type?: string;
   noindex?: boolean;
+  language?: string;
 }
 
+const language = Astro.props.language || 'vi';
+const english = language !== 'vi';
 const {
-  title = 'Haven Art — Góc tĩnh lặng cho tâm hồn',
-  description = 'Không gian tĩnh lặng cho tâm hồn — Chiêm ngưỡng kiệt tác tranh kinh điển thích ứng thời tiết, lắng nghe âm hưởng thiền định và viết nhật ký an yên bảo mật cục bộ.',
-  canonical = 'https://havenart.space/',
+  title = english ? 'Haven Art — A tranquil sanctuary for the soul' : 'Haven Art — Góc tĩnh lặng cho tâm hồn',
+  description = english ? 'A calm space for art, original ambient music and personal journaling. Notes stay in your browser unless you choose cloud sync.' : 'Không gian tĩnh lặng cho tâm hồn — Chiêm ngưỡng kiệt tác tranh kinh điển thích ứng thời tiết, lắng nghe âm hưởng thiền định và viết nhật ký an yên bảo mật cục bộ.',
+  canonical = `https://havenart.space${Astro.url.pathname}${language === 'vi' ? '' : '?lang=' + language}`,
   image = 'https://havenart.space/images/artworks/hokusai-red-fuji.webp',
   imageAlt = 'Kiệt tác hội họa thanh tịnh trên Haven Art',
   type = 'website',
@@ -56,7 +59,7 @@ const jsonLdWebApp = {
   featureList: [
     'Chiêm ngưỡng kiệt tác hội họa kinh điển thế giới',
     'Âm thanh thiên nhiên và giai điệu ambient êm dịu thích ứng thời tiết',
-    'Nhật ký cảm xúc cá nhân mã hóa an toàn cục bộ chuẩn WebCrypto AES-GCM',
+    'Nhật ký cục bộ với đồng bộ máy chủ tùy chọn',
     'Trải nghiệm ngoại tuyến PWA không cần kết nối mạng',
   ],
   screenshot: fullImageUrl,
@@ -80,13 +83,13 @@ const jsonLdWebApp = {
     optional: {
       siteName: 'Haven Art',
       description: description,
-      locale: 'vi_VN',
+      locale: english ? 'en_US' : 'vi_VN',
       localeAlternate: ['en_US'],
     },
     image: {
       alt: imageAlt,
-      width: 1200,
-      height: 630,
+      width: 1280,
+      height: 864,
       type: 'image/webp',
     },
   }}

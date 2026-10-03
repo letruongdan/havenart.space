@@ -51,7 +51,7 @@ export const PEXELS_HAVEN_ARTWORKS: HavenArtwork[] = [
     sourceUrl: 'https://www.pexels.com/photo/1428277/',
     description: 'Hàng ngàn cây thông hòa vào làn sương trắng mờ ảo giữa núi đồi sớm mai.',
     weather: ['fog', 'clouds'],
-    moods: ['calm', 'peaceful'],
+    moods: ['calm', 'peaceful', 'grateful'],
     timeOfDay: ['dawn', 'day'],
     isPexels: true,
   },
@@ -142,7 +142,7 @@ export const PEXELS_HAVEN_ARTWORKS: HavenArtwork[] = [
     sourceUrl: 'https://www.pexels.com/photo/1252869/',
     description: 'Vầng trăng thanh tịnh tỏa ánh sáng vỗ về mặt biển đêm an tĩnh.',
     weather: ['night'],
-    moods: ['calm', 'peaceful'],
+    moods: ['calm', 'peaceful', 'grateful'],
     timeOfDay: ['night'],
     isPexels: true,
   },
@@ -168,7 +168,7 @@ export const PEXELS_HAVEN_ARTWORKS: HavenArtwork[] = [
     sourceUrl: 'https://www.pexels.com/photo/2166559/',
     description: 'Lối đi mộc mạc giữa rừng trúc cao vút, không gian thiền định thuần khiết.',
     weather: ['clear', 'clouds', 'fog'],
-    moods: ['calm', 'peaceful'],
+    moods: ['calm', 'peaceful', 'grateful'],
     timeOfDay: ['day'],
     isPexels: true,
   },
@@ -285,7 +285,7 @@ export const PEXELS_HAVEN_ARTWORKS: HavenArtwork[] = [
     sourceUrl: 'https://www.pexels.com/photo/1000498/',
     description: 'Con đường tĩnh mịch xuyên qua rặng trúc xanh cao vút đón gió mát lành.',
     weather: ['fog', 'clouds', 'clear'],
-    moods: ['calm', 'peaceful'],
+    moods: ['calm', 'peaceful', 'grateful'],
     timeOfDay: ['dawn', 'day'],
     isPexels: true,
   },
@@ -376,7 +376,7 @@ export const PEXELS_HAVEN_ARTWORKS: HavenArtwork[] = [
     sourceUrl: 'https://www.pexels.com/photo/235985/',
     description: 'Những viên đá cuội xếp chồng thăng bằng hoàn hảo giữa dòng nước róc rách thanh tịnh.',
     weather: ['clear', 'fog', 'clouds'],
-    moods: ['calm', 'peaceful'],
+    moods: ['calm', 'peaceful', 'grateful'],
     timeOfDay: ['dawn', 'day'],
     isPexels: true,
   },
@@ -515,44 +515,13 @@ export const PEXELS_HAVEN_ARTWORKS: HavenArtwork[] = [
 /**
  * Mapping classical masterpieces with weather and mood tags
  */
-export const CLASSICAL_HAVEN_ARTWORKS: HavenArtwork[] = [
-  {
-    ...CURATED_ARTWORKS[0], // Hokusai Red Fuji
-    weather: ['clear'],
-    moods: ['hopeful', 'grateful'],
-    timeOfDay: ['dawn', 'day'],
-    isPexels: false,
-  },
-  {
-    ...CURATED_ARTWORKS[1], // Monet Water Lilies
-    weather: ['clear', 'clouds'],
-    moods: ['calm', 'peaceful'],
-    timeOfDay: ['day'],
-    isPexels: false,
-  },
-  {
-    ...CURATED_ARTWORKS[2], // Hasui Lake Chūzenji
-    weather: ['fog', 'clouds', 'dusk'],
-    moods: ['reflective', 'calm'],
-    timeOfDay: ['dusk', 'dawn'],
-    isPexels: false,
-  },
-  {
-    ...CURATED_ARTWORKS[3], // Turner Evening Star
-    weather: ['dusk', 'night'],
-    moods: ['reflective', 'peaceful'],
-    timeOfDay: ['dusk', 'night'],
-    isPexels: false,
-  },
-  {
-    ...CURATED_ARTWORKS[4], // Friedrich Morning Mist
-    weather: ['fog', 'clear'],
-    moods: ['reflective', 'calm'],
-    timeOfDay: ['dawn', 'day'],
-    isPexels: false,
-    provider: 'classical',
-  },
-];
+export const CLASSICAL_HAVEN_ARTWORKS: HavenArtwork[] = CURATED_ARTWORKS.map((art,index) => ({
+  ...art,
+  weather: index === 0 ? ['clear','dusk'] : index === 1 ? ['rain','clouds'] : index === 2 ? ['dusk','night'] : ['fog','clear','snow'],
+  moods: index === 0 ? ['hopeful','grateful','peaceful'] : index === 1 ? ['calm','peaceful','grateful'] : index === 2 ? ['reflective','peaceful'] : ['reflective','calm','hopeful'],
+  timeOfDay: index === 2 ? ['dusk','night'] : ['dawn','day'],
+  provider:'classical',
+}));
 
 /**
  * Curated Unsplash Haven Art Collection
@@ -568,7 +537,7 @@ export const UNSPLASH_HAVEN_ARTWORKS: HavenArtwork[] = [
     sourceUrl: 'https://unsplash.com/photos/O453M2Liufs',
     description: 'Nước hồ băng xanh ngọc bích phẳng lặng soi bóng rặng núi tuyết tráng lệ tại Banff, Canada.',
     weather: ['clear', 'clouds'],
-    moods: ['peaceful', 'hopeful'],
+    moods: ['peaceful', 'hopeful', 'grateful'],
     timeOfDay: ['day', 'dawn'],
     isPexels: false,
     provider: 'unsplash',
@@ -638,7 +607,7 @@ export const UNSPLASH_HAVEN_ARTWORKS: HavenArtwork[] = [
     sourceUrl: 'https://unsplash.com/photos/JoH60FhQA9Q',
     description: 'Sương mù trắng bao bọc thân cây thông cao vút, tạo nên vẻ đẹp tĩnh lặng như trong cổ tích.',
     weather: ['fog', 'clouds'],
-    moods: ['calm', 'peaceful'],
+    moods: ['calm', 'peaceful', 'grateful'],
     timeOfDay: ['dawn', 'day'],
     isPexels: false,
     provider: 'unsplash',
@@ -652,7 +621,7 @@ export const UNSPLASH_HAVEN_ARTWORKS: HavenArtwork[] = [
     sourceUrl: 'https://unsplash.com/photos/60kLmTmsMBE',
     description: 'Mặt biển trong vắt soi bóng những vách đá thẳng đứng trong một buổi sáng thanh bình.',
     weather: ['clear'],
-    moods: ['calm', 'peaceful'],
+    moods: ['calm', 'peaceful', 'grateful'],
     timeOfDay: ['day'],
     isPexels: false,
     provider: 'unsplash',
@@ -708,7 +677,7 @@ export const UNSPLASH_HAVEN_ARTWORKS: HavenArtwork[] = [
     sourceUrl: 'https://unsplash.com/photos/2VsU2lUBp1k',
     description: 'Lối mòn thanh tịnh giữa ngút ngàn thân trúc xanh mướt, mang lại cảm giác an nhiên tự tại.',
     weather: ['fog', 'clear'],
-    moods: ['calm', 'peaceful'],
+    moods: ['calm', 'peaceful', 'grateful'],
     timeOfDay: ['dawn', 'day'],
     isPexels: false,
     provider: 'unsplash',
@@ -764,7 +733,7 @@ export const UNSPLASH_HAVEN_ARTWORKS: HavenArtwork[] = [
     sourceUrl: 'https://unsplash.com/photos/Y-uXbN_TjAo',
     description: 'Biểu tượng thiền định kiên cố và hài hòa giữa thiên nhiên bao la.',
     weather: ['clear'],
-    moods: ['calm', 'peaceful'],
+    moods: ['calm', 'peaceful', 'grateful'],
     timeOfDay: ['day'],
     isPexels: false,
     provider: 'unsplash',
@@ -792,7 +761,7 @@ export const UNSPLASH_HAVEN_ARTWORKS: HavenArtwork[] = [
     sourceUrl: 'https://unsplash.com/photos/eVqH5zU0-7A',
     description: 'Sóng chè uốn lượn xanh ngắt ngút tầm mắt trong không khí tinh khôi của sớm mai.',
     weather: ['fog', 'clear'],
-    moods: ['peaceful', 'hopeful'],
+    moods: ['peaceful', 'hopeful', 'grateful'],
     timeOfDay: ['dawn', 'day'],
     isPexels: false,
     provider: 'unsplash',
@@ -820,7 +789,7 @@ export const UNSPLASH_HAVEN_ARTWORKS: HavenArtwork[] = [
     sourceUrl: 'https://unsplash.com/photos/Bkci_8qcdvQ',
     description: 'Mặt sông không gợn sóng phản chiếu bầu trời xanh trong vắt và tán thông mùa hạ.',
     weather: ['clear'],
-    moods: ['calm', 'peaceful'],
+    moods: ['calm', 'peaceful', 'grateful'],
     timeOfDay: ['day'],
     isPexels: false,
     provider: 'unsplash',
@@ -883,7 +852,7 @@ export const PIXABAY_HAVEN_ARTWORKS: HavenArtwork[] = [
     sourceUrl: 'https://pixabay.com/photos/waterfall-autumn-forest-nature-2387873/',
     description: 'Nước suối trong vắt len lỏi qua từng phiến đá phủ đầy lá phong vàng rực rỡ.',
     weather: ['clouds', 'clear'],
-    moods: ['calm', 'peaceful'],
+    moods: ['calm', 'peaceful', 'grateful'],
     timeOfDay: ['day'],
     isPexels: false,
     provider: 'pixabay',
@@ -925,7 +894,7 @@ export const PIXABAY_HAVEN_ARTWORKS: HavenArtwork[] = [
     sourceUrl: 'https://pixabay.com/photos/garden-nature-forest-stream-158063/',
     description: 'Không gian xanh ngát tĩnh mịch của cánh rừng với tiếng nước róc rách vỗ về tâm hồn.',
     weather: ['clear', 'fog'],
-    moods: ['calm', 'peaceful'],
+    moods: ['calm', 'peaceful', 'grateful'],
     timeOfDay: ['day'],
     isPexels: false,
     provider: 'pixabay',
@@ -1009,7 +978,7 @@ export const PIXABAY_HAVEN_ARTWORKS: HavenArtwork[] = [
     sourceUrl: 'https://pixabay.com/photos/bamboo-forest-kyoto-japan-path-132037/',
     description: 'Tiếng lá trúc xào xạc trong gió dẫn lối tâm trí về miền thanh tịnh an hòa.',
     weather: ['clear', 'fog'],
-    moods: ['calm', 'peaceful'],
+    moods: ['calm', 'peaceful', 'grateful'],
     timeOfDay: ['day'],
     isPexels: false,
     provider: 'pixabay',
@@ -1051,7 +1020,7 @@ export const PIXABAY_HAVEN_ARTWORKS: HavenArtwork[] = [
     sourceUrl: 'https://pixabay.com/photos/stones-zen-balance-water-lake-312839/',
     description: 'Các viên sỏi cuội tròn nhẵn xếp chồng lên nhau trong trạng thái cân bằng tuyệt đối.',
     weather: ['clear'],
-    moods: ['calm', 'peaceful'],
+    moods: ['calm', 'peaceful', 'grateful'],
     timeOfDay: ['day'],
     isPexels: false,
     provider: 'pixabay',
@@ -1063,9 +1032,6 @@ export const PIXABAY_HAVEN_ARTWORKS: HavenArtwork[] = [
  * and verified classical masterpieces.
  */
 export const ALL_HAVEN_ARTWORKS: HavenArtwork[] = [
-  ...PEXELS_HAVEN_ARTWORKS,
-  ...UNSPLASH_HAVEN_ARTWORKS,
-  ...PIXABAY_HAVEN_ARTWORKS,
   ...CLASSICAL_HAVEN_ARTWORKS,
 ];
 

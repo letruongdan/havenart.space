@@ -9,7 +9,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     const body = await request.json();
     const { email, password } = body || {};
 
-    if (!email || !password) {
+    if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
       return new Response(
         JSON.stringify({ success: false, error: 'Vui lòng nhập đầy đủ email và mật khẩu.' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
@@ -41,7 +41,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
   } catch (err: any) {
     return new Response(
       JSON.stringify({ success: false, error: err?.message || 'Lỗi xử lý đăng nhập' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: err?.message?.includes('15 phút') ? 429 : 400, headers: { 'Content-Type': 'application/json' } }
     );
   }
 };

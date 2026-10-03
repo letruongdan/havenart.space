@@ -6,7 +6,7 @@ import { ALL_HAVEN_AUDIO_TRACKS } from '../../src/lib/audio/ambient-catalog';
 describe('MusicLibraryModal Component', () => {
   it('renders all tracks and summary counters for Piano and Ambient', () => {
     const { getByRole, getByText } = render(MusicLibraryModal, {
-      currentTrackId: 'haven-piano-kiss-the-rain',
+      currentTrackId: 'haven-piano-original-01',
       isPlaying: true,
       onSelectTrack: vi.fn(),
       onClose: vi.fn(),
@@ -31,8 +31,8 @@ describe('MusicLibraryModal Component', () => {
     const pianoBtn = getByText(/Piano \(17\)/i);
     await fireEvent.click(pianoBtn);
 
-    // Moonlight Sonata (piano) should be present
-    expect(getByText(/Moonlight Sonata/i)).toBeDefined();
+    // Moonlit Room (piano) should be present
+    expect(getByText(/^Moonlit Room$/i)).toBeDefined();
 
     // Morning Mist (ambient) should not be present
     expect(queryByText(/Morning Mist/i)).toBeNull();
@@ -43,8 +43,8 @@ describe('MusicLibraryModal Component', () => {
 
     // Morning Mist should now be present
     expect(getByText(/Morning Mist/i)).toBeDefined();
-    // Moonlight Sonata should be absent
-    expect(queryByText(/Moonlight Sonata/i)).toBeNull();
+    // Moonlit Room should be absent
+    expect(queryByText(/^Moonlit Room$/i)).toBeNull();
   });
 
   it('filters tracks by search query', async () => {
@@ -54,10 +54,10 @@ describe('MusicLibraryModal Component', () => {
     });
 
     const searchInput = getByPlaceholderText(/tìm theo tên bài hát/i);
-    await fireEvent.input(searchInput, { target: { value: 'Beethoven' } });
+    await fireEvent.input(searchInput, { target: { value: 'Moonlit' } });
 
-    expect(getByText(/Moonlight Sonata/i)).toBeDefined();
-    expect(queryByText(/Kiss the Rain/i)).toBeNull();
+    expect(getByText(/^Moonlit Room$/i)).toBeDefined();
+    expect(queryByText(/Quiet Rain/i)).toBeNull();
   });
 
   it('invokes onSelectTrack when clicking a track in the list', async () => {
@@ -69,11 +69,11 @@ describe('MusicLibraryModal Component', () => {
       onClose: vi.fn(),
     });
 
-    const trackItem = getByText(/Kiss the Rain/i);
+    const trackItem = getByText(/^Quiet Rain$/i);
     await fireEvent.click(trackItem);
 
     expect(selectedTrack).not.toBeNull();
-    expect(selectedTrack.id).toBe('haven-piano-kiss-the-rain');
+    expect(selectedTrack.id).toBe('haven-piano-original-01');
   });
 
   it('calls onClose when clicking close button or pressing Escape', async () => {

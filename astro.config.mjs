@@ -1,17 +1,17 @@
 import { defineConfig } from 'astro/config';
 import svelte from '@astrojs/svelte';
-import tailwind from '@astrojs/tailwind';
 import sitemap from '@astrojs/sitemap';
 import node from '@astrojs/node';
 
 // https://astro.build/config
 export default defineConfig({
   site: 'https://havenart.space',
+  output: 'server',
   adapter: node({ mode: 'standalone' }),
   integrations: [
     svelte(),
-    tailwind(),
     sitemap({
+      customPages: ['https://havenart.space/', 'https://havenart.space/?lang=en'],
       filter: (page) => !page.includes('/admin') && !page.includes('/api/'),
     }),
   ],

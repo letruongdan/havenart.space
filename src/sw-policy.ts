@@ -7,12 +7,14 @@
  * - Non-HTTP(S) or chrome-extension URLs -> false
  */
 
-export const SHELL_CACHE_NAME = 'haven-shell-v1';
-export const IMAGES_CACHE_NAME = 'haven-images-v1';
+declare const __HAVEN_RELEASE__: string;
+declare const __HAVEN_PRECACHE__: string[];
+const release = typeof __HAVEN_RELEASE__ === 'undefined' ? 'dev' : __HAVEN_RELEASE__;
+export const SHELL_CACHE_NAME = `haven-shell-${release}`;
+export const IMAGES_CACHE_NAME = `haven-images-${release}`;
 
-export const CORE_SHELL_ASSETS = [
+export const CORE_SHELL_ASSETS = typeof __HAVEN_PRECACHE__ !== 'undefined' ? __HAVEN_PRECACHE__ : [
   '/',
-  '/index.html',
   '/manifest.webmanifest',
   '/favicon.svg',
   '/credits.json',
@@ -99,6 +101,8 @@ export function shouldCacheUrl(url: string): boolean {
   ) {
     return false;
   }
+
+  if (pathname.startsWith('/api/') || pathname.startsWith('/admin') || pathname === '/sw.js') return false;
 
   // 1. STRICT FORBID: Heavy audio assets must NEVER be cached to conserve user mobile data
   if (

@@ -16,7 +16,7 @@
   import { DEFAULT_LANGUAGE, type SupportedLanguage } from '../lib/i18n/types';
   import ShareModal from './ShareModal.svelte';
   import UserAuthModal from './UserAuthModal.svelte';
-  import { isUserLoggedIn, getCurrentUser, type AuthUser } from '../lib/auth/user-client';
+  import { getAuthToken, isUserLoggedIn, isCloudEnabled, getCurrentUser, type AuthUser } from '../lib/auth/user-client';
   import { pushEntriesToServer } from '../lib/sync/cloud-sync';
 
   interface Props {
@@ -69,6 +69,9 @@
   let localRepo = $state<JournalRepository | null>(null);
   let activeRepo = $derived(props.repo || props.repository || localRepo);
 
+  let draftDirty = false;
+  let draftQueue: Promise<void> = Promise.resolve();
+  let authChanged: ((e: Event) => void) | undefined;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Real-time Note Statistics
@@ -120,7 +123,8 @@
     triggerAutosave();
   }
 
-  onMount(async () => {
+  onMount(() => {
+    void (async () => {
     try {
       if (!props.repo && !props.repository) {
         localRepo = new JournalRepository();
@@ -128,9 +132,9 @@
       }
 
       const targetRepo = activeRepo;
-      if (targetRepo && !props.editingEntry) {
-        const draft = await targetRepo.getDraft(DEFAULT_DRAFT_ID);
-        if (draft && !title && !body) {
+      if (targetRepo) {
+        const draft = await targetRepo.getDraft(props.editingEntry ? `edit:${props.editingEntry.id}` : DEFAULT_DRAFT_ID);
+        if (draft && ((props.editingEntry && draft.updatedAt >= props.editingEntry.updatedAt) || (!title && !body))) {
           title = draft.title || '';
           body = draft.body || '';
           if (draft.mood) {
@@ -143,60 +147,48 @@
       console.error('WritePanel initialization error:', err);
     }
 
-    function onAuthChanged(e: Event) {
+    })();
+    authChanged = (e: Event) => {
       const custom = e as CustomEvent<{ session: any }>;
       loggedInUser = custom.detail?.session?.user || null;
     }
-    window.addEventListener('haven:user-auth-changed', onAuthChanged);
+    window.addEventListener('haven:user-auth-changed', authChanged);
 
-    return () => {
-      window.removeEventListener('haven:user-auth-changed', onAuthChanged);
-    };
+
   });
 
   onDestroy(() => {
+    if (authChanged) window.removeEventListener('haven:user-auth-changed', authChanged);
+    void flushDraft().catch(() => {});
     if (debounceTimer) {
       clearTimeout(debounceTimer);
     }
     if (localRepo) {
-      localRepo.close().catch(() => {});
+      void draftQueue.finally(() => localRepo?.close());
     }
   });
 
-  function triggerAutosave() {
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-    }
-
-    // After 2000ms idle, save draft to DraftRepository
-    debounceTimer = setTimeout(async () => {
-      const targetRepo = activeRepo;
-      if (!targetRepo) return;
-
-      // Only save if there is some content
-      if (!title.trim() && !body.trim()) {
-        saveStatus = 'idle';
-        statusMessage = '';
-        return;
-      }
-
+  export async function flushDraft(): Promise<void> {
+    if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
+    if (!draftDirty || !activeRepo) return draftQueue;
+    const targetRepo = activeRepo;
+    const draft = {id: editingId ? `edit:${editingId}` : DEFAULT_DRAFT_ID,title,body,mood};
+    draftDirty = false;
+    draftQueue = draftQueue.catch(() => {}).then(async () => {
       try {
         saveStatus = 'saving';
-        statusMessage = t('write.saving', activeLang);
-        await targetRepo.saveDraft({
-          id: DEFAULT_DRAFT_ID,
-          title,
-          body,
-          mood,
-        });
-        saveStatus = 'saved';
-        statusMessage = t('write.draftSaved', activeLang);
-      } catch (err) {
-        console.error('Draft autosave error:', err);
-        saveStatus = 'idle';
-        statusMessage = '';
-      }
-    }, 2000);
+        if (!draft.title.trim() && !draft.body.trim()) await targetRepo.clearDraft(draft.id);
+        else await targetRepo.saveDraft(draft);
+        saveStatus = 'saved'; statusMessage = t('write.draftSaved', activeLang);
+      } catch (error) { draftDirty = true; saveStatus = 'idle'; statusMessage = activeLang === 'vi' ? 'Chưa lưu được. Vui lòng thử lại.' : 'Unable to save. Please retry.'; throw error; }
+    });
+    return draftQueue;
+  }
+  function triggerAutosave() {
+    isCloudSynced = false;
+    draftDirty = true;
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => { void flushDraft().catch(() => {}); }, 2000);
   }
 
   function handleTitleInput(e: Event) {
@@ -246,6 +238,8 @@
       const targetRepo = activeRepo;
       if (!targetRepo) throw new Error('Repository not ready');
 
+      await draftQueue;
+      draftDirty = false;
       let entry: JournalEntry;
       if (editingId) {
         entry = await targetRepo.updateEntry(editingId, {
@@ -262,20 +256,21 @@
       }
 
       // Clear draft upon successful save
-      await targetRepo.clearDraft(DEFAULT_DRAFT_ID);
+      await targetRepo.clearDraft(editingId ? `edit:${editingId}` : DEFAULT_DRAFT_ID);
 
       saveStatus = 'saved';
       statusMessage = t('write.draftSaved', activeLang);
 
+      isCloudSynced = false;
       // Automatic Cloud Backup: If user is logged in, sync entry to server
-      if (isUserLoggedIn()) {
-        pushEntriesToServer([entry])
+      if (isUserLoggedIn() && isCloudEnabled() && targetRepo.ownerId === getCurrentUser()?.id) {
+        pushEntriesToServer([entry], {token: getAuthToken(),userId: targetRepo.ownerId || undefined})
           .then((res) => {
             if (res.success) {
               isCloudSynced = true;
               statusMessage = activeLang === 'vi'
                 ? 'Đã lưu & đồng bộ máy chủ Cloud'
-                : 'Saved & Synced to Cloud Vault';
+                : 'Saved & synced to server';
             }
           })
           .catch((err) => {
@@ -313,17 +308,17 @@
     <div class="flex-1 min-w-0">
       <div class="flex items-center gap-2">
         <h4 class="text-xs sm:text-sm font-serif font-medium text-emerald-200">
-          {activeLang === 'vi' ? 'Không Gian Riêng Tư Tuyệt Đối' : 'Strictly Private & Confidential'}
+          {activeLang === 'vi' ? 'Nhật ký cá nhân' : 'Personal journal'}
         </h4>
         <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-400/15 text-emerald-300">
           <MorphIcon icon={Lock} size={10} strokeWidth={2} />
-          <span>{activeLang === 'vi' ? 'Chỉ bạn có thể xem' : 'Only you can view'}</span>
+          <span>{activeLang === 'vi' ? 'Lưu trên thiết bị' : 'Stored on this device'}</span>
         </span>
       </div>
       <p class="text-[11px] sm:text-xs text-white/70 font-light mt-1 leading-relaxed">
         {activeLang === 'vi'
-          ? 'Nội dung bạn viết ở đây không ai có thể xem được ngoài bạn. Dữ liệu được bảo mật an toàn, mã hóa đầu cuối trên thiết bị và cam kết không bao giờ bị thu thập hay đọc lén.'
-          : 'Nobody can read or access your reflections here except you. Encrypted end-to-end and stored securely on your personal device without tracking.'}
+          ? 'Nhật ký được lưu trên trình duyệt này. Đồng bộ là tùy chọn; khi bật, nội dung được gửi đến máy chủ và quản trị viên có thể đọc. Dữ liệu chưa được mã hóa đầu cuối.'
+          : 'Notes are stored in this browser. Cloud sync is optional; when enabled, notes are sent to the server and can be read by the administrator. They are not end-to-end encrypted.'}
       </p>
     </div>
   </div>
@@ -436,7 +431,7 @@
           {#if loggedInUser}
             <span class="flex items-center gap-1 text-emerald-400/90" title="Đã kết nối với tài khoản lưu trữ máy chủ">
               <MorphIcon icon={Cloud} size={12} strokeWidth={2} />
-              <span>{activeLang === 'vi' ? 'Lưu trên Server' : 'Cloud Backed'}</span>
+              <span>{isCloudSynced ? (activeLang === 'vi' ? 'Bài vừa lưu đã đồng bộ' : 'Last saved entry synced') : (activeLang === 'vi' ? 'Lưu trên thiết bị' : 'Stored on this device')}</span>
             </span>
           {:else}
             <button

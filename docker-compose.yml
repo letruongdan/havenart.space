@@ -1,0 +1,27 @@
+services:
+  havenart:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: havenart:latest
+    container_name: havenart_app
+    restart: unless-stopped
+    ports:
+      - "4321:4321"
+    environment:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=4321
+      - HAVEN_ADMIN_EMAIL=${HAVEN_ADMIN_EMAIL:-admin@havenart.space}
+      - HAVEN_ADMIN_PASSWORD=${HAVEN_ADMIN_PASSWORD}
+      - HAVEN_SQLITE_PATH=/app/data/haven.db
+      - HAVEN_SERVER_DB_PATH=/app/data/server-db.json
+      - PEXELS_API_KEY=${PEXELS_API_KEY:-}
+      - PIXABAY_API_KEY=${PIXABAY_API_KEY:-}
+      - UNSPLASH_API_KEY=${UNSPLASH_API_KEY:-}
+    volumes:
+      - havenart_data:/app/data
+
+volumes:
+  havenart_data:
+    name: havenart_production_data

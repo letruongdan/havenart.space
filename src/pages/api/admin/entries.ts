@@ -1,3 +1,4 @@
+import { pagination } from '../../../lib/server/pagination';
 import type { APIRoute } from 'astro';
 import { getAllServerEntries, deleteServerEntry, purgeSoftDeletedEntries } from '../../../lib/server/db';
 import { verifyAdminRequest } from '../../../lib/server/admin-auth';
@@ -14,9 +15,12 @@ export const GET: APIRoute = async ({ request }) => {
   }
 
   try {
-    const entries = getAllServerEntries();
+    const {limit,offset} = pagination(request);
+    const entries = getAllServerEntries(limit+1,offset);
+    const hasMore = entries.length > limit;
+    if (hasMore) entries.pop();
     return new Response(
-      JSON.stringify({ success: true, entries }),
+      JSON.stringify({ success: true, entries, hasMore, offset }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (err: any) {
@@ -38,7 +42,7 @@ export const DELETE: APIRoute = async ({ request }) => {
 
   try {
     const body = await request.json();
-    const { id, purge } = body || {};
+    const { id, purge, userId } = body || {};
 
     if (purge) {
       const purged = purgeSoftDeletedEntries();
@@ -55,7 +59,7 @@ export const DELETE: APIRoute = async ({ request }) => {
       );
     }
 
-    deleteServerEntry(id);
+    if (!deleteServerEntry(id,userId)) return Response.json({success:false,error:'Không tìm thấy bài viết hoặc thiếu chủ sở hữu.'},{status:404});
     return new Response(
       JSON.stringify({ success: true }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }

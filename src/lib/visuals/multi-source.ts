@@ -69,42 +69,14 @@ export function getProviderStatuses(): ProviderStatus[] {
 export async function searchAnyLivePhotos(
   options: MultiSourceOptions = {}
 ): Promise<HavenArtwork[]> {
-  const tasks: Promise<HavenArtwork[]>[] = [];
-
-  // 1. Pixabay (if key configured)
-  if (hasPixabayApiKey()) {
-    tasks.push(searchPixabayLivePhotos(options));
-  }
-
-  // 2. Unsplash (if key configured)
-  if (hasUnsplashApiKey()) {
-    tasks.push(searchUnsplashLivePhotos(options));
-  }
-
-  // 3. Pexels (if key configured)
-  if (hasPexelsApiKey()) {
-    tasks.push(searchPexelsLivePhotos(options));
-  }
-
-  // If no commercial API keys configured, fetch from open Wikimedia Commons
-  if (tasks.length === 0) {
-    tasks.push(searchWikimediaArtworks({ ...options, limit: options.perPage || 8 }));
-  }
-
-  const results = await Promise.allSettled(tasks);
-  const combined: HavenArtwork[] = [];
-  const seenIds = new Set<string>();
-
-  for (const res of results) {
-    if (res.status === 'fulfilled' && Array.isArray(res.value)) {
-      for (const art of res.value) {
-        if (!seenIds.has(art.id)) {
-          seenIds.add(art.id);
-          combined.push(art);
-        }
-      }
+  try {
+    const response = await fetch('/api/photos');
+    if (response.ok) {
+      const data = await response.json();
+      if (Array.isArray(data.photos) && data.photos.length) return data.photos;
     }
-  }
+  } catch { /* Local fallback remains available offline. */ }
+  const combined = await searchWikimediaArtworks({...options,limit:options.perPage || 8});
 
   return combined;
 }

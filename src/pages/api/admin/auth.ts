@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
-import { authenticateUser } from '../../../lib/server/db';
+import { authenticateUser, revokeToken, changeServerPassword } from '../../../lib/server/db';
 import { verifyAdminRequest } from '../../../lib/server/admin-auth';
+import { requestToken, sameOrigin } from '../../../lib/server/request-auth';
 import { extractClientInfo } from '../../../lib/server/client-info';
 
 export const prerender = false;
@@ -10,7 +11,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     const body = await request.json();
     const { username, password } = body || {};
 
-    if (!username || !password) {
+    if (!sameOrigin(request) || typeof username !== 'string' || typeof password !== 'string' || !username || !password) {
       return new Response(
         JSON.stringify({ success: false, error: 'Vui lòng nhập tên đăng nhập và mật khẩu quản trị.' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
@@ -26,7 +27,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
       );
     }
 
-    const cookieHeader = `haven_admin_token=${encodeURIComponent(auth.token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`;
+    const cookieHeader = `haven_admin_token=${encodeURIComponent(auth.token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400${new URL(request.url).protocol === 'https:' ? '; Secure' : ''}`;
 
     return new Response(
       JSON.stringify({
@@ -50,7 +51,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
   } catch (err: any) {
     return new Response(
       JSON.stringify({ success: false, error: err?.message || 'Lỗi xác thực quản trị' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: err?.message?.includes('15 phút') ? 429 : 400, headers: { 'Content-Type': 'application/json' } }
     );
   }
 };
@@ -78,7 +79,9 @@ export const GET: APIRoute = async ({ request }) => {
   );
 };
 
-export const DELETE: APIRoute = async () => {
+export const DELETE: APIRoute = async ({request}) => {
+  if (!sameOrigin(request)) return Response.json({success:false},{status:403});
+  revokeToken(requestToken(request, 'haven_admin_token'));
   return new Response(
     JSON.stringify({ success: true }),
     {
@@ -89,4 +92,15 @@ export const DELETE: APIRoute = async () => {
       },
     }
   );
+};
+
+export const PATCH: APIRoute = async ({request}) => {
+  const admin = verifyAdminRequest(request);
+  if (!admin) return Response.json({success:false,error:'Yêu cầu quyền quản trị.'},{status:401});
+  try {
+    const {currentPassword,newPassword} = await request.json();
+    if (typeof currentPassword !== 'string' || typeof newPassword !== 'string' || newPassword.length < 12) return Response.json({success:false,error:'Mật khẩu mới phải có ít nhất 12 ký tự.'},{status:400});
+    if (!changeServerPassword(admin.id,currentPassword,newPassword)) return Response.json({success:false,error:'Mật khẩu hiện tại không chính xác.'},{status:400});
+    return Response.json({success:true},{headers:{'Set-Cookie':'haven_admin_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0'}});
+  } catch { return Response.json({success:false,error:'Không thể đổi mật khẩu.'},{status:400}); }
 };

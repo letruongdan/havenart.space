@@ -84,7 +84,21 @@ export function getAuthToken(): string | null {
  * Log out user.
  */
 export function logoutUser(): void {
+  const token = getAuthToken();
   setStoredUserSession(null);
+  if (token) void fetch('/api/auth/logout', {method:'POST',headers:{Authorization:`Bearer ${token}`}}).catch(() => {});
+}
+
+export function isCloudEnabled(userId = getCurrentUser()?.id): boolean {
+  try { return !!userId && localStorage.getItem(`haven_cloud_enabled:${userId}`) === 'true'; } catch { return false; }
+}
+export function disableCloudSync(): void {
+  const userId = getCurrentUser()?.id;
+  if (userId) localStorage.removeItem(`haven_cloud_enabled:${userId}`);
+}
+export function enableCloudSync(): void {
+  const userId = getCurrentUser()?.id;
+  if (userId) localStorage.setItem(`haven_cloud_enabled:${userId}`, 'true');
 }
 
 /**
@@ -166,12 +180,13 @@ export async function checkSessionWithServer(): Promise<{
       },
     });
 
-    if (!res.ok) {
+    if (res.status === 401 || res.status === 403) {
       // Session expired
       logoutUser();
       return { valid: false };
     }
 
+    if (!res.ok) return {valid:true,user:getCurrentUser() || undefined};
     const data = await res.json();
     return {
       valid: true,
@@ -182,4 +197,10 @@ export async function checkSessionWithServer(): Promise<{
     // Network offline, keep cached session
     return { valid: true, user: getCurrentUser() || undefined };
   }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', event => {
+    if (event.key === STORAGE_KEY) window.dispatchEvent(new CustomEvent('haven:user-auth-changed',{detail:{session:getStoredUserSession()}}));
+  });
 }

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { modal } from '../lib/ui/modal';
   import { MorphIcon } from 'morphicons/svelte';
   import { Copy, Share2, Download, Check, X, ShieldCheck, Sparkles } from 'lucide';
   import type { SupportedLanguage } from '../lib/i18n/types';
@@ -102,6 +103,7 @@
 
 <div
   class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md transition-opacity duration-300 animate-fade-in"
+  use:modal
   role="dialog"
   aria-modal="true"
   aria-labelledby="share-modal-title"
@@ -122,6 +124,7 @@
 
       <button
         type="button"
+        data-modal-close
         onclick={onClose}
         class="w-7 h-7 rounded-full flex items-center justify-center text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/15 transition-colors cursor-pointer"
         aria-label="Đóng bảng chia sẻ"

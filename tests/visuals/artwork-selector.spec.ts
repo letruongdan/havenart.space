@@ -130,8 +130,8 @@ describe('Smart Artwork Selector (Pexels, Weather, Mood, Freshness)', () => {
   });
 
   describe('5. Error Resilience & Offline Guaranteed Fallbacks', () => {
-    it('contains 5 offline guaranteed masterpieces with local bundle paths', () => {
-      expect(LOCAL_GUARANTEED_ARTWORKS.length).toBe(5);
+    it('contains 4 offline guaranteed masterpieces with local bundle paths', () => {
+      expect(LOCAL_GUARANTEED_ARTWORKS.length).toBe(4);
       for (const art of LOCAL_GUARANTEED_ARTWORKS) {
         expect(art.src).toMatch(/^\/images\/artworks\/.+\.webp$/);
         expect(art.license).toBe('Public Domain');

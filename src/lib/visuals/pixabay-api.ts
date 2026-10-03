@@ -26,12 +26,6 @@ export function getPixabayApiKey(): string | null {
     }
   } catch {}
 
-  try {
-    const envKey = (import.meta.env?.PUBLIC_PIXABAY_API_KEY || import.meta.env?.VITE_PIXABAY_API_KEY) as string | undefined;
-    if (envKey && envKey.trim().length > 0) {
-      return envKey.trim();
-    }
-  } catch {}
 
   return null;
 }

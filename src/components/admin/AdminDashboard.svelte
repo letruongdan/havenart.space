@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { ServerStatsData, ServerUserItem, UserLoginHistoryItem, ServerEntryItem, ServerFeedbackItem } from '../../lib/admin/types';
   import { onMount, onDestroy } from 'svelte';
   import { JournalRepository } from '../../lib/db/repository';
   import { ALL_HAVEN_AUDIO_TRACKS, type HavenAudioTrack } from '../../lib/audio/ambient-catalog';
@@ -88,94 +89,10 @@
   let activeTab = $state<'overview' | 'users' | 'entries' | 'feedback' | 'catalog' | 'database' | 'diagnostics'>('overview');
 
   // Server Database & Telemetry State
-  export interface ServerStatsData {
-    analytics: {
-      visits: { total: number; today: number; thisWeek: number };
-      duration: { averageSeconds: number; totalSeconds: number };
-      devices: { desktop: number; mobile: number; tablet: number };
-      browsers?: Record<string, number>;
-      operatingSystems?: Record<string, number>;
-      users: { total: number; activeToday: number };
-      journal: { totalEntries: number; totalWords: number; moodBreakdown: Record<string, number> };
-    };
-    feedbackStats: {
-      averageRating: number;
-      totalCount: number;
-      distribution: Record<number, number>;
-    };
-    dbStats: {
-      filePath: string;
-      fileSizeBytes: number;
-      totalUsers: number;
-      totalEntries: number;
-      totalFeedbacks: number;
-      totalSessions: number;
-      version: number;
-      lastModifiedMs: number;
-    };
-  }
 
-  export interface ServerUserItem {
-    id: string;
-    email: string;
-    name: string;
-    role: 'admin' | 'user';
-    status: 'active' | 'suspended';
-    createdAt: number;
-    lastLoginAt?: number;
-    lastActiveAt?: number;
-    entriesCount: number;
-    totalWords: number;
-    createdIp?: string;
-    lastIp?: string;
-    lastUserAgent?: string;
-    lastBrowser?: string;
-    lastBrowserVersion?: string;
-    lastOs?: string;
-    lastDevice?: 'desktop' | 'mobile' | 'tablet';
-    lastLanguage?: string;
-    loginCount?: number;
-  }
 
-  export interface UserLoginHistoryItem {
-    id: string;
-    userId: string;
-    email: string;
-    ip: string;
-    userAgent?: string;
-    browser: string;
-    browserVersion?: string;
-    os: string;
-    device: 'desktop' | 'mobile' | 'tablet';
-    language: string;
-    status: 'success' | 'failed';
-    timestamp: number;
-  }
 
-  export interface ServerEntryItem {
-    id: string;
-    userId: string;
-    title?: string;
-    body: string;
-    mood?: string;
-    wordCount: number;
-    authorName: string;
-    authorEmail: string;
-    createdAt: number;
-    updatedAt: number;
-  }
 
-  export interface ServerFeedbackItem {
-    id: string;
-    userId?: string | null;
-    userName: string;
-    userEmail?: string;
-    rating: number;
-    category: 'peace' | 'music' | 'visuals' | 'journal' | 'general';
-    comment: string;
-    device?: string;
-    createdAt: number;
-  }
 
   let serverStats = $state<ServerStatsData | null>(null);
   let serverUsers = $state<ServerUserItem[]>([]);
@@ -257,15 +174,16 @@
   let eventLevelFilter = $state<string>('all');
 
   // Multi-Provider Photo API & Catalog Filter State
-  let pexelsApiKeyInput = $state(getPexelsApiKey() || '');
+  let configuredPhotos = $state({pexels:false,pixabay:false,unsplash:false});
+  let pexelsApiKeyInput = $state('');
   let isTestingPexelsKey = $state(false);
   let pexelsTestResult = $state<{ success: boolean; message: string } | null>(null);
 
-  let pixabayApiKeyInput = $state(getPixabayApiKey() || '');
+  let pixabayApiKeyInput = $state('');
   let isTestingPixabayKey = $state(false);
   let pixabayTestResult = $state<{ success: boolean; message: string } | null>(null);
 
-  let unsplashApiKeyInput = $state(getUnsplashApiKey() || '');
+  let unsplashApiKeyInput = $state('');
   let isTestingUnsplashKey = $state(false);
   let unsplashTestResult = $state<{ success: boolean; message: string } | null>(null);
 
@@ -288,6 +206,18 @@
     return ALL_HAVEN_ARTWORKS;
   });
 
+  async function testPhotoKey(provider:string,key:string) {
+    const response = await fetch('/api/admin/photos',{method:'POST',credentials:'same-origin',headers:{...getAdminHeaders(),'Content-Type':'application/json'},body:JSON.stringify({provider,key,test:true})});
+    return await response.json();
+  }
+  async function savePhotoKey(provider:'pexels'|'pixabay'|'unsplash',key:string) {
+    try {
+      const response = await fetch('/api/admin/photos',{method:'POST',credentials:'same-origin',headers:{...getAdminHeaders(),'Content-Type':'application/json'},body:JSON.stringify({provider,key})});
+      if (!response.ok) throw new Error();
+      configuredPhotos = {...configuredPhotos,[provider]:!!key};
+      return true;
+    } catch { showNotice('Không thể lưu cấu hình máy chủ.','error'); return false; }
+  }
   async function handleTestPexelsKey() {
     const key = pexelsApiKeyInput.trim();
     if (!key) {
@@ -300,16 +230,16 @@
     isTestingPexelsKey = true;
     pexelsTestResult = null;
     try {
-      const res = await testPexelsApiKey(key);
-      if (res.valid) {
+      const res = await testPhotoKey('pexels',key);
+      if (res.success) {
         pexelsTestResult = {
           success: true,
-          message: `Kết nối Pexels API thành công! Đã xác thực API key hợp lệ (Mẫu ảnh: "${res.samplePhotographer || 'Pexels Contributor'}").`,
+          message: `Kết nối Pexels API thành công! Đã xác thực API key hợp lệ (Mẫu ảnh: "${res.photographer || 'Pexels Contributor'}").`,
         };
       } else {
         pexelsTestResult = {
           success: false,
-          message: res.error || 'API Key không hợp lệ hoặc bị từ chối bởi Pexels.',
+          message: res.message || 'API Key không hợp lệ hoặc bị từ chối bởi Pexels.',
         };
       }
     } catch (err: any) {
@@ -322,9 +252,9 @@
     }
   }
 
-  function handleSavePexelsKey() {
+  async function handleSavePexelsKey() {
     const key = pexelsApiKeyInput.trim();
-    setPexelsApiKey(key);
+    if (!await savePhotoKey('pexels',key)) return;
     showNotice(key ? 'Đã lưu cấu hình Pexels API Key thành công' : 'Đã xóa API Key, trở về chế độ kho ảnh tĩnh', 'success');
     logSystemEvent({
       level: 'info',
@@ -336,9 +266,9 @@
     }
   }
 
-  function handleClearPexelsKey() {
+  async function handleClearPexelsKey() {
     pexelsApiKeyInput = '';
-    setPexelsApiKey('');
+    if (!await savePhotoKey('pexels','')) return;
     pexelsTestResult = null;
     showNotice('Đã gỡ Pexels API Key', 'warn');
     if (typeof window !== 'undefined') {
@@ -358,7 +288,7 @@
     isTestingPixabayKey = true;
     pixabayTestResult = null;
     try {
-      const res = await testPixabayApiKey(key);
+      const res = await testPhotoKey('pixabay',key);
       if (res.valid) {
         pixabayTestResult = {
           success: true,
@@ -380,9 +310,9 @@
     }
   }
 
-  function handleSavePixabayKey() {
+  async function handleSavePixabayKey() {
     const key = pixabayApiKeyInput.trim();
-    setPixabayApiKey(key);
+    if (!await savePhotoKey('pixabay',key)) return;
     showNotice(key ? 'Đã lưu cấu hình Pixabay API Key thành công' : 'Đã gỡ Pixabay API Key', 'success');
     logSystemEvent({
       level: 'info',
@@ -394,9 +324,9 @@
     }
   }
 
-  function handleClearPixabayKey() {
+  async function handleClearPixabayKey() {
     pixabayApiKeyInput = '';
-    setPixabayApiKey('');
+    if (!await savePhotoKey('pixabay','')) return;
     pixabayTestResult = null;
     showNotice('Đã gỡ Pixabay API Key', 'warn');
     if (typeof window !== 'undefined') {
@@ -416,7 +346,7 @@
     isTestingUnsplashKey = true;
     unsplashTestResult = null;
     try {
-      const res = await testUnsplashApiKey(key);
+      const res = await testPhotoKey('unsplash',key);
       if (res.valid) {
         unsplashTestResult = {
           success: true,
@@ -438,9 +368,9 @@
     }
   }
 
-  function handleSaveUnsplashKey() {
+  async function handleSaveUnsplashKey() {
     const key = unsplashApiKeyInput.trim();
-    setUnsplashApiKey(key);
+    if (!await savePhotoKey('unsplash',key)) return;
     showNotice(key ? 'Đã lưu cấu hình Unsplash API Key thành công' : 'Đã gỡ Unsplash API Key', 'success');
     logSystemEvent({
       level: 'info',
@@ -452,9 +382,9 @@
     }
   }
 
-  function handleClearUnsplashKey() {
+  async function handleClearUnsplashKey() {
     unsplashApiKeyInput = '';
-    setUnsplashApiKey('');
+    if (!await savePhotoKey('unsplash','')) return;
     unsplashTestResult = null;
     showNotice('Đã gỡ Unsplash API Key', 'warn');
     if (typeof window !== 'undefined') {
@@ -502,9 +432,17 @@
     }
   }
 
+  let pageOffsets = $state({users:0,entries:0,feedback:0});
+  let pagesHaveMore = $state({users:false,entries:false,feedback:false});
+  async function changeDataPage(direction:number) {
+    if (activeTab !== 'users' && activeTab !== 'entries' && activeTab !== 'feedback') return;
+    const tab = activeTab;
+    pageOffsets[tab] = Math.max(0,pageOffsets[tab] + direction * 100);
+    await refreshAllServerData();
+  }
   async function fetchServerUsers() {
     try {
-      const res = await fetch('/api/admin/users', {
+      const res = await fetch(`/api/admin/users?limit=100&offset=${pageOffsets.users}`, {
         headers: getAdminHeaders(),
         credentials: 'same-origin',
       });
@@ -516,6 +454,7 @@
         const data = await res.json();
         if (data.success) {
           serverUsers = data.users;
+          pagesHaveMore.users = !!data.hasMore;
         }
       }
     } catch (e) {
@@ -525,7 +464,7 @@
 
   async function fetchServerEntries() {
     try {
-      const res = await fetch('/api/admin/entries', {
+      const res = await fetch(`/api/admin/entries?limit=100&offset=${pageOffsets.entries}`, {
         headers: getAdminHeaders(),
         credentials: 'same-origin',
       });
@@ -537,6 +476,7 @@
         const data = await res.json();
         if (data.success) {
           serverEntries = data.entries;
+          pagesHaveMore.entries = !!data.hasMore;
         }
       }
     } catch (e) {
@@ -546,7 +486,7 @@
 
   async function fetchServerFeedbacks() {
     try {
-      const res = await fetch('/api/admin/feedback', {
+      const res = await fetch(`/api/admin/feedback?limit=100&offset=${pageOffsets.feedback}`, {
         headers: getAdminHeaders(),
         credentials: 'same-origin',
       });
@@ -558,6 +498,7 @@
         const data = await res.json();
         if (data.success) {
           serverFeedbacks = data.feedbacks;
+          pagesHaveMore.feedback = !!data.hasMore;
         }
       }
     } catch (e) {
@@ -597,7 +538,7 @@
       }
       const data = await res.json();
       if (res.ok && data.success) {
-        serverUsers = data.users;
+        await fetchServerUsers();
         showNotice(`Đã ${actionText} tài khoản thành công!`, 'success');
       } else {
         showNotice(data.error || 'Thao tác không thành công', 'error');
@@ -632,7 +573,7 @@
       }
       const data = await res.json();
       if (res.ok && data.success) {
-        serverUsers = data.users;
+        await fetchServerUsers();
         showNotice(`Đã ${roleText} thành công!`, 'success');
       } else {
         showNotice(data.error || 'Thao tác không thành công', 'error');
@@ -643,10 +584,10 @@
   }
 
   async function handleResetUserPassword(u: ServerUserItem) {
-    const newPass = prompt(`Nhập mật khẩu mới cho tài khoản "${u.email}" (tối thiểu 6 ký tự):`);
+    const newPass = prompt(`Nhập mật khẩu mới cho tài khoản "${u.email}" (tối thiểu 12 ký tự):`);
     if (!newPass) return;
-    if (newPass.length < 6) {
-      alert('Mật khẩu phải có ít nhất 6 ký tự.');
+    if (newPass.length < 12) {
+      alert('Mật khẩu phải có ít nhất 12 ký tự.');
       return;
     }
 
@@ -666,7 +607,7 @@
       }
       const data = await res.json();
       if (res.ok && data.success) {
-        serverUsers = data.users;
+        await fetchServerUsers();
         showNotice(`Đã đặt lại mật khẩu cho "${u.email}" thành công!`, 'success');
       } else {
         showNotice(data.error || 'Thao tác không thành công', 'error');
@@ -695,7 +636,7 @@
       }
       const data = await res.json();
       if (res.ok && data.success) {
-        serverUsers = data.users;
+        await fetchServerUsers();
         await fetchServerEntries();
         await fetchServerStats();
         showNotice(`Đã xóa tài khoản "${u.email}" khỏi server.`, 'warn');
@@ -754,7 +695,7 @@
           ...getAdminHeaders(),
         },
         credentials: 'same-origin',
-        body: JSON.stringify({ id: e.id }),
+        body: JSON.stringify({ id: e.id, userId: e.userId }),
       });
       if (res.status === 401) {
         handleAdminUnauthorized();
@@ -857,7 +798,7 @@
     }
   }
 
-  let dbFileInputRef: HTMLInputElement | null = null;
+  let dbFileInputRef: HTMLInputElement | null = $state(null);
   async function handleUploadServerDbBackup(e: Event) {
     const target = e.target as HTMLInputElement;
     const file = target.files?.[0];
@@ -909,6 +850,8 @@
   }
 
   async function initAdminData() {
+    const photoResponse = await fetch('/api/admin/photos',{credentials:'same-origin',headers:getAdminHeaders()});
+    if (photoResponse.ok) configuredPhotos = (await photoResponse.json()).configured;
     try {
       if (!repo) {
         repo = new JournalRepository();
@@ -949,16 +892,9 @@
   }
 
   onMount(async () => {
-    const token = getAdminToken();
-    if (token) {
-      isAuthenticated = true;
-      await initAdminData();
-      return;
-    }
-
     // Fallback check server session cookie
     try {
-      const verifyRes = await fetch('/api/admin/auth', { credentials: 'same-origin' });
+      const verifyRes = await fetch('/api/admin/auth', { credentials: 'same-origin', headers: getAdminHeaders() });
       if (verifyRes.ok) {
         const verifyData = await verifyRes.json();
         if (verifyData.authenticated) {
@@ -991,7 +927,7 @@
       clearInterval(timerId);
       timerId = null;
     }
-    showNotice('Đã đăng xuất khỏi phiên quản trị viên.', 'info');
+    showNotice('Đã đăng xuất khỏi phiên quản trị viên.', 'success');
   }
 
   async function handleChangePassword(e?: Event) {
@@ -1000,8 +936,8 @@
     changePasswordError = null;
     changePasswordSuccess = null;
 
-    if (!newPasswordInput || newPasswordInput.length < 6) {
-      changePasswordError = 'Mật khẩu mới phải có ít nhất 6 ký tự.';
+    if (!newPasswordInput || newPasswordInput.length < 12) {
+      changePasswordError = 'Mật khẩu mới phải có ít nhất 12 ký tự.';
       return;
     }
     if (newPasswordInput !== confirmPasswordInput) {
@@ -1013,7 +949,8 @@
     try {
       const res = await changeAdminPassword(currentPasswordInput, newPasswordInput);
       if (res.success) {
-        changePasswordSuccess = 'Đổi mật khẩu thành công!';
+        changePasswordSuccess = 'Đổi mật khẩu thành công. Vui lòng đăng nhập lại.';
+        isAuthenticated = false;
         showNotice('Đổi mật khẩu quản trị viên thành công!', 'success');
         currentPasswordInput = '';
         newPasswordInput = '';
@@ -1136,7 +1073,7 @@
     if (!repo) return;
     try {
       const backupMgr = new BackupManager(repo);
-      const json = await backupMgr.exportDataAsJson();
+      const json = await backupMgr.exportBackup();
       const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1535,6 +1472,13 @@
     </div>
 
     <!-- TAB 1: OVERVIEW & PERFORMANCE -->
+    {#if activeTab === 'users' || activeTab === 'entries' || activeTab === 'feedback'}
+      <div class="flex items-center justify-end gap-3 py-3 text-xs text-white/80">
+        <span>Trang {Math.floor(pageOffsets[activeTab]/100)+1} · Tìm kiếm trong trang hiện tại</span>
+        <button disabled={pageOffsets[activeTab]===0 || isServerLoading} onclick={() => changeDataPage(-1)} class="rounded-lg px-3 py-2 bg-white/10 disabled:opacity-40">Trang trước</button>
+        <button disabled={!pagesHaveMore[activeTab] || isServerLoading} onclick={() => changeDataPage(1)} class="rounded-lg px-3 py-2 bg-white/10 disabled:opacity-40">Trang tiếp</button>
+      </div>
+    {/if}
     {#if activeTab === 'overview'}
       <div class="space-y-6">
         <!-- Navigation Timings Grid -->
@@ -1730,7 +1674,7 @@
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-white/80 hover:text-white transition-all cursor-pointer disabled:opacity-50"
                 title="Tải lại danh sách người dùng từ máy chủ"
               >
-                <MorphIcon icon={RefreshCw} size={13} strokeWidth={2} spin={isServerLoading} />
+                <MorphIcon icon={RefreshCw} size={13} strokeWidth={2} class={isServerLoading ? 'animate-spin' : ''} />
                 <span>{isServerLoading ? 'Đang tải...' : 'Làm mới'}</span>
               </button>
             </div>
@@ -2012,7 +1956,7 @@
                 disabled={isServerLoading}
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-white/80 hover:text-white transition-all cursor-pointer disabled:opacity-50"
               >
-                <MorphIcon icon={RefreshCw} size={13} strokeWidth={2} spin={isServerLoading} />
+                <MorphIcon icon={RefreshCw} size={13} strokeWidth={2} class={isServerLoading ? 'animate-spin' : ''} />
                 <span>Làm mới</span>
               </button>
             </div>
@@ -2160,7 +2104,7 @@
                 disabled={isServerLoading}
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-white/80 hover:text-white transition-all cursor-pointer disabled:opacity-50"
               >
-                <MorphIcon icon={RefreshCw} size={13} strokeWidth={2} spin={isServerLoading} />
+                <MorphIcon icon={RefreshCw} size={13} strokeWidth={2} class={isServerLoading ? 'animate-spin' : ''} />
                 <span>Làm mới</span>
               </button>
             </div>
@@ -2354,7 +2298,7 @@
               disabled={isServerLoading}
               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-white/80 hover:text-white transition-all cursor-pointer disabled:opacity-50"
             >
-              <MorphIcon icon={RefreshCw} size={13} strokeWidth={2} spin={isServerLoading} />
+              <MorphIcon icon={RefreshCw} size={13} strokeWidth={2} class={isServerLoading ? 'animate-spin' : ''} />
               <span>Làm mới</span>
             </button>
           </div>
@@ -2692,7 +2636,7 @@
             </div>
 
             <div>
-              {#if hasPixabayApiKey() || hasUnsplashApiKey() || hasPexelsApiKey()}
+              {#if configuredPhotos.pixabay || configuredPhotos.unsplash || configuredPhotos.pexels}
                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
                   <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                   Đang Bật Nguồn Live API
@@ -2716,8 +2660,8 @@
             >
               <div class="flex items-center justify-between">
                 <span class="text-amber-300 font-medium text-xs">🌟 Pixabay</span>
-                <span class="text-[10px] font-mono {hasPixabayApiKey() ? 'text-emerald-300 font-bold' : 'text-white/40'}">
-                  {hasPixabayApiKey() ? '● Live' : '○ Chưa key'}
+                <span class="text-[10px] font-mono {configuredPhotos.pixabay ? 'text-emerald-300 font-bold' : 'text-white/40'}">
+                  {configuredPhotos.pixabay ? '● Live' : '○ Chưa key'}
                 </span>
               </div>
               <div class="text-[11px] text-white/50 mt-1 truncate">Khuyên dùng, duyệt tức thì</div>
@@ -2731,8 +2675,8 @@
             >
               <div class="flex items-center justify-between">
                 <span class="text-purple-300 font-medium text-xs">📸 Unsplash</span>
-                <span class="text-[10px] font-mono {hasUnsplashApiKey() ? 'text-emerald-300 font-bold' : 'text-white/40'}">
-                  {hasUnsplashApiKey() ? '● Live' : '○ Chưa key'}
+                <span class="text-[10px] font-mono {configuredPhotos.unsplash ? 'text-emerald-300 font-bold' : 'text-white/40'}">
+                  {configuredPhotos.unsplash ? '● Live' : '○ Chưa key'}
                 </span>
               </div>
               <div class="text-[11px] text-white/50 mt-1 truncate">Nghệ thuật HD 1920px</div>
@@ -2761,8 +2705,8 @@
             >
               <div class="flex items-center justify-between">
                 <span class="text-emerald-300 font-medium text-xs">🌿 Pexels</span>
-                <span class="text-[10px] font-mono {hasPexelsApiKey() ? 'text-emerald-300 font-bold' : 'text-amber-400/80'}">
-                  {hasPexelsApiKey() ? '● Live' : 'Tạm dừng mới'}
+                <span class="text-[10px] font-mono {configuredPhotos.pexels ? 'text-emerald-300 font-bold' : 'text-amber-400/80'}">
+                  {configuredPhotos.pexels ? '● Live' : 'Tạm dừng mới'}
                 </span>
               </div>
               <div class="text-[11px] text-white/50 mt-1 truncate">Dành cho key cũ</div>
@@ -2786,7 +2730,7 @@
               class="px-3.5 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap {activeProviderTab === 'unsplash' ? 'bg-purple-500 text-white shadow-sm font-semibold' : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'}"
             >
               <span>📸 Unsplash API</span>
-              {#if hasUnsplashApiKey()}
+              {#if configuredPhotos.unsplash}
                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
               {/if}
             </button>
@@ -2806,7 +2750,7 @@
               class="px-3.5 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap {activeProviderTab === 'pexels' ? 'bg-emerald-500 text-white shadow-sm font-semibold' : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'}"
             >
               <span>🌿 Pexels API</span>
-              {#if hasPexelsApiKey()}
+              {#if configuredPhotos.pexels}
                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-300"></span>
               {/if}
             </button>
@@ -3365,7 +3309,7 @@
           </div>
 
           <div class="space-y-1">
-            <label for="new-pwd" class="text-white/70 block">Mật khẩu mới (tối thiểu 6 ký tự)</label>
+            <label for="new-pwd" class="text-white/70 block">Mật khẩu mới (tối thiểu 12 ký tự)</label>
             <input
               id="new-pwd"
               type="password"
@@ -3459,7 +3403,7 @@
         <div class="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[180px]">
           {#if isLoadingHistory}
             <div class="py-14 text-center text-xs text-white/40 flex flex-col items-center justify-center gap-2">
-              <MorphIcon icon={RefreshCw} size={18} spin={true} />
+              <MorphIcon icon={RefreshCw} size={18} class="animate-spin" />
               <span>Đang truy xuất bản ghi SQLite từ bảng login_history...</span>
             </div>
           {:else if userLoginHistory.length === 0}

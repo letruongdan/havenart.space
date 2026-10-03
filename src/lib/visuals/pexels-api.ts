@@ -29,15 +29,6 @@ export function getPexelsApiKey(): string | null {
     // Ignore storage errors
   }
 
-  // Fallback to Vite/Astro environment variables if defined
-  try {
-    const envKey = (import.meta.env?.PUBLIC_PEXELS_API_KEY || import.meta.env?.VITE_PEXELS_API_KEY) as string | undefined;
-    if (envKey && envKey.trim().length > 0) {
-      return envKey.trim();
-    }
-  } catch {
-    // Ignore env errors
-  }
 
   return null;
 }

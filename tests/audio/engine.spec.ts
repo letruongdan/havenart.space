@@ -209,7 +209,7 @@ describe('AudioEngine', () => {
 
       // All audio must be paused
       expect(engine.isPlaying()).toBe(false);
-      expect(engine.getCurrentTrack()?.id).toBe(DEFAULT_TRACKS[1].id);
+      expect(engine.getCurrentTrack()?.id).toBe(DEFAULT_TRACKS[0].id);
     });
   });
 

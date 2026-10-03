@@ -222,7 +222,7 @@
     try {
       backupStatus = 'idle';
       const manager = new BackupManager(targetRepo);
-      const jsonString = await manager.exportDataAsJson();
+      const jsonString = await manager.exportBackup();
       const blob = new Blob([jsonString], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

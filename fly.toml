@@ -1,0 +1,29 @@
+app = "havenart-space"
+primary_region = "sin"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  HOST = "0.0.0.0"
+  PORT = "4321"
+  HAVEN_SQLITE_PATH = "/app/data/haven.db"
+  HAVEN_SERVER_DB_PATH = "/app/data/server-db.json"
+
+[http_service]
+  internal_port = 4321
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[[mounts]]
+  source = "havenart_data"
+  destination = "/app/data"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
-import { addServerFeedback, getAllServerFeedbacks, getFeedbackStats } from '../../lib/server/db';
+import { addServerFeedback, findUserByToken, getAllServerFeedbacks, getFeedbackStats } from '../../lib/server/db';
+import { requestToken } from '../../lib/server/request-auth';
 import { extractClientInfo } from '../../lib/server/client-info';
 
 export const prerender = false;
@@ -9,7 +10,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     const body = await request.json();
     const { rating, category, comment, userId, userName, userEmail, device } = body || {};
 
-    if (!rating || typeof rating !== 'number') {
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5 || (comment && (typeof comment !== 'string' || comment.length > 5000))) {
       return new Response(
         JSON.stringify({ success: false, error: 'Đánh giá phải là số từ 1 đến 5 sao.' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
@@ -18,13 +19,14 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 
     const clientInfo = extractClientInfo(request, clientAddress);
 
+    const user = findUserByToken(requestToken(request));
     const saved = addServerFeedback({
       rating,
       category,
       comment: (comment && typeof comment === 'string') ? comment : '',
-      userId,
-      userName,
-      userEmail,
+      userId: user?.id || null,
+      userName: user?.name || 'Người bạn Haven Art',
+      userEmail: user?.email,
       device: device || clientInfo.device,
       clientInfo,
     });
@@ -49,7 +51,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 
 export const GET: APIRoute = async () => {
   try {
-    const feedbacks = getAllServerFeedbacks().slice(0, 50).map((f) => ({
+    const feedbacks = getAllServerFeedbacks(50).map((f) => ({
       id: f.id,
       userName: f.userName,
       rating: f.rating,

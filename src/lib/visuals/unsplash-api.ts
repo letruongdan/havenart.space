@@ -25,12 +25,6 @@ export function getUnsplashApiKey(): string | null {
     }
   } catch {}
 
-  try {
-    const envKey = (import.meta.env?.PUBLIC_UNSPLASH_API_KEY || import.meta.env?.VITE_UNSPLASH_API_KEY) as string | undefined;
-    if (envKey && envKey.trim().length > 0) {
-      return envKey.trim();
-    }
-  } catch {}
 
   return null;
 }

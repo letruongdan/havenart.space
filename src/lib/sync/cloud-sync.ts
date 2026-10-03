@@ -5,7 +5,7 @@
 
 import type { JournalEntry } from '../db/schema';
 import type { JournalRepository } from '../db/repository';
-import { getAuthToken, isUserLoggedIn } from '../auth/user-client';
+import { getAuthToken, isUserLoggedIn, getCurrentUser } from '../auth/user-client';
 
 export interface SyncResult {
   success: boolean;
@@ -16,12 +16,12 @@ export interface SyncResult {
   error?: string;
 }
 
-const LAST_SYNCED_KEY = 'haven_last_synced_at';
+const syncKey = () => `haven_last_synced_at:${getCurrentUser()?.id || 'guest'}`;
 
 export function getLastSyncedAt(): number | null {
   try {
     if (typeof localStorage === 'undefined') return null;
-    const raw = localStorage.getItem(LAST_SYNCED_KEY);
+    const raw = localStorage.getItem(syncKey());
     return raw ? parseInt(raw, 10) : null;
   } catch {
     return null;
@@ -31,7 +31,7 @@ export function getLastSyncedAt(): number | null {
 export function setLastSyncedAt(timestamp: number): void {
   try {
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(LAST_SYNCED_KEY, timestamp.toString());
+      localStorage.setItem(syncKey(), timestamp.toString());
       window.dispatchEvent(
         new CustomEvent('haven:sync-status-changed', {
           detail: { lastSyncedAt: timestamp },
@@ -45,9 +45,10 @@ export function setLastSyncedAt(timestamp: number): void {
  * Push specific entries to server.
  */
 export async function pushEntriesToServer(
-  entries: JournalEntry[]
+  entries: JournalEntry[],
+  session = {token:getAuthToken(),userId:getCurrentUser()?.id}
 ): Promise<SyncResult> {
-  const token = getAuthToken();
+  const token = session.token;
   if (!token || !isUserLoggedIn()) {
     return {
       success: false,
@@ -78,7 +79,6 @@ export async function pushEntriesToServer(
     }
 
     const now = Date.now();
-    setLastSyncedAt(now);
 
     return {
       success: true,
@@ -99,12 +99,12 @@ export async function pushEntriesToServer(
 /**
  * Pull all active entries from server.
  */
-export async function pullEntriesFromServer(): Promise<{
+export async function pullEntriesFromServer(session = {token:getAuthToken(),userId:getCurrentUser()?.id}): Promise<{
   success: boolean;
   entries: JournalEntry[];
   error?: string;
 }> {
-  const token = getAuthToken();
+  const token = session.token;
   if (!token || !isUserLoggedIn()) {
     return { success: false, entries: [], error: 'Chưa đăng nhập.' };
   }
@@ -164,47 +164,33 @@ export async function syncAllWithServer(
   }
 
   try {
-    // 1. Get local active entries
-    const localEntries = await repo.listActiveEntries();
+    const session = {token:getAuthToken(),userId:getCurrentUser()?.id};
+    if (repo.ownerId && repo.ownerId !== session.userId) throw new Error('Dữ liệu thuộc tài khoản khác.');
+    const stillCurrent = () => session.token === getAuthToken() && session.userId === getCurrentUser()?.id;
+    const localEntries = await repo.listEntries(true);
+    if (!stillCurrent()) throw new Error('Tài khoản đã thay đổi.');
 
     // 2. Push to server
-    const pushResult = await pushEntriesToServer(localEntries);
+    const pushResult = await pushEntriesToServer(localEntries, session);
     if (!pushResult.success) {
       return pushResult;
     }
 
     // 3. Pull from server to get any entries created on other devices
-    const pullResult = await pullEntriesFromServer();
+    if (!stillCurrent()) throw new Error('Tài khoản đã thay đổi.');
+    const pullResult = await pullEntriesFromServer(session);
+    if (!pullResult.success) return {...pushResult,success:false,error:pullResult.error};
+    if (!stillCurrent()) throw new Error('Tài khoản đã thay đổi.');
     let pulledCount = 0;
 
     if (pullResult.success && pullResult.entries.length > 0) {
-      const localMap = new Map(localEntries.map((e) => [e.id, e]));
-
       for (const serverEntry of pullResult.entries) {
-        const local = localMap.get(serverEntry.id);
-        if (!local) {
-          // New entry from server: insert locally
-          await repo.createEntry({
-            id: serverEntry.id,
-            title: serverEntry.title,
-            body: serverEntry.body,
-            mood: serverEntry.mood,
-            createdAt: serverEntry.createdAt,
-            updatedAt: serverEntry.updatedAt,
-          });
-          pulledCount++;
-        } else if (serverEntry.updatedAt > local.updatedAt) {
-          // Server entry is newer: update locally
-          await repo.updateEntry(serverEntry.id, {
-            title: serverEntry.title,
-            body: serverEntry.body,
-            mood: serverEntry.mood,
-          });
-          pulledCount++;
-        }
+        if (!stillCurrent()) throw new Error('Tài khoản đã thay đổi.');
+        if (await repo.applyRemoteEntry(serverEntry)) pulledCount++;
       }
     }
 
+    if (!stillCurrent()) throw new Error('Tài khoản đã thay đổi.');
     const now = Date.now();
     setLastSyncedAt(now);
 

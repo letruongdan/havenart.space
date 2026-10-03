@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { modal } from '../lib/ui/modal';
   import { MorphIcon } from 'morphicons/svelte';
   import { X, Star, Heart, CheckCircle2 } from 'lucide';
   import { saveUserFeedback } from '../lib/telemetry/user-analytics';
@@ -17,6 +18,8 @@
   let hoverRating = $state<number | null>(null);
   let category = $state<'peace' | 'music' | 'visuals' | 'journal' | 'general'>('peace');
   let comment = $state('');
+  let submitError = $state('');
+  let submitting = $state(false);
   let isSubmitted = $state(false);
 
   const categories = [
@@ -39,16 +42,13 @@
 
   async function handleSubmit() {
     const session = getStoredUserSession();
-    saveUserFeedback({
-      rating,
-      category,
-      comment: comment.trim(),
-    });
+    if (submitting) return;
+    submitting = true; submitError = '';
 
     try {
-      await fetch('/api/feedback', {
+      const response = await fetch('/api/feedback', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(session?.token ? {Authorization:`Bearer ${session.token}`} : {}) },
         body: JSON.stringify({
           rating,
           category,
@@ -58,9 +58,12 @@
           userEmail: session?.user?.email || null,
         }),
       });
-    } catch (err) {
-      console.warn('Feedback server sync notice:', err);
-    }
+      if (!response.ok) throw new Error('Không thể gửi cảm nhận. Vui lòng thử lại.');
+      saveUserFeedback({rating,category,comment:comment.trim()});
+    } catch {
+      submitError = activeLang === 'vi' ? 'Chưa gửi được. Vui lòng thử lại.' : 'Unable to send. Please retry.';
+      return;
+    } finally { submitting = false; }
 
     isSubmitted = true;
     setTimeout(() => {
@@ -71,6 +74,7 @@
 
 <div
   class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md transition-opacity duration-300"
+  use:modal
   role="dialog"
   aria-modal="true"
   aria-labelledby="feedback-modal-title"
@@ -86,6 +90,7 @@
       </h2>
       <button
         type="button"
+        data-modal-close
         onclick={props.onClose}
         class="w-8 h-8 rounded-full flex items-center justify-center text-white/70 hover:text-white bg-white/10 hover:bg-white/20 border border-white/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer"
         aria-label="Đóng bảng đánh giá / Close feedback"
@@ -94,6 +99,7 @@
       </button>
     </div>
 
+    {#if submitError}<p role="alert" class="text-red-200">{submitError}</p>{/if}
     {#if isSubmitted}
       <div class="py-10 text-center space-y-3 animate-fade-in">
         <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
@@ -180,7 +186,8 @@
         <div class="flex items-center justify-end gap-2 pt-2">
           <button
             type="button"
-            onclick={props.onClose}
+            data-modal-close
+        onclick={props.onClose}
             class="px-4 py-2 rounded-full text-xs font-light text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
           >
             {activeLang === 'vi' ? 'Để sau' : 'Maybe later'}

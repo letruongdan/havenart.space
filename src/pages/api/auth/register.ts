@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { createServerUser, findUserByEmail } from '../../../lib/server/db';
+import { createServerUser, findUserByEmail, isRegistrationAllowed } from '../../../lib/server/db';
 import { extractClientInfo } from '../../../lib/server/client-info';
 
 export const prerender = false;
@@ -36,6 +36,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
       );
     }
 
+    if (!isRegistrationAllowed()) return Response.json({success:false,error:'Đăng ký đang tạm đóng.'},{status:403});
     const clientInfo = extractClientInfo(request, clientAddress);
 
     const { user, token } = createServerUser({

@@ -262,7 +262,7 @@ export class VisualController {
       } else if (!this.isPaused) {
         this.startLoop();
       }
-      this.options.onModeChange?.('shader');
+      this.options.onModeChange?.(this.mode);
     } else {
       this.mode = 'static';
       this.stopLoop();
@@ -528,7 +528,7 @@ export class VisualController {
             void this.init(this.canvas);
           }
         }
-        this.options.onModeChange?.('shader');
+        this.options.onModeChange?.(this.mode);
       }
     };
     canvas.addEventListener('webglcontextrestored', this.boundHandleContextRestored);

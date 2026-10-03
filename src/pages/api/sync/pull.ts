@@ -23,7 +23,7 @@ export const GET: APIRoute = async ({ request }) => {
       );
     }
 
-    const entries = getUserServerEntries(user.id);
+    const entries = getUserServerEntries(user.id, true);
 
     return new Response(
       JSON.stringify({

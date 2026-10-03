@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
-import { recordServerSession } from '../../../lib/server/db';
+import { recordServerSession, findUserByToken } from '../../../lib/server/db';
+import { requestToken } from '../../../lib/server/request-auth';
 import { extractClientInfo } from '../../../lib/server/client-info';
 
 export const prerender = false;
@@ -18,16 +19,17 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 
     const clientInfo = extractClientInfo(request, clientAddress);
 
+    const user = findUserByToken(requestToken(request));
     const recorded = recordServerSession({
       sessionId,
-      durationSeconds: Number(durationSeconds) || 0,
-      pageViews: Number(pageViews) || 1,
+      durationSeconds: Math.max(0,Math.min(86400,Number(durationSeconds) || 0)),
+      pageViews: Math.max(1,Math.min(1000,Number(pageViews) || 1)),
       device: (device === 'mobile' || device === 'tablet' || device === 'desktop') ? device : clientInfo.device,
       browser: browser || clientInfo.browser,
       browserVersion: clientInfo.browserVersion,
       os: os || clientInfo.os,
       language: language || clientInfo.language,
-      userId,
+      userId:user?.id || null,
       ip: clientInfo.ip,
     });
 

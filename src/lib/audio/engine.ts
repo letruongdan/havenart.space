@@ -109,6 +109,7 @@ export class AudioEngine {
   private currentTrack: AudioTrack | null = null;
   private volume: number;
   private defaultCrossfadeDurationSec: number;
+  private playbackRevision = 0;
   private unlocked = false;
   private isPlayingState = false;
   private audioContext: AudioContext | null = null;
@@ -324,15 +325,18 @@ export class AudioEngine {
       }
     } catch {}
 
+    const revision = this.playbackRevision;
     try {
       const playPromise = node.audio.play?.();
       if (playPromise && typeof playPromise.then === 'function') {
-        await playPromise.catch(() => {});
+        await playPromise;
       }
     } catch {
-      // Ignore audio element playback errors in test/headless environments
+      this.isPlayingState = false;
+      throw new Error('Không thể phát bản nhạc này. Vui lòng thử bản khác.');
     }
 
+    if (revision !== this.playbackRevision) { node.audio.pause(); return; }
     this.currentTrack = targetTrack;
     this.isPlayingState = true;
     this.updateMediaSession();
@@ -365,6 +369,7 @@ export class AudioEngine {
   }
 
   public pause(): void {
+    this.playbackRevision++;
     if (this.activeCrossfade) {
       this.finishActiveCrossfade();
     }
@@ -418,13 +423,16 @@ export class AudioEngine {
     const dur = Math.max(0.01, durationSec ?? this.defaultCrossfadeDurationSec);
     const now = this.audioContext?.currentTime ?? 0;
 
+    const revision = this.playbackRevision;
+    newNode.gainNode.gain.value = 0;
+    try { await newNode.audio.play(); }
+    catch { newNode.audio.pause(); throw new Error('Không thể phát bản nhạc mới.'); }
+    if (revision !== this.playbackRevision) { newNode.audio.pause(); return; }
+
     try {
       // Fade in new track
       newNode.gainNode.gain.setValueAtTime(0.0001, now);
-      const playPromise = newNode.audio.play?.();
-      if (playPromise && typeof playPromise.then === 'function') {
-        playPromise.catch(() => {});
-      }
+
       newNode.gainNode.gain.linearRampToValueAtTime(1.0, now + dur);
 
       // Fade out old track

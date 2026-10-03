@@ -31,7 +31,7 @@ export async function searchWikimediaArtworks(
   );
 
   const limit = options.limit || 10;
-  const searchUrl = `${WIKIMEDIA_BASE_URL}?action=query&generator=search&gsrnamespace=6&gsrsearch=${encodeURIComponent(query)}&gsrlimit=${limit}&prop=imageinfo&iiprop=url|size|extmetadata&format=json&origin=*`;
+  const searchUrl = `${WIKIMEDIA_BASE_URL}?action=query&generator=search&gsrnamespace=6&gsrsearch=${encodeURIComponent(query)}&gsrlimit=${limit}&prop=imageinfo&iiprop=url|size|extmetadata&iiurlwidth=1920&format=json&origin=*`;
 
   try {
     const res = await fetch(searchUrl);
@@ -56,13 +56,14 @@ export async function searchWikimediaArtworks(
       const ext = imageInfo.extmetadata || {};
       const rawTitle = page.title ? page.title.replace(/^File:/i, '').replace(/\.[^.]+$/, '').replace(/_/g, ' ') : 'Danh họa thiên nhiên';
       const artist = ext.Artist?.value ? ext.Artist.value.replace(/<[^>]*>/g, '').trim() : 'Wikimedia Commons / Public Domain';
-      const license = ext.LicenseShortName?.value || 'Public Domain';
+      const license = ext.LicenseShortName?.value || '';
+      if (!/^(Public domain|CC0|CC[ -]BY(?:[ -]SA)?[ -][1-4]\.0)$/i.test(license)) continue;
 
       results.push({
         id: `wikimedia-${pageId}`,
         title: rawTitle.slice(0, 50),
         artist,
-        src: imageInfo.url,
+        src: imageInfo.thumburl || imageInfo.url,
         license,
         sourceUrl: imageInfo.descriptionurl || `https://commons.wikimedia.org/wiki/${encodeURIComponent(page.title)}`,
         description: ext.ImageDescription?.value ? ext.ImageDescription.value.replace(/<[^>]*>/g, '').slice(0, 150) : 'Tác phẩm nghệ thuật phong cảnh công cộng từ Wikimedia Commons.',

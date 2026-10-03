@@ -14,8 +14,8 @@ export const DEFAULT_TRACKS: AudioTrack[] = [
     title: 'Morning Mist',
     artist: 'Haven Soundscapes',
     license: 'CC0 1.0 Universal / Public Domain',
-    sourceUrl: 'https://havenart.space/audio/morning-mist',
-    durationSeconds: 180,
+    sourceUrl: 'https://havenart.space/media-provenance',
+    durationSeconds: 36,
     src: '/audio/morning-mist.mp3',
   },
   {
@@ -23,8 +23,8 @@ export const DEFAULT_TRACKS: AudioTrack[] = [
     title: 'Serene Solitude',
     artist: 'Haven Soundscapes',
     license: 'CC0 1.0 Universal / Public Domain',
-    sourceUrl: 'https://havenart.space/audio/serene-solitude',
-    durationSeconds: 210,
+    sourceUrl: 'https://havenart.space/media-provenance',
+    durationSeconds: 36,
     src: '/audio/serene-solitude.mp3',
   },
   {
@@ -32,8 +32,8 @@ export const DEFAULT_TRACKS: AudioTrack[] = [
     title: 'Gentle Nightfall',
     artist: 'Haven Soundscapes',
     license: 'CC0 1.0 Universal / Public Domain',
-    sourceUrl: 'https://havenart.space/audio/gentle-nightfall',
-    durationSeconds: 240,
+    sourceUrl: 'https://havenart.space/media-provenance',
+    durationSeconds: 36,
     src: '/audio/gentle-nightfall.mp3',
   },
 ];

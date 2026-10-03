@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { modal } from '../lib/ui/modal';
   import { onMount } from 'svelte';
   import { MorphIcon } from 'morphicons/svelte';
   import {
@@ -21,10 +22,13 @@
     registerUser,
     logoutUser,
     checkSessionWithServer,
+    enableCloudSync,
+    disableCloudSync,
+    isCloudEnabled,
     type AuthUser,
   } from '../lib/auth/user-client';
   import { syncAllWithServer, getLastSyncedAt } from '../lib/sync/cloud-sync';
-  import type { JournalRepository } from '../lib/db/repository';
+  import { JournalRepository } from '../lib/db/repository';
   import type { SupportedLanguage } from '../lib/i18n/types';
 
   interface Props {
@@ -36,6 +40,7 @@
 
   let { repo, lang = 'vi', onClose, onUserChange }: Props = $props();
 
+  let cloudEnabled = $state(isCloudEnabled());
   let mode = $state<'login' | 'register'>('login');
   let email = $state('');
   let password = $state('');
@@ -81,7 +86,7 @@
       if (mode === 'register') {
         const res = await registerUser({
           email: email.trim(),
-          password: password.trim(),
+          password: password,
           name: name.trim() || undefined,
         });
 
@@ -89,25 +94,21 @@
           currentUser = res.user;
           successMessage = lang === 'vi' ? 'Đăng ký thành công! Dữ liệu của bạn đã được kết nối máy chủ.' : 'Account registered successfully!';
           onUserChange?.(res.user);
-          if (repo) {
-            triggerFullSync();
-          }
+
         } else {
           errorMessage = res.error || (lang === 'vi' ? 'Không thể đăng ký tài khoản.' : 'Registration failed.');
         }
       } else {
         const res = await loginUser({
           email: email.trim(),
-          password: password.trim(),
+          password: password,
         });
 
         if (res.success && res.user) {
           currentUser = res.user;
-          successMessage = lang === 'vi' ? 'Đăng nhập thành công! Bắt đầu đồng bộ dữ liệu...' : 'Logged in successfully!';
+          successMessage = lang === 'vi' ? 'Đăng nhập thành công! Bạn có thể bật đồng bộ bên dưới.' : 'Logged in successfully!';
           onUserChange?.(res.user);
-          if (repo) {
-            triggerFullSync();
-          }
+
         } else {
           errorMessage = res.error || (lang === 'vi' ? 'Email hoặc mật khẩu không chính xác.' : 'Invalid credentials.');
         }
@@ -120,11 +121,13 @@
   }
 
   async function triggerFullSync() {
-    if (!repo) return;
+    enableCloudSync();
+    cloudEnabled = true;
+    const accountRepo = new JournalRepository();
     isSyncing = true;
     errorMessage = null;
     try {
-      const res = await syncAllWithServer(repo);
+      const res = await syncAllWithServer(accountRepo);
       if (res.success) {
         lastSyncedTime = res.lastSyncedAt || Date.now();
         serverEntryCount = res.serverTotal;
@@ -137,6 +140,7 @@
     } catch (err: any) {
       errorMessage = err?.message || (lang === 'vi' ? 'Lỗi kết nối khi đồng bộ.' : 'Sync error.');
     } finally {
+      await accountRepo.close();
       isSyncing = false;
     }
   }
@@ -144,6 +148,7 @@
   function handleLogout() {
     logoutUser();
     currentUser = null;
+    cloudEnabled = false;
     successMessage = null;
     errorMessage = null;
     serverEntryCount = null;
@@ -164,6 +169,7 @@
 
 <div
   class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md transition-opacity duration-300 animate-fade-in"
+  use:modal
   role="dialog"
   aria-modal="true"
   aria-labelledby="auth-modal-title"
@@ -188,6 +194,7 @@
 
       <button
         type="button"
+        data-modal-close
         onclick={onClose}
         class="w-7 h-7 rounded-full flex items-center justify-center text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/15 transition-colors cursor-pointer"
         aria-label="Đóng bảng đăng nhập"
@@ -224,11 +231,13 @@
             <p class="text-xs text-white/50 truncate font-mono">{currentUser.email}</p>
             <div class="flex items-center gap-1.5 mt-1 text-[11px] text-emerald-300">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>{lang === 'vi' ? 'Đã kết nối máy chủ Cloud' : 'Connected to Cloud Vault'}</span>
+              <span>{lang === 'vi' ? 'Đã đăng nhập tài khoản' : 'Account connected'}</span>
             </div>
           </div>
         </div>
 
+        <p class="text-xs text-white/80">{cloudEnabled ? (lang === 'vi' ? 'Tự động đồng bộ đang bật.' : 'Automatic cloud sync is enabled.') : (lang === 'vi' ? 'Đồng bộ chưa bật. Ghi chú chỉ lưu trên thiết bị.' : 'Cloud sync is disabled. Notes stay on this device.')}</p>
+        {#if cloudEnabled}<button class="text-xs text-white/80 underline" onclick={() => {disableCloudSync();cloudEnabled=false;}}>{lang === 'vi' ? 'Tắt tự động đồng bộ' : 'Disable automatic cloud sync'}</button>{/if}
         <!-- Sync Status Metrics -->
         <div class="p-4 rounded-2xl bg-white/[0.03] border border-white/10 space-y-2.5 text-xs">
           <div class="flex items-center justify-between text-white/70">
@@ -243,6 +252,7 @@
 
         <!-- Cloud Sync Actions -->
         <div class="space-y-2 pt-1">
+          <p class="text-xs text-white/80">{lang === 'vi' ? 'Bật đồng bộ sẽ gửi nhật ký của tài khoản này đến máy chủ. Quản trị viên có thể đọc nội dung; dữ liệu chưa mã hóa đầu cuối. Nhật ký khách vẫn lưu riêng trên thiết bị.' : 'Enabling sync sends this account’s notes to the server. Administrators can read them; they are not end-to-end encrypted. Guest notes remain separate on this device.'}</p>
           <button
             type="button"
             onclick={triggerFullSync}
@@ -254,7 +264,7 @@
               <span>{lang === 'vi' ? 'Đang đồng bộ dữ liệu...' : 'Synchronizing...'}</span>
             {:else}
               <MorphIcon icon={RefreshCw} size={14} strokeWidth={2} spring="smooth" reducedMotion="user" />
-              <span>{lang === 'vi' ? 'Đồng bộ hai chiều ngay' : 'Sync With Server Now'}</span>
+              <span>{lang === 'vi' ? 'Bật đồng bộ & đồng bộ ngay' : 'Enable Cloud Sync & Sync Now'}</span>
             {/if}
           </button>
 
@@ -373,8 +383,8 @@
         </div>
         <p>
           {lang === 'vi'
-            ? '✓ Lưu trữ an toàn trên server: không bao giờ sợ mất bài viết khi dọn bộ nhớ máy.\n✓ Tự động đồng bộ hai chiều khi đổi điện thoại, máy tính hoặc trình duyệt khác.'
-            : '✓ Secure server vault: never lose your notes even if device cache is cleared.\n✓ Access and sync your reflections seamlessly across all devices.'}
+            ? 'Đồng bộ máy chủ là tùy chọn. Khi bật, quản trị viên có thể đọc nhật ký đã đồng bộ. Bạn có thể tải lại ghi chú trên thiết bị khác; vẫn nên giữ bản sao lưu riêng.'
+            : 'Cloud sync is optional. Synced notes are readable by the server administrator.\n✓ Access and sync your reflections seamlessly across all devices.'}
         </p>
       </div>
     {/if}

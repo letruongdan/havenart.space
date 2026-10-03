@@ -121,7 +121,7 @@ let lastServerPing = 0;
  * Pings the server analytics endpoint to track active session duration and traffic.
  */
 export async function pingServerSessionHeartbeat(): Promise<void> {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || localStorage.getItem('haven_analytics_opt_in') !== 'true') return;
   const now = Date.now();
   if (now - lastServerPing < 10000) return; // limit frequency to at most once per 10s
   lastServerPing = now;
@@ -145,7 +145,7 @@ export async function pingServerSessionHeartbeat(): Promise<void> {
 
     fetch('/api/analytics/session', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(JSON.parse(window.localStorage?.getItem('haven_user_session') || 'null')?.token ? {Authorization:`Bearer ${JSON.parse(window.localStorage.getItem('haven_user_session')!).token}`} : {}) },
       body: JSON.stringify({
         sessionId,
         durationSeconds: inMemorySessionSeconds,

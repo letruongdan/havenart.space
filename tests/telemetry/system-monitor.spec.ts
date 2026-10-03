@@ -116,7 +116,7 @@ describe('System Telemetry & Monitoring Subsystem', () => {
       expect(telemetry.audio.ambientTracksCount).toBeGreaterThanOrEqual(5);
 
       // Visuals catalog metrics
-      expect(telemetry.visual.totalArtworks).toBeGreaterThanOrEqual(5);
+      expect(telemetry.visual.totalArtworks).toBeGreaterThanOrEqual(4);
 
       // Device & platform
       expect(telemetry.device.userAgent).toBeDefined();

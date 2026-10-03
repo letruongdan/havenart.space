@@ -1,3 +1,4 @@
+import { validateServerBackup, validateSyncEntries } from './validation';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -84,6 +85,7 @@ export interface ServerSession {
   pageViews: number;
   device: 'desktop' | 'mobile' | 'tablet';
   browser?: string;
+  browserVersion?: string;
   os?: string;
   language?: string;
   ip?: string;
@@ -134,7 +136,7 @@ export interface SafeServerUser {
 }
 
 export const DEFAULT_ADMIN_EMAIL = 'admin@havenart.space';
-export const DEFAULT_ADMIN_PASSWORD = 'havenart@2026';
+const LEGACY_DEFAULT_PASSWORD = 'havenart@2026';
 
 /* ========================================================================= */
 /*                   DATABASE CONNECTION & SQLITE INITIALIZATION             */
@@ -268,6 +270,12 @@ function initSchema(db: DatabaseType): void {
       updated_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS auth_sessions (
+      token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id);
+    CREATE TABLE IF NOT EXISTS login_attempts (id TEXT PRIMARY KEY, count INTEGER NOT NULL, reset_at INTEGER NOT NULL);
     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
     CREATE INDEX IF NOT EXISTS idx_users_token ON users(token);
     CREATE INDEX IF NOT EXISTS idx_entries_user ON journal_entries(user_id);
@@ -277,42 +285,40 @@ function initSchema(db: DatabaseType): void {
 }
 
 function ensureDefaultAdmin(db: DatabaseType): void {
-  const admin = db
-    .prepare("SELECT * FROM users WHERE role = 'admin' OR lower(email) = lower(?)")
-    .get(DEFAULT_ADMIN_EMAIL);
-
-  if (!admin) {
-    const salt = generateSalt();
-    const passwordHash = hashPassword(DEFAULT_ADMIN_PASSWORD, salt);
-    const token = generateToken();
-    db.prepare(`
-      INSERT INTO users (
-        id, email, name, role, status, password_hash, salt, token, tokens,
-        created_at, last_login_at, last_active_at, created_ip, last_ip,
-        last_browser, last_os, last_device, last_language, login_count
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      'usr_admin_root',
-      DEFAULT_ADMIN_EMAIL,
-      'Haven Administrator',
-      'admin',
-      'active',
-      passwordHash,
-      salt,
-      token,
-      JSON.stringify([token]),
-      Date.now(),
-      Date.now(),
-      Date.now(),
-      '127.0.0.1',
-      '127.0.0.1',
-      'System',
-      'Server',
-      'desktop',
-      'vi-VN',
-      1
-    );
+  const email = process.env.HAVEN_ADMIN_EMAIL?.trim().toLowerCase() || DEFAULT_ADMIN_EMAIL;
+  const password = process.env.HAVEN_ADMIN_PASSWORD;
+  const existing = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as any;
+  // Retire the publicly known bootstrap credential. Preserve the user's journal data.
+  if (existing && (existing.password_hash === crypto.pbkdf2Sync(LEGACY_DEFAULT_PASSWORD, existing.salt, 10000, 64, 'sha256').toString('hex') || existing.password_hash === hashPassword(LEGACY_DEFAULT_PASSWORD, existing.salt))) {
+    db.prepare("UPDATE users SET status = 'suspended', token = NULL, tokens = NULL WHERE id = ?").run(existing.id);
+    db.prepare('DELETE FROM auth_sessions WHERE user_id = ?').run(existing.id);
+    if (password && password.length >= 12 && password !== LEGACY_DEFAULT_PASSWORD) {
+      const salt = generateSalt();
+      db.prepare("UPDATE users SET password_hash = ?, salt = ?, status = 'active' WHERE id = ?").run(hashPassword(password, salt), salt, existing.id);
+    }
   }
+  if (existing || !password) return;
+  if (password.length < 12 || password === LEGACY_DEFAULT_PASSWORD) throw new Error('HAVEN_ADMIN_PASSWORD must be a new password of at least 12 characters.');
+  const salt = generateSalt();
+  db.prepare(`INSERT INTO users (id,email,name,role,status,password_hash,salt,created_at,login_count)
+    VALUES (?,?,?,'admin','active',?,?,?,0)`).run('usr_admin_root', email, 'Haven Administrator', hashPassword(password, salt), salt, Date.now());
+}
+
+function migrateEntryOwnership(db: DatabaseType): void {
+  const columns = db.prepare('PRAGMA table_info(journal_entries)').all() as Array<{ pk: number }>;
+  if (columns.filter(c => c.pk).length === 2) return;
+  db.transaction(() => {
+    db.exec(`ALTER TABLE journal_entries RENAME TO journal_entries_legacy;
+      CREATE TABLE journal_entries (
+        id TEXT NOT NULL, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title TEXT, body TEXT NOT NULL, mood TEXT, word_count INTEGER DEFAULT 0,
+        created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, deleted_at INTEGER, synced_at INTEGER NOT NULL,
+        PRIMARY KEY(user_id, id)
+      );
+      INSERT INTO journal_entries SELECT * FROM journal_entries_legacy;
+      DROP TABLE journal_entries_legacy;
+      CREATE INDEX idx_entries_user ON journal_entries(user_id);`);
+  })();
 }
 
 function migrateFromJsonIfEmpty(db: DatabaseType): void {
@@ -469,6 +475,9 @@ export function getDatabase(): DatabaseType {
 
   initSchema(db);
   migrateFromJsonIfEmpty(db);
+  migrateEntryOwnership(db);
+  db.prepare('UPDATE users SET token = NULL, tokens = NULL WHERE token IS NOT NULL OR tokens IS NOT NULL').run();
+  ensureDefaultAdmin(db);
 
   _dbInstance = db;
   _currentDbPath = dbPath;
@@ -476,24 +485,14 @@ export function getDatabase(): DatabaseType {
   return _dbInstance;
 }
 
-let _isSyncing = false;
+// JSON snapshots are explicit exports; request handlers must not rewrite the entire database.
 export function syncToJsonBackup(db?: DatabaseType): void {
-  if (_isSyncing) return;
-  _isSyncing = true;
-  try {
-    const targetDb = db || (_dbInstance ? _dbInstance : getDatabase());
-    const jsonPath = getServerDbPath();
-    const dir = path.dirname(jsonPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    const schema = readDatabaseFromDb(targetDb);
-    fs.writeFileSync(jsonPath, JSON.stringify(schema, null, 2), 'utf-8');
-  } catch {
-    // Ignore backup write failure
-  } finally {
-    _isSyncing = false;
-  }
+  const target = db || getDatabase();
+  const jsonPath = getServerDbPath();
+  fs.mkdirSync(path.dirname(jsonPath), { recursive: true });
+  const temp = `${jsonPath}.tmp`;
+  fs.writeFileSync(temp, JSON.stringify(readDatabaseFromDb(target), null, 2), { mode: 0o600 });
+  fs.renameSync(temp, jsonPath);
 }
 
 /* ========================================================================= */
@@ -501,7 +500,37 @@ export function syncToJsonBackup(db?: DatabaseType): void {
 /* ========================================================================= */
 
 export function hashPassword(password: string, salt: string): string {
-  return crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha256').toString('hex');
+  return 'scrypt:' + crypto.scryptSync(password, salt, 64).toString('hex');
+}
+
+function verifyPassword(password: string, user: ServerUser): boolean {
+  const actual = user.passwordHash.startsWith('scrypt:')
+    ? hashPassword(password, user.salt)
+    : crypto.pbkdf2Sync(password, user.salt, 10000, 64, 'sha256').toString('hex');
+  const expected = Buffer.from(user.passwordHash);
+  const candidate = Buffer.from(actual);
+  return expected.length === candidate.length && crypto.timingSafeEqual(expected, candidate);
+}
+
+export const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+function tokenHash(token: string): string { return crypto.createHash('sha256').update(token).digest('hex'); }
+function issueSession(db: DatabaseType, userId: string, token: string): void {
+  db.prepare('DELETE FROM auth_sessions WHERE expires_at <= ?').run(Date.now());
+  db.prepare('INSERT INTO auth_sessions VALUES (?, ?, ?, ?)').run(tokenHash(token), userId, Date.now(), Date.now() + SESSION_TTL_MS);
+  db.prepare('DELETE FROM auth_sessions WHERE user_id = ? AND token_hash NOT IN (SELECT token_hash FROM auth_sessions WHERE user_id = ? ORDER BY created_at DESC LIMIT 10)').run(userId, userId);
+}
+export function revokeToken(token: string): void {
+  if (/^[a-f0-9]{64}$/.test(token)) getDatabase().prepare('DELETE FROM auth_sessions WHERE token_hash = ?').run(tokenHash(token));
+}
+export function revokeUserSessions(userId: string): void {
+  getDatabase().prepare('DELETE FROM auth_sessions WHERE user_id = ?').run(userId);
+}
+export function changeServerPassword(userId: string, currentPassword: string, newPassword: string): boolean {
+  const db = getDatabase();
+  const row = db.prepare('SELECT email FROM users WHERE id = ?').get(userId) as {email:string} | undefined;
+  const user = row && findUserByEmail(row.email);
+  if (!user || !verifyPassword(currentPassword, user)) return false;
+  return resetUserPassword(userId, newPassword);
 }
 
 export function generateToken(length = 32): string {
@@ -599,6 +628,7 @@ export function readDatabaseFromDb(db: DatabaseType): ServerDatabaseSchema {
     pageViews: r.page_views,
     device: r.device,
     browser: r.browser || undefined,
+    browserVersion: r.browser_version || undefined,
     os: r.os || undefined,
     language: r.language || undefined,
     ip: r.ip || undefined,
@@ -646,58 +676,24 @@ export function readServerDatabase(): ServerDatabaseSchema {
 }
 
 export function writeServerDatabase(data: ServerDatabaseSchema): void {
+  validateServerBackup(data);
   const db = getDatabase();
 
   const syncTx = db.transaction(() => {
     // Upsert users
-    const upsertUser = db.prepare(`
-      INSERT INTO users (
-        id, email, name, role, status, password_hash, salt, token, tokens,
-        created_at, last_login_at, last_active_at, created_ip, last_ip,
-        last_browser, last_os, last_device, last_language, login_count
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
-        email=excluded.email,
-        name=excluded.name,
-        role=excluded.role,
-        status=excluded.status,
-        password_hash=excluded.password_hash,
-        salt=excluded.salt,
-        token=excluded.token,
-        tokens=excluded.tokens,
-        last_login_at=excluded.last_login_at,
-        last_active_at=excluded.last_active_at
-    `);
-
-    for (const u of data.users) {
-      upsertUser.run(
-        u.id,
-        u.email,
-        u.name,
-        u.role || 'user',
-        u.status || 'active',
-        u.passwordHash,
-        u.salt,
-        u.token || null,
-        JSON.stringify(u.tokens || (u.token ? [u.token] : [])),
-        u.createdAt || Date.now(),
-        u.lastLoginAt || null,
-        u.lastActiveAt || null,
-        u.createdIp || null,
-        u.lastIp || null,
-        u.lastBrowser || null,
-        u.lastOs || null,
-        u.lastDevice || 'desktop',
-        u.lastLanguage || 'vi-VN',
-        u.loginCount || 1
-      );
-    }
+    const upsertUser = db.prepare(`INSERT INTO users
+      (id,email,name,role,status,password_hash,salt,token,tokens,created_at,last_login_at,last_active_at,created_ip,last_ip,last_user_agent,last_browser,last_browser_version,last_os,last_device,last_language,login_count)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
+      email=excluded.email,name=excluded.name,role=excluded.role,status=excluded.status,password_hash=excluded.password_hash,salt=excluded.salt,token=NULL,tokens=NULL,
+      created_at=excluded.created_at,last_login_at=excluded.last_login_at,last_active_at=excluded.last_active_at,created_ip=excluded.created_ip,last_ip=excluded.last_ip,
+      last_user_agent=excluded.last_user_agent,last_browser=excluded.last_browser,last_browser_version=excluded.last_browser_version,last_os=excluded.last_os,last_device=excluded.last_device,last_language=excluded.last_language,login_count=excluded.login_count`);
+    for (const u of data.users) upsertUser.run(u.id,u.email,u.name,u.role,u.status,u.passwordHash,u.salt,null,null,u.createdAt,u.lastLoginAt ?? null,u.lastActiveAt ?? null,u.createdIp ?? null,u.lastIp ?? null,u.lastUserAgent ?? null,u.lastBrowser ?? null,u.lastBrowserVersion ?? null,u.lastOs ?? null,u.lastDevice ?? null,u.lastLanguage ?? null,u.loginCount ?? 1);
 
     // Upsert entries
     const upsertEntry = db.prepare(`
       INSERT INTO journal_entries (id, user_id, title, body, mood, word_count, created_at, updated_at, deleted_at, synced_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
+      ON CONFLICT(user_id, id) DO UPDATE SET
         title=excluded.title,
         body=excluded.body,
         mood=excluded.mood,
@@ -721,10 +717,19 @@ export function writeServerDatabase(data: ServerDatabaseSchema): void {
         e.syncedAt || Date.now()
       );
     }
+    const feedbackStmt = db.prepare(`INSERT INTO feedbacks (id,user_id,user_name,user_email,rating,category,comment,device,browser,os,ip,created_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET user_id=excluded.user_id,user_name=excluded.user_name,user_email=excluded.user_email,rating=excluded.rating,category=excluded.category,comment=excluded.comment,device=excluded.device,browser=excluded.browser,os=excluded.os,ip=excluded.ip,created_at=excluded.created_at`);
+    for (const f of data.feedbacks) feedbackStmt.run(f.id,f.userId || null,f.userName,f.userEmail || null,f.rating,f.category,f.comment,f.device || null,f.browser || null,f.os || null,f.ip || null,f.createdAt);
+    const sessionStmt = db.prepare(`INSERT INTO sessions (id,session_id,user_id,duration_seconds,page_views,device,browser,browser_version,os,language,ip,start_time,last_ping_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(session_id) DO UPDATE SET user_id=excluded.user_id,duration_seconds=excluded.duration_seconds,page_views=excluded.page_views,device=excluded.device,browser=excluded.browser,browser_version=excluded.browser_version,os=excluded.os,language=excluded.language,ip=excluded.ip,start_time=excluded.start_time,last_ping_at=excluded.last_ping_at`);
+    for (const row of data.sessions) sessionStmt.run(row.id,row.sessionId,row.userId || null,row.durationSeconds,row.pageViews,row.device,row.browser || null,row.browserVersion || null,row.os || null,row.language || null,row.ip || null,row.startTime,row.lastPingAt);
+    if (data.settings) {
+      const v = data.settings;
+      db.prepare('INSERT OR REPLACE INTO settings VALUES (?,?,?,?,?,?,?)').run('system',v.siteName,v.pixabayApiKey || null,v.unsplashApiKey || null,v.pexelsApiKey || null,v.allowRegistration ? 1 : 0,v.updatedAt);
+    }
   });
 
   syncTx();
-  syncToJsonBackup(db);
 }
 
 /* ========================================================================= */
@@ -781,52 +786,15 @@ export function findUserByEmail(email: string): ServerUser | undefined {
 }
 
 export function findUserByToken(token: string): ServerUser | undefined {
-  if (!token) return undefined;
-  const db = getDatabase();
+  if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) return undefined;
+  const row = getDatabase().prepare(`SELECT u.email FROM auth_sessions s JOIN users u ON u.id = s.user_id
+    WHERE s.token_hash = ? AND s.expires_at > ? AND u.status = 'active'`).get(tokenHash(token), Date.now()) as { email: string } | undefined;
+  return row ? findUserByEmail(row.email) : undefined;
+}
 
-  const row = db
-    .prepare(
-      `
-    SELECT * FROM users
-    WHERE status = 'active'
-      AND (token = ? OR tokens LIKE ?)
-    LIMIT 1
-  `
-    )
-    .get(token, `%"${token}"%`) as any;
-
-  if (!row) return undefined;
-
-  let tokens: string[] = [];
-  try {
-    tokens = row.tokens ? JSON.parse(row.tokens) : row.token ? [row.token] : [];
-  } catch {
-    tokens = row.token ? [row.token] : [];
-  }
-
-  return {
-    id: row.id,
-    email: row.email,
-    name: row.name,
-    role: row.role,
-    status: row.status,
-    passwordHash: row.password_hash,
-    salt: row.salt,
-    token: row.token || undefined,
-    tokens,
-    createdAt: row.created_at,
-    lastLoginAt: row.last_login_at || undefined,
-    lastActiveAt: row.last_active_at || undefined,
-    createdIp: row.created_ip || undefined,
-    lastIp: row.last_ip || undefined,
-    lastUserAgent: row.last_user_agent || undefined,
-    lastBrowser: row.last_browser || undefined,
-    lastBrowserVersion: row.last_browser_version || undefined,
-    lastOs: row.last_os || undefined,
-    lastDevice: row.last_device || undefined,
-    lastLanguage: row.last_language || undefined,
-    loginCount: row.login_count || 1,
-  };
+export function isRegistrationAllowed(): boolean {
+  const setting = getDatabase().prepare("SELECT allow_registration FROM settings WHERE id = 'system'").get() as {allow_registration:number} | undefined;
+  return !setting || !!setting.allow_registration;
 }
 
 export function createServerUser(params: {
@@ -874,8 +842,8 @@ export function createServerUser(params: {
     'active',
     passwordHash,
     salt,
-    token,
-    JSON.stringify([token]),
+    null,
+    null,
     now,
     now,
     now,
@@ -890,6 +858,8 @@ export function createServerUser(params: {
     1
   );
 
+  issueSession(db, id, token);
+
   // Record into login history
   recordLoginHistory({
     userId: id,
@@ -898,7 +868,6 @@ export function createServerUser(params: {
     status: 'success',
   });
 
-  syncToJsonBackup(db);
 
   const newUser: ServerUser = {
     id,
@@ -935,6 +904,7 @@ export function recordLoginHistory(params: {
 }): void {
   try {
     const db = getDatabase();
+    db.prepare('DELETE FROM login_history WHERE timestamp < ?').run(Date.now() - 90 * 86400000);
     const id = `log_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
     const ci = params.clientInfo;
 
@@ -967,7 +937,17 @@ export function authenticateUser(
   clientInfo?: ClientInfo
 ): { user: ServerUser; token: string } | null {
   const db = getDatabase();
-  const normalized = (emailOrUsername || '').trim().toLowerCase();
+  if (typeof emailOrUsername !== 'string' || typeof password !== 'string' || password.length > 1024) return null;
+  const normalized = emailOrUsername.trim().toLowerCase();
+  const nowAttempt = Date.now();
+  db.prepare('DELETE FROM login_attempts WHERE reset_at < ?').run(nowAttempt);
+  const attemptKeys = ['account:' + normalized, 'ip:' + (clientInfo?.ip || 'local')];
+  for (const key of attemptKeys) {
+    const limit = key.startsWith('ip:') ? 50 : 10;
+    const row = db.prepare('SELECT count FROM login_attempts WHERE id = ?').get(key) as {count:number} | undefined;
+    if (row && row.count >= limit) throw new Error('Đăng nhập bị tạm khóa. Vui lòng thử lại sau 15 phút.');
+    db.prepare('INSERT INTO login_attempts VALUES (?,1,?) ON CONFLICT(id) DO UPDATE SET count=count+1').run(key, nowAttempt + 15 * 60 * 1000);
+  }
 
   const user = findUserByEmail(normalized);
 
@@ -991,8 +971,7 @@ export function authenticateUser(
     throw new Error('Tài khoản đã bị tạm khóa bởi quản trị viên.');
   }
 
-  const expectedHash = hashPassword(password, user.salt);
-  if (!crypto.timingSafeEqual(Buffer.from(user.passwordHash), Buffer.from(expectedHash))) {
+  if (!verifyPassword(password, user)) {
     recordLoginHistory({
       userId: user.id,
       email: user.email,
@@ -1002,6 +981,7 @@ export function authenticateUser(
     return null;
   }
 
+  db.prepare('DELETE FROM login_attempts WHERE id = ?').run('account:' + normalized);
   const newToken = generateToken();
   const existingTokens = user.tokens || (user.token ? [user.token] : []);
   const updatedTokens = [...existingTokens.filter((t) => t !== newToken), newToken].slice(-10);
@@ -1033,8 +1013,8 @@ export function authenticateUser(
       login_count = ?
     WHERE id = ?
   `).run(
-    newToken,
-    JSON.stringify(updatedTokens),
+    null,
+    null,
     now,
     now,
     lastIp,
@@ -1055,8 +1035,11 @@ export function authenticateUser(
     status: 'success',
   });
 
-  syncToJsonBackup(db);
 
+  issueSession(db, user.id, newToken);
+  if (!user.passwordHash.startsWith('scrypt:')) {
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(password, user.salt), user.id);
+  }
   user.token = newToken;
   user.tokens = updatedTokens;
   user.lastLoginAt = now;
@@ -1072,7 +1055,7 @@ export function authenticateUser(
   return { user, token: newToken };
 }
 
-export function getAllUsers(): SafeServerUser[] {
+export function getAllUsers(limit = 1000, offset = 0): SafeServerUser[] {
   const db = getDatabase();
 
   const rows = db.prepare(`
@@ -1084,7 +1067,8 @@ export function getAllUsers(): SafeServerUser[] {
     LEFT JOIN journal_entries e ON e.user_id = u.id AND e.deleted_at IS NULL
     GROUP BY u.id
     ORDER BY u.created_at DESC
-  `).all() as any[];
+    LIMIT ? OFFSET ?
+  `).all(limit,offset) as any[];
 
   return rows.map((u) => ({
     id: u.id,
@@ -1161,32 +1145,30 @@ export function getRecentLoginHistory(limit = 100): UserLoginHistoryItem[] {
 export function updateUserStatus(userId: string, status: 'active' | 'suspended'): boolean {
   const db = getDatabase();
   const res = db.prepare('UPDATE users SET status = ? WHERE id = ?').run(status, userId);
-  syncToJsonBackup(db);
   return res.changes > 0;
 }
 
 export function updateUserRole(userId: string, role: 'admin' | 'user'): boolean {
   const db = getDatabase();
   const res = db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, userId);
-  syncToJsonBackup(db);
   return res.changes > 0;
 }
 
 export function resetUserPassword(userId: string, newPass: string): boolean {
   const db = getDatabase();
+  if (typeof newPass !== 'string' || newPass.length < 12 || newPass.length > 1024 || newPass === LEGACY_DEFAULT_PASSWORD) throw new Error('Mật khẩu mới phải có từ 12 đến 1024 ký tự và khác mật khẩu mặc định cũ.');
   const newSalt = generateSalt();
   const newHash = hashPassword(newPass, newSalt);
   const res = db
-    .prepare('UPDATE users SET password_hash = ?, salt = ? WHERE id = ?')
+    .prepare('UPDATE users SET password_hash = ?, salt = ?, token = NULL, tokens = NULL WHERE id = ?')
     .run(newHash, newSalt, userId);
-  syncToJsonBackup(db);
+  revokeUserSessions(userId);
   return res.changes > 0;
 }
 
 export function deleteUser(userId: string): boolean {
   const db = getDatabase();
   const res = db.prepare('DELETE FROM users WHERE id = ?').run(userId);
-  syncToJsonBackup(db);
   return res.changes > 0;
 }
 
@@ -1206,6 +1188,7 @@ export function upsertServerEntries(
     deletedAt?: number | null;
   }>
 ): { syncedCount: number; totalCount: number } {
+  validateSyncEntries(entries);
   const db = getDatabase();
   let syncedCount = 0;
   const now = Date.now();
@@ -1233,7 +1216,7 @@ export function upsertServerEntries(
       const existing = findStmt.get(e.id, userId) as any;
 
       if (existing) {
-        if (e.updatedAt >= existing.updated_at) {
+        if (e.updatedAt > existing.updated_at || (e.updatedAt === existing.updated_at && e.deletedAt != null)) {
           updateStmt.run(
             e.title || null,
             e.body,
@@ -1266,20 +1249,19 @@ export function upsertServerEntries(
   });
 
   tx();
-  syncToJsonBackup(db);
 
   const total = (db.prepare('SELECT COUNT(*) as c FROM journal_entries WHERE user_id = ? AND deleted_at IS NULL').get(userId) as any)?.c || 0;
 
   return { syncedCount, totalCount: total };
 }
 
-export function getUserServerEntries(userId: string): ServerJournalEntry[] {
+export function getUserServerEntries(userId: string, includeDeleted = false): ServerJournalEntry[] {
   const db = getDatabase();
   const rows = db.prepare(`
     SELECT * FROM journal_entries
-    WHERE user_id = ? AND deleted_at IS NULL
+    WHERE user_id = ? AND (? OR deleted_at IS NULL)
     ORDER BY created_at DESC
-  `).all(userId) as any[];
+  `).all(userId, includeDeleted ? 1 : 0) as any[];
 
   return rows.map((r) => ({
     id: r.id,
@@ -1290,12 +1272,12 @@ export function getUserServerEntries(userId: string): ServerJournalEntry[] {
     wordCount: r.word_count || 0,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
-    deletedAt: null,
+    deletedAt: r.deleted_at ?? null,
     syncedAt: r.synced_at,
   }));
 }
 
-export function getAllServerEntries(): Array<
+export function getAllServerEntries(limit = 1000, offset = 0): Array<
   ServerJournalEntry & { authorName: string; authorEmail: string }
 > {
   const db = getDatabase();
@@ -1308,7 +1290,8 @@ export function getAllServerEntries(): Array<
     LEFT JOIN users u ON u.id = e.user_id
     WHERE e.deleted_at IS NULL
     ORDER BY e.created_at DESC
-  `).all() as any[];
+    LIMIT ? OFFSET ?
+  `).all(limit,offset) as any[];
 
   return rows.map((r) => ({
     id: r.id,
@@ -1319,25 +1302,25 @@ export function getAllServerEntries(): Array<
     wordCount: r.word_count || 0,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
-    deletedAt: null,
+    deletedAt: r.deleted_at ?? null,
     syncedAt: r.synced_at,
     authorName: r.authorName,
     authorEmail: r.authorEmail,
   }));
 }
 
-export function deleteServerEntry(id: string): boolean {
+export function deleteServerEntry(id: string, userId?: string): boolean {
   const db = getDatabase();
-  const res = db.prepare('UPDATE journal_entries SET deleted_at = ? WHERE id = ?').run(Date.now(), id);
-  syncToJsonBackup(db);
+  if (!userId && (db.prepare('SELECT COUNT(*) as count FROM journal_entries WHERE id=?').get(id) as {count:number}).count !== 1) return false;
+  const now = Date.now();
+  const res = db.prepare('UPDATE journal_entries SET deleted_at = ?, updated_at = ? WHERE id = ? AND (? IS NULL OR user_id = ?)').run(now, now, id, userId || null,userId || null);
   return res.changes > 0;
 }
 
 export function purgeSoftDeletedEntries(windowMs = 10000): number {
   const db = getDatabase();
   const cutoff = Date.now() - windowMs;
-  const res = db.prepare('DELETE FROM journal_entries WHERE deleted_at IS NOT NULL AND deleted_at <= ?').run(cutoff);
-  syncToJsonBackup(db);
+  const res = db.prepare("UPDATE journal_entries SET body = '', title = NULL, mood = NULL, word_count = 0 WHERE deleted_at IS NOT NULL AND deleted_at <= ? AND body != ''").run(cutoff);
   return res.changes;
 }
 
@@ -1367,7 +1350,7 @@ export function addServerFeedback(input: {
   `).run(
     id,
     input.userId || null,
-    input.userName.trim() || 'Người bạn Haven Art',
+    (typeof input.userName === 'string' ? input.userName.trim() : '') || 'Người bạn Haven Art',
     input.userEmail ? input.userEmail.trim().toLowerCase() : null,
     Math.min(5, Math.max(1, Math.round(input.rating))),
     input.category || 'peace',
@@ -1379,12 +1362,11 @@ export function addServerFeedback(input: {
     now
   );
 
-  syncToJsonBackup(db);
 
   return {
     id,
     userId: input.userId || null,
-    userName: input.userName.trim() || 'Người bạn Haven Art',
+    userName: (typeof input.userName === 'string' ? input.userName.trim() : '') || 'Người bạn Haven Art',
     userEmail: input.userEmail ? input.userEmail.trim().toLowerCase() : undefined,
     rating: Math.min(5, Math.max(1, Math.round(input.rating))),
     category: input.category || 'peace',
@@ -1397,9 +1379,9 @@ export function addServerFeedback(input: {
   };
 }
 
-export function getAllServerFeedbacks(): ServerFeedback[] {
+export function getAllServerFeedbacks(limit = 1000, offset = 0): ServerFeedback[] {
   const db = getDatabase();
-  const rows = db.prepare('SELECT * FROM feedbacks ORDER BY created_at DESC').all() as any[];
+  const rows = db.prepare('SELECT * FROM feedbacks ORDER BY created_at DESC LIMIT ? OFFSET ?').all(limit,offset) as any[];
   return rows.map((r) => ({
     id: r.id,
     userId: r.user_id || null,
@@ -1419,7 +1401,6 @@ export function getAllServerFeedbacks(): ServerFeedback[] {
 export function deleteServerFeedback(id: string): boolean {
   const db = getDatabase();
   const res = db.prepare('DELETE FROM feedbacks WHERE id = ?').run(id);
-  syncToJsonBackup(db);
   return res.changes > 0;
 }
 
@@ -1466,6 +1447,7 @@ export function recordServerSession(input: {
   const db = getDatabase();
   const id = `ses_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
   const now = Date.now();
+  db.prepare('DELETE FROM sessions WHERE last_ping_at < ?').run(now - 90 * 86400000);
 
   db.prepare(`
     INSERT INTO sessions (
@@ -1491,7 +1473,6 @@ export function recordServerSession(input: {
     now
   );
 
-  syncToJsonBackup(db);
 
   return { id, durationSeconds: input.durationSeconds || 0 };
 }
@@ -1644,7 +1625,10 @@ export function importServerDatabase(incoming: any): {
     throw new Error('Dữ liệu sao lưu không hợp lệ.');
   }
 
+  validateServerBackup(incoming);
   const current = readServerDatabase();
+  const idMap = new Map<string,string>();
+  incoming = structuredClone(incoming);
   const newUsers = Array.isArray(incoming.users) ? incoming.users : [];
   const newEntries = Array.isArray(incoming.entries) ? incoming.entries : [];
   const newFeedbacks = Array.isArray(incoming.feedbacks) ? incoming.feedbacks : [];
@@ -1654,7 +1638,8 @@ export function importServerDatabase(incoming: any): {
     if (!nu.email) continue;
     const exists = current.users.findIndex((u) => u.email.toLowerCase() === nu.email.toLowerCase());
     if (exists >= 0) {
-      current.users[exists] = { ...current.users[exists], ...nu };
+      idMap.set(nu.id,current.users[exists].id);
+      current.users[exists] = { ...current.users[exists], ...nu, id:current.users[exists].id, token:undefined, tokens:[] };
     } else {
       current.users.push(nu);
       usersImported++;
@@ -1664,7 +1649,8 @@ export function importServerDatabase(incoming: any): {
   let entriesImported = 0;
   for (const ne of newEntries) {
     if (!ne.id) continue;
-    const exists = current.entries.findIndex((e) => e.id === ne.id);
+    ne.userId = idMap.get(ne.userId) || ne.userId;
+    const exists = current.entries.findIndex((e) => e.id === ne.id && e.userId === ne.userId);
     if (exists >= 0) {
       current.entries[exists] = { ...current.entries[exists], ...ne };
     } else {
@@ -1676,6 +1662,7 @@ export function importServerDatabase(incoming: any): {
   let feedbacksImported = 0;
   for (const nf of newFeedbacks) {
     if (!nf.id) continue;
+    nf.userId = idMap.get(nf.userId) || nf.userId;
     const exists = current.feedbacks.findIndex((f) => f.id === nf.id);
     if (exists >= 0) {
       current.feedbacks[exists] = { ...current.feedbacks[exists], ...nf };
@@ -1685,7 +1672,14 @@ export function importServerDatabase(incoming: any): {
     }
   }
 
+  for (const row of incoming.sessions) {
+    const item = {...row,userId:idMap.get(row.userId) || row.userId};
+    const i = current.sessions.findIndex(v => v.sessionId === item.sessionId);
+    if (i < 0) current.sessions.push(item); else current.sessions[i] = item;
+  }
+  if (incoming.settings) current.settings = incoming.settings;
   writeServerDatabase(current);
+  for (const user of newUsers) revokeUserSessions(idMap.get(user.id) || user.id);
 
   return {
     success: true,

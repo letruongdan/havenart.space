@@ -23,7 +23,7 @@ export const CURATED_ARTWORKS: Artwork[] = [
     artist: 'Katsushika Hokusai',
     src: '/images/artworks/hokusai-red-fuji.webp',
     license: 'Public Domain',
-    sourceUrl: 'https://havenart.space/art/hokusai-red-fuji',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Katsushika_Hokusai_-_Fine_Wind,_Clear_Morning_(Gaif%C5%AB_kaisei)_-_Google_Art_Project.jpg',
     description: 'Serene sunrise over Mount Fuji from the Thirty-Six Views of Mount Fuji series.',
   },
   {
@@ -32,17 +32,8 @@ export const CURATED_ARTWORKS: Artwork[] = [
     artist: 'Claude Monet',
     src: '/images/artworks/monet-water-lilies.webp',
     license: 'Public Domain',
-    sourceUrl: 'https://havenart.space/art/monet-water-lilies',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Claude_Monet_-_Water_Lilies_-_1906,_Ryerson.jpg',
     description: 'Gentle, meditative reflections on water with blooming lilies at Giverny.',
-  },
-  {
-    id: 'haven-art-hasui-lake-chuzenji',
-    title: 'Lake Chūzenji, Nikkō',
-    artist: 'Kawase Hasui',
-    src: '/images/artworks/hasui-lake-chuzenji.webp',
-    license: 'Public Domain',
-    sourceUrl: 'https://havenart.space/art/hasui-lake-chuzenji',
-    description: 'Tranquil evening mist and still water in traditional shin-hanga style.',
   },
   {
     id: 'haven-art-turner-evening-star',
@@ -50,7 +41,7 @@ export const CURATED_ARTWORKS: Artwork[] = [
     artist: 'J. M. W. Turner',
     src: '/images/artworks/turner-evening-star.webp',
     license: 'Public Domain',
-    sourceUrl: 'https://havenart.space/art/turner-evening-star',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Turner_-_The_Evening_Star,_about_1830,_NG1991.jpg',
     description: 'Quiet dusk on a peaceful shore with faint reflections of the evening star.',
   },
   {
@@ -59,7 +50,7 @@ export const CURATED_ARTWORKS: Artwork[] = [
     artist: 'Caspar David Friedrich',
     src: '/images/artworks/friedrich-morning-mist.webp',
     license: 'Public Domain',
-    sourceUrl: 'https://havenart.space/art/friedrich-morning-mist',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Caspar_David_Friedrich_-_Morgennebel_im_Gebirge.jpg',
     description: 'Soft atmospheric early light over gentle mountain ridges.',
   },
 ];

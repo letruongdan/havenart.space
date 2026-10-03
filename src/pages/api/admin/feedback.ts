@@ -1,3 +1,4 @@
+import { pagination } from '../../../lib/server/pagination';
 import type { APIRoute } from 'astro';
 import { getAllServerFeedbacks, deleteServerFeedback, getFeedbackStats } from '../../../lib/server/db';
 import { verifyAdminRequest } from '../../../lib/server/admin-auth';
@@ -14,7 +15,10 @@ export const GET: APIRoute = async ({ request }) => {
   }
 
   try {
-    const feedbacks = getAllServerFeedbacks();
+    const {limit,offset} = pagination(request);
+    const feedbacks = getAllServerFeedbacks(limit+1,offset);
+    const hasMore = feedbacks.length > limit;
+    if (hasMore) feedbacks.pop();
     const stats = getFeedbackStats();
     return new Response(
       JSON.stringify({ success: true, feedbacks, stats }),
@@ -49,7 +53,10 @@ export const DELETE: APIRoute = async ({ request }) => {
     }
 
     deleteServerFeedback(id);
-    const feedbacks = getAllServerFeedbacks();
+    const {limit,offset} = pagination(request);
+    const feedbacks = getAllServerFeedbacks(limit+1,offset);
+    const hasMore = feedbacks.length > limit;
+    if (hasMore) feedbacks.pop();
     const stats = getFeedbackStats();
 
     return new Response(

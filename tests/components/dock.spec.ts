@@ -113,7 +113,7 @@ describe('Dock Component', () => {
   it('triggers onOpenMusicLibrary when clicking music library button or track title', async () => {
     let musicClicked = false;
     const { getByRole, getByText } = render(Dock, {
-      trackTitle: 'Kiss the Rain',
+      trackTitle: 'Quiet Rain',
       onOpenMusicLibrary: () => {
         musicClicked = true;
       },
@@ -125,7 +125,7 @@ describe('Dock Component', () => {
     expect(musicClicked).toBe(true);
 
     musicClicked = false;
-    const titleBtn = getByText('Kiss the Rain');
+    const titleBtn = getByText('Quiet Rain');
     await fireEvent.click(titleBtn);
     expect(musicClicked).toBe(true);
   });

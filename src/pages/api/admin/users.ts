@@ -1,3 +1,4 @@
+import { pagination } from '../../../lib/server/pagination';
 import type { APIRoute } from 'astro';
 import {
   getAllUsers,
@@ -42,9 +43,12 @@ export const GET: APIRoute = async ({ request }) => {
       );
     }
 
-    const users = getAllUsers();
+    const {limit,offset} = pagination(request);
+    const users = getAllUsers(limit+1,offset);
+    const hasMore = users.length > limit;
+    if (hasMore) users.pop();
     return new Response(
-      JSON.stringify({ success: true, users }),
+      JSON.stringify({ success: true, users, hasMore, offset }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (err: any) {
@@ -68,6 +72,7 @@ export const PATCH: APIRoute = async ({ request }) => {
     const body = await request.json();
     const { id, status, role, newPassword } = body || {};
 
+    if ((status && !['active','suspended'].includes(status)) || (role && !['admin','user'].includes(role)) || (newPassword && (typeof newPassword !== 'string' || newPassword.length < 12))) return Response.json({success:false,error:'Dữ liệu tài khoản không hợp lệ.'},{status:400});
     if (!id) {
       return new Response(
         JSON.stringify({ success: false, error: 'Thiếu ID người dùng.' }),
@@ -85,9 +90,8 @@ export const PATCH: APIRoute = async ({ request }) => {
       resetUserPassword(id, newPassword);
     }
 
-    const updatedUsers = getAllUsers();
     return new Response(
-      JSON.stringify({ success: true, users: updatedUsers }),
+      JSON.stringify({ success: true }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (err: any) {
@@ -119,10 +123,9 @@ export const DELETE: APIRoute = async ({ request }) => {
     }
 
     deleteUser(id);
-    const updatedUsers = getAllUsers();
 
     return new Response(
-      JSON.stringify({ success: true, users: updatedUsers }),
+      JSON.stringify({ success: true }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (err: any) {

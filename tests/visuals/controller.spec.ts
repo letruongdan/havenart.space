@@ -358,7 +358,7 @@ describe('VisualController', () => {
         title: 'Fine Wind, Clear Morning (Red Fuji)',
         artist: 'Katsushika Hokusai',
         license: 'Public Domain',
-        sourceUrl: 'https://havenart.space/art/hokusai-red-fuji',
+        sourceUrl: 'https://commons.wikimedia.org/wiki/File:Katsushika_Hokusai_-_Fine_Wind,_Clear_Morning_(Gaif%C5%AB_kaisei)_-_Google_Art_Project.jpg',
       });
     });
 
@@ -370,7 +370,7 @@ describe('VisualController', () => {
       expect(second.id).toBe('haven-art-monet-waterlilies');
 
       const third = controller.nextImage();
-      expect(third.id).toBe('haven-art-hasui-lake-chuzenji');
+      expect(third.id).toBe('haven-art-turner-evening-star');
 
       const prev = controller.previousImage();
       expect(prev.id).toBe(second.id);

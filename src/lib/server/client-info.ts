@@ -59,22 +59,22 @@ export function extractClientInfo(request: Request, clientAddress?: string): Cli
 
   if (/edg\/([0-9.]+)/i.test(userAgent)) {
     browser = 'Microsoft Edge';
-    browserVersion = RegExp.$1.split('.')[0] || RegExp.$1;
+    browserVersion = userAgent.match(/edg\/([0-9.]+)/i)?.[1]?.split('.')[0] || '';
   } else if (/coc_coc_browser\/([0-9.]+)/i.test(userAgent)) {
     browser = 'Cốc Cốc';
-    browserVersion = RegExp.$1.split('.')[0] || RegExp.$1;
+    browserVersion = userAgent.match(/coc_coc_browser\/([0-9.]+)/i)?.[1]?.split('.')[0] || '';
   } else if (/chrome\/([0-9.]+)/i.test(userAgent) && !/edg/i.test(userAgent)) {
     browser = 'Google Chrome';
-    browserVersion = RegExp.$1.split('.')[0] || RegExp.$1;
+    browserVersion = userAgent.match(/chrome\/([0-9.]+)/i)?.[1]?.split('.')[0] || '';
   } else if (/firefox\/([0-9.]+)/i.test(userAgent)) {
     browser = 'Mozilla Firefox';
-    browserVersion = RegExp.$1.split('.')[0] || RegExp.$1;
+    browserVersion = userAgent.match(/firefox\/([0-9.]+)/i)?.[1]?.split('.')[0] || '';
   } else if (/version\/([0-9.]+).*safari/i.test(userAgent)) {
     browser = 'Apple Safari';
-    browserVersion = RegExp.$1.split('.')[0] || RegExp.$1;
+    browserVersion = userAgent.match(/version\/([0-9.]+).*safari/i)?.[1]?.split('.')[0] || '';
   } else if (/opera|opr\/([0-9.]+)/i.test(userAgent)) {
     browser = 'Opera';
-    browserVersion = RegExp.$1.split('.')[0] || RegExp.$1;
+    browserVersion = userAgent.match(/opera|opr\/([0-9.]+)/i)?.[1]?.split('.')[0] || '';
   } else if (/safari/i.test(userAgent) && !/chrome/i.test(userAgent)) {
     browser = 'Apple Safari';
   }

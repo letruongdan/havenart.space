@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { modal } from '../lib/ui/modal';
   import Gate from './Gate.svelte';
   import Dock from './Dock.svelte';
   import { AudioEngine } from '../lib/audio/engine';
@@ -32,7 +33,7 @@
   import UserAuthModal from './UserAuthModal.svelte';
   import { getCurrentUser, type AuthUser } from '../lib/auth/user-client';
   import { recordVisit, updateActiveDuration } from '../lib/telemetry/user-analytics';
-  import { detectUserLanguage, t } from '../lib/i18n/store';
+  import { detectUserLanguage, setStoredLanguage, t } from '../lib/i18n/store';
   import type { SupportedLanguage } from '../lib/i18n/types';
 
   interface Props {
@@ -41,7 +42,8 @@
 
   let shellProps: Props = $props();
 
-  let currentLang = $state<SupportedLanguage>(detectUserLanguage());
+  // svelte-ignore state_referenced_locally
+  let currentLang = $state<SupportedLanguage>(shellProps.initialLang || detectUserLanguage());
 
   $effect(() => {
     if (shellProps.initialLang) {
@@ -51,6 +53,7 @@
   let experienceState = $state<'gate' | 'haven'>('gate');
   let activeModal = $state<'write' | 'list' | 'feedback' | 'music' | 'auth' | null>(null);
   let authUser = $state<AuthUser | null>(getCurrentUser());
+  let writePanel: WritePanel | undefined = $state();
   let journalRepo = $state<JournalRepository | null>(null);
   let journalRefreshTrigger = $state(0);
   let journalEntryCount = $state(0);
@@ -69,6 +72,7 @@
   }
 
   // Audio state
+  let playbackError = $state('');
   let isPlaying = $state(false);
   let volume = $state(0.4);
   let currentTrackTitle = $state('');
@@ -116,6 +120,7 @@
   }
 
   onMount(() => {
+    setStoredLanguage(currentLang);
     loadLivePhotosIfAvailable();
     // 1. Initialize Audio Engine & Select Unique Ambient Track for this Visit
     try {
@@ -191,7 +196,7 @@
             audioReason = moodTrackSelection.reason;
             currentTrackTitle = moodTrackSelection.track.title;
             currentTrackArtist = moodTrackSelection.track.artist;
-            audioEngine?.setTrack(moodTrackSelection.track);
+            void audioEngine?.setTrack(moodTrackSelection.track).catch(() => {});
           }
         })
         .catch((e) => {
@@ -226,7 +231,7 @@
           audioReason = weatherTrackSelection.reason;
           currentTrackTitle = weatherTrackSelection.track.title;
           currentTrackArtist = weatherTrackSelection.track.artist;
-          audioEngine?.setTrack(weatherTrackSelection.track);
+          void audioEngine?.setTrack(weatherTrackSelection.track).catch(() => {});
         }
         loadLivePhotosIfAvailable();
       })
@@ -243,9 +248,9 @@
     }, 5000);
 
     function onLanguageChangeEvent(event: Event) {
-      const customEvent = event as CustomEvent<{ lang: SupportedLanguage }>;
-      if (customEvent.detail?.lang) {
-        currentLang = customEvent.detail.lang;
+      const customEvent = event as CustomEvent<SupportedLanguage>;
+      if (customEvent.detail) {
+        currentLang = customEvent.detail;
       }
     }
 
@@ -253,9 +258,22 @@
       loadLivePhotosIfAvailable();
     }
 
-    function onAuthChangeEvent(event: Event) {
+    let authVersion = 0;
+    async function onAuthChangeEvent(event: Event) {
+      const version = ++authVersion;
       const customEvent = event as CustomEvent<{ session: any }>;
+      if (writePanel) await writePanel.flushDraft().catch(() => {});
+      if (version !== authVersion) return;
+      if (activeModal === 'write' || activeModal === 'list') activeModal = null;
       authUser = customEvent.detail?.session?.user || null;
+      const previous = journalRepo;
+      const accountRepo = new JournalRepository();
+      journalRepo = accountRepo;
+      await accountRepo.init();
+      if (version !== authVersion) { await accountRepo.close(); return; }
+      journalRefreshTrigger++;
+      await updateJournalEntryCount();
+      await previous?.close();
     }
 
     window.addEventListener('haven:language-change', onLanguageChangeEvent);
@@ -336,7 +354,8 @@
         currentTrackArtist = track.artist;
       }
     } catch (err) {
-      console.warn('Toggle play error:', err);
+      playbackError = currentLang === 'vi' ? 'Không thể phát nhạc. Vui lòng thử lại.' : 'Unable to play audio. Please retry.';
+      isPlaying = audioEngine.isPlaying();
     }
   }
 
@@ -345,6 +364,16 @@
     audioEngine?.setVolume(val);
   }
 
+  async function changeSoundscape(track: AudioTrack, reason = ''): Promise<void> {
+    playbackError = '';
+    try {
+      await audioEngine?.setTrack(track);
+      currentTrack = track; currentTrackTitle = track.title; currentTrackArtist = track.artist;
+      audioReason = reason; isPlaying = audioEngine?.isPlaying() || false;
+    } catch {
+      playbackError = currentLang === 'vi' ? 'Chưa phát được bản nhạc mới. Hãy thử bản khác.' : 'Unable to play the new track. Please try another.';
+    }
+  }
   async function handleNextTrack() {
     if (!audioEngine) return;
     try {
@@ -355,12 +384,7 @@
         mood: activeMood || undefined,
         category: soundCategory,
       });
-      currentTrack = result.track;
-      audioReason = result.reason;
-      currentTrackTitle = result.track.title;
-      currentTrackArtist = result.track.artist;
-      await audioEngine.setTrack(result.track);
-      isPlaying = audioEngine.isPlaying();
+      await changeSoundscape(result.track,result.reason);
     } catch (err) {
       console.warn('Next track error:', err);
     }
@@ -377,14 +401,7 @@
       timeOfDay: weatherInfo?.timeOfDay,
       mood: activeMood || undefined,
     });
-    currentTrack = result.track;
-    audioReason = result.reason;
-    currentTrackTitle = result.track.title;
-    currentTrackArtist = result.track.artist;
-    if (audioEngine) {
-      await audioEngine.setTrack(result.track);
-      isPlaying = audioEngine.isPlaying();
-    }
+    await changeSoundscape(result.track,result.reason);
   }
 
   function handleOpenMusicLibrary() {
@@ -392,21 +409,15 @@
   }
 
   async function handleSelectTrackFromLibrary(track: HavenAudioTrack) {
-    currentTrack = track;
-    currentTrackTitle = track.title;
-    currentTrackArtist = track.artist;
-    audioReason = track.category === 'piano'
-      ? `Độc tấu Piano • ${track.genreVi}`
-      : `Âm thanh tự nhiên • ${track.genreVi}`;
-
-    if (audioEngine) {
-      await audioEngine.setTrack(track);
-      if (!audioEngine.isPlaying()) {
+    await changeSoundscape(track,track.genreVi);
+    try {
+      if (audioEngine && !audioEngine.isPlaying()) {
+        await audioEngine.unlockAudio();
         await audioEngine.play();
+        isPlaying = audioEngine.isPlaying();
       }
-      isPlaying = audioEngine.isPlaying();
-    }
-    recordPlayedTrack(track.id);
+      recordPlayedTrack(track.id);
+    } catch { playbackError = currentLang === 'vi' ? 'Không thể phát bản nhạc. Hãy thử bản khác.' : 'Unable to play this track. Please retry.'; }
   }
 
   function handleToggleVisualMode() {
@@ -499,18 +510,13 @@
       weather: weatherInfo?.condition,
       timeOfDay: weatherInfo?.timeOfDay,
     });
-    currentTrack = trackResult.track;
-    audioReason = trackResult.reason;
-    currentTrackTitle = trackResult.track.title;
-    currentTrackArtist = trackResult.track.artist;
-    audioEngine?.setTrack(trackResult.track);
+    void changeSoundscape(trackResult.track,trackResult.reason);
   }
 
   function handleOpenJournalWrite() {
     handleUserActivity();
     if (activeModal === 'write') {
-      activeModal = null;
-      editingEntry = null;
+      void handleCloseModal();
     } else {
       editingEntry = null;
       activeModal = 'write';
@@ -525,7 +531,8 @@
     updateJournalEntryCount();
   }
 
-  function handleCloseModal() {
+  async function handleCloseModal() {
+    try { await writePanel?.flushDraft(); } catch { return; }
     handleUserActivity();
     activeModal = null;
     editingEntry = null;
@@ -615,7 +622,7 @@
     <div
       class="relative z-20 w-full min-h-screen flex items-center justify-center transition-opacity duration-700 ease-out"
     >
-      <Gate onEnter={handleEnter} lang={currentLang} />
+      <Gate onEnter={handleEnter} lang={currentLang} onLanguageChange={(lang) => currentLang = lang} />
     </div>
   {:else}
     <!-- Experience State: Haven Main View -->
@@ -666,6 +673,9 @@
         </div>
       </header>
 
+      {#if currentArtwork}
+        <a href={currentArtwork.sourceUrl} target="_blank" rel="noopener noreferrer" class="pointer-events-auto absolute bottom-28 left-4 max-w-[50vw] text-xs text-white bg-black/70 rounded-lg px-3 py-2" aria-label="Artwork source and license">{currentArtwork.artist} · {currentArtwork.license}</a>
+      {/if}
       <!-- Center Space: Unobstructed, Pure Art Appreciation -->
       <main class="flex-1 flex items-center justify-center pointer-events-none">
         {#if isZenMode}
@@ -771,6 +781,7 @@
     </div>
   {/if}
 
+  {#if playbackError}<p role="status" class="fixed top-20 left-1/2 -translate-x-1/2 z-40 rounded-xl bg-black/90 text-white text-sm p-3">{playbackError}</p>{/if}
   <!-- Modals / Overlays: Styled as Translucent Frosted Glass Over the Artwork -->
   {#if activeModal === 'feedback'}
     <FeedbackModal lang={currentLang} onClose={handleCloseModal} />
@@ -794,6 +805,7 @@
   {:else if activeModal !== null}
     <div
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md transition-opacity duration-300"
+      use:modal
       role="dialog"
       aria-modal="true"
       aria-labelledby="haven-modal-title"
@@ -810,6 +822,7 @@
           <button
             type="button"
             onclick={handleCloseModal}
+            data-modal-close
             class="w-8 h-8 rounded-full flex items-center justify-center text-white/80 hover:text-white bg-white/10 hover:bg-white/20 border border-white/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer shadow-sm"
             aria-label="{t('journal.close', currentLang)} / Đóng bảng nhật ký"
           >
@@ -828,6 +841,7 @@
           {#if activeModal === 'write'}
             <div id="journal-write-container">
               <WritePanel
+                bind:this={writePanel}
                 repository={journalRepo || undefined}
                 editingEntry={editingEntry}
                 lang={currentLang}

@@ -27,7 +27,7 @@
     visualMode?: 'shader' | 'static';
     artworkTitle?: string;
     artworkArtist?: string;
-    activeModal?: 'write' | 'list' | 'feedback' | 'music' | null;
+    activeModal?: 'write' | 'list' | 'feedback' | 'music' | 'auth' | null;
     isZenMode?: boolean;
     weatherLabel?: string;
     selectionReason?: string;

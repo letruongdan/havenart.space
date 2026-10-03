@@ -52,7 +52,7 @@ export async function cleanupStaleCaches(
   const deleted: string[] = [];
 
   for (const name of allCacheNames) {
-    if (!validCaches.includes(name)) {
+    if (name.startsWith('haven-') && !validCaches.includes(name)) {
       await caches.delete(name);
       deleted.push(name);
     }
@@ -103,6 +103,8 @@ export async function handleFetch(request: Request): Promise<Response> {
       const networkResponse = await fetch(request);
       if (networkResponse && networkResponse.status === 200) {
         await imagesCache.put(request, networkResponse.clone());
+        const keys = await imagesCache.keys();
+        for (const old of keys.slice(0,Math.max(0,keys.length - 40))) await imagesCache.delete(old);
       }
       return networkResponse;
     } catch {
@@ -113,9 +115,8 @@ export async function handleFetch(request: Request): Promise<Response> {
   // 2. Shell & Assets caching strategy: Cache-First with Network Fallback
   const shellCache = await caches.open(SHELL_CACHE_NAME);
   const cachedResponse = await shellCache.match(request);
-  if (cachedResponse) {
-    return cachedResponse;
-  }
+  const navigation = request.mode === 'navigate' || new URL(url).pathname === '/';
+  if (cachedResponse && !navigation) return cachedResponse;
 
   try {
     const networkResponse = await fetch(request);
@@ -124,8 +125,9 @@ export async function handleFetch(request: Request): Promise<Response> {
     }
     return networkResponse;
   } catch (err) {
+    if (cachedResponse) return cachedResponse;
     if (request.mode === 'navigate') {
-      const fallback = await shellCache.match('/index.html');
+      const fallback = await shellCache.match('/');
       if (fallback) return fallback;
     }
     return new Response('Asset not available offline', { status: 503 });
@@ -206,7 +208,7 @@ if (
 
   swSelf.addEventListener('install', (event: unknown) => {
     const installEvt = event as ExtendableEventLike;
-    installEvt.waitUntil(handleInstall(installEvt).then(() => swSelf.skipWaiting()));
+    installEvt.waitUntil(handleInstall(installEvt));
   });
 
   swSelf.addEventListener('activate', (event: unknown) => {

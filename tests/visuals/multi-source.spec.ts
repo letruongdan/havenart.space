@@ -29,20 +29,9 @@ describe('Multi-Source Photo Providers & Live Integration', () => {
   });
 
   describe('1. Curated Photo Pool', () => {
-    it('contains at least 75 high-definition artworks spanning all sources', () => {
-      expect(ALL_HAVEN_ARTWORKS.length).toBeGreaterThanOrEqual(75);
-    });
-
-    it('contains balanced representation of Pexels, Unsplash, Pixabay, and classical masterpieces', () => {
-      const pexelsCount = ALL_HAVEN_ARTWORKS.filter((a) => a.provider === 'pexels' || a.id.startsWith('pexels')).length;
-      const unsplashCount = ALL_HAVEN_ARTWORKS.filter((a) => a.provider === 'unsplash' || a.id.startsWith('unsplash-')).length;
-      const pixabayCount = ALL_HAVEN_ARTWORKS.filter((a) => a.provider === 'pixabay' || a.id.startsWith('pixabay-')).length;
-      const classicalCount = ALL_HAVEN_ARTWORKS.filter((a) => a.provider === 'classical' || (!a.id.startsWith('pexels') && !a.id.startsWith('unsplash') && !a.id.startsWith('pixabay'))).length;
-
-      expect(pexelsCount).toBeGreaterThanOrEqual(30);
-      expect(unsplashCount).toBeGreaterThanOrEqual(20);
-      expect(pixabayCount).toBeGreaterThanOrEqual(15);
-      expect(classicalCount).toBeGreaterThanOrEqual(5);
+    it('ships only locally verified artworks; live providers are loaded through the server', () => {
+      expect(ALL_HAVEN_ARTWORKS.length).toBe(4);
+      expect(ALL_HAVEN_ARTWORKS.every(art => art.src.startsWith('/images/'))).toBe(true);
     });
   });
 

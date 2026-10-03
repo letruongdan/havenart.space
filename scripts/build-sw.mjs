@@ -1,0 +1,13 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { build } from 'esbuild';
+const root = path.resolve('dist/client');
+const files = dir => fs.readdirSync(dir,{withFileTypes:true}).flatMap(file => file.isDirectory() ? files(path.join(dir,file.name)) : [path.join(dir,file.name)]);
+const resources = files(root).filter(file => /\.(js|css|woff2?|ttf|webp|png|svg)$/.test(file) && !file.endsWith('sw.js'));
+const assets = ['/', '/manifest.webmanifest', '/favicon.svg', '/credits.json', ...resources.map(file => '/' + path.relative(root,file).replaceAll('\\','/'))];
+const hash = crypto.createHash('sha256');
+for (const file of resources) hash.update(fs.readFileSync(file));
+hash.update(fs.readFileSync('src/sw.ts')).update(fs.readFileSync('src/sw-policy.ts'));
+await build({entryPoints:['src/sw.ts'],bundle:true,outfile:path.join(root,'sw.js'),format:'iife',target:'es2020',define:{__HAVEN_RELEASE__:JSON.stringify(hash.digest('hex').slice(0,16)),__HAVEN_PRECACHE__:JSON.stringify([...new Set(assets)])}});
+console.log(`Precached ${new Set(assets).size} shell assets.`);

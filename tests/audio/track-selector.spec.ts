@@ -96,12 +96,12 @@ describe('Smart Audio Track Selector (Weather, Mood, Freshness & Piano Collectio
     });
   });
 
-  describe('4. Piano Collection & Kiss the Rain Selection', () => {
-    it('selects Kiss the Rain when in piano mode during rain or reflective mood', () => {
+  describe('4. Piano Collection & Quiet Rain Selection', () => {
+    it('selects Quiet Rain when in piano mode during rain or reflective mood', () => {
       const result = selectTrackForSession({ category: 'piano', weather: 'rain', mood: 'reflective' });
       expect(result.track).toBeDefined();
-      expect(result.track.id).toBe('haven-piano-kiss-the-rain');
-      expect(result.track.title).toContain('Kiss the Rain');
+      expect(result.track.id).toBe('haven-piano-original-01');
+      expect(result.track.title).toContain('Quiet Rain');
       expect(result.track.category).toBe('piano');
       expect(result.reason).toContain('Độc tấu Piano');
     });

@@ -5,22 +5,22 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "start": "astro dev",
-    "prebuild": "esbuild src/sw.ts --bundle --outfile=public/sw.js --format=iife --target=es2020",
-    "build": "astro build",
+    "start": "node --env-file-if-exists=.env dist/server/entry.mjs",
+    "build": "astro build && node scripts/build-sw.mjs",
     "preview": "astro preview",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && astro check && svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "seo:audit": "node .agents/skills/seo/scripts/seo-audit.mjs"
+    "seo:audit": "node .agents/skills/seo/scripts/seo-audit.mjs",
+    "verify:build": "node scripts/verify-build.mjs",
+    "media:generate": "node scripts/generate-original-audio.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",
-    "@astrojs/svelte": "7.2.5",
-    "@astrojs/tailwind": "6.0.2",
-    "ajv": "8.17.1",
-    "astro": "5.18.2",
+    "@astrojs/svelte": "9.0.1",
+    "ajv": "8.20.0",
+    "astro": "7.3.5",
     "astro-seo": "^1.2.0",
     "better-sqlite3": "^13.0.3",
     "idb": "8.0.3",
@@ -30,8 +30,8 @@
     "tailwindcss": "3.4.17"
   },
   "devDependencies": {
-    "@astrojs/node": "^9.5.5",
-    "@sveltejs/vite-plugin-svelte": "5.1.1",
+    "@astrojs/node": "11.1.6",
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/svelte": "^5.4.2",
     "@types/better-sqlite3": "^9.6.0",
@@ -39,7 +39,16 @@
     "fake-indexeddb": "6.2.5",
     "happy-dom": "20.14.5",
     "typescript": "5.8.2",
-    "vite": "6.4.1",
-    "vitest": "5.0.2"
+    "vite": "8.3.2",
+    "vitest": "5.0.2",
+    "@astrojs/check": "0.9.10",
+    "svelte-check": "4.7.6",
+    "postcss": "^8.5.8",
+    "autoprefixer": "^10.4.27",
+    "@vitest/coverage-v8": "5.0.2",
+    "esbuild": "^0.28.1"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   }
 }

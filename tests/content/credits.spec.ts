@@ -1,3 +1,4 @@
+import { ALL_HAVEN_AUDIO_TRACKS } from '../../src/lib/audio/ambient-catalog';
 import { describe, it, expect } from 'vitest';
 import credits from '../../public/credits.json';
 import {
@@ -113,7 +114,7 @@ describe('Asset Provenance & Credits Ledger (Task 11)', () => {
 
   describe('3. Audio Catalog License Coverage', () => {
     it('covers 100% of audio tracks from AudioEngine / DEFAULT_TRACKS', () => {
-      const tracks = getAllTracks();
+      const tracks = ALL_HAVEN_AUDIO_TRACKS;
       expect(tracks.length).toBeGreaterThan(0);
 
       for (const track of tracks) {
@@ -167,9 +168,9 @@ describe('Asset Provenance & Credits Ledger (Task 11)', () => {
 
     it('getAudioCredits filters exactly audio track assets', () => {
       const audios = getAudioCredits();
-      expect(audios.length).toBe(DEFAULT_TRACKS.length);
+      expect(audios.length).toBe(ALL_HAVEN_AUDIO_TRACKS.length);
 
-      const trackIds = new Set(DEFAULT_TRACKS.map((t) => t.id));
+      const trackIds = new Set(ALL_HAVEN_AUDIO_TRACKS.map((t) => t.id));
       for (const a of audios) {
         expect(trackIds.has(a.id)).toBe(true);
         expect(a.file).toMatch(/^\/audio\//);
@@ -188,4 +189,23 @@ describe('Asset Provenance & Credits Ledger (Task 11)', () => {
       }
     });
   });
+});
+
+it('checks every shipped media file against its provenance checksum and full active catalog', () => {
+  const ledger=getCreditsLedger();
+  for(const directory of ['audio','images/artworks']) {
+    for(const file of fs.readdirSync(path.resolve('public',directory))) {
+      const relative='/'+directory+'/'+file;
+      const record=ledger.find(item=>item.file===relative);
+      expect(record,relative).toBeDefined();
+      const hash=crypto.createHash('sha256').update(fs.readFileSync(path.resolve('public',directory,file))).digest('hex');
+      expect(record!.checksum).toBe('sha256:'+hash);
+    }
+  }
+  for(const track of ALL_HAVEN_AUDIO_TRACKS) expect(ledger.some(item=>item.id===track.id && item.file===track.src)).toBe(true);
+});
+
+it('ships distinct original music recordings rather than relabelled duplicates', () => {
+  const tracks=getAudioCredits();
+  expect(new Set(tracks.map(track=>track.checksum)).size).toBe(tracks.length);
 });

@@ -58,7 +58,7 @@ if (fs.existsSync(sitemap0Path)) {
 }
 
 // 3. HTML Metadata & OpenGraph Check (index.html)
-const indexHtmlPath = path.join(distDir, 'index.html');
+const indexHtmlPath = path.join(rootDir, 'tests/reports/build-root.html');
 if (fs.existsSync(indexHtmlPath)) {
   const html = fs.readFileSync(indexHtmlPath, 'utf8');
 

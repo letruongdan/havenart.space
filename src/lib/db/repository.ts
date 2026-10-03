@@ -1,3 +1,4 @@
+import { journalOwner, journalDatabaseName } from './ownership';
 import type { IDBPDatabase } from 'idb';
 import {
   openHavenDB,
@@ -19,11 +20,13 @@ import { DraftRepository, type SaveDraftInput } from './drafts';
 export class JournalRepository {
   public readonly dbName: string;
   public readonly version: number;
+  public readonly ownerId: string | null;
   private db: IDBPDatabase<HavenDBSchema> | null = null;
   private draftsRepo: DraftRepository | null = null;
 
-  constructor(dbName: string = DB_NAME, version: number = DB_VERSION) {
-    this.dbName = dbName;
+  constructor(dbName?: string, version: number = DB_VERSION) {
+    this.ownerId = dbName ? null : journalOwner();
+    this.dbName = dbName || journalDatabaseName(this.ownerId!);
     this.version = version;
   }
 
@@ -173,6 +176,7 @@ export class JournalRepository {
    * @returns Number of permanently purged entries
    */
   public async purgeExpiredDeletes(windowMs: number = 10000): Promise<number> {
+    if (this.ownerId && this.ownerId !== 'guest') return 0; // Retain sync tombstones for offline devices.
     const db = await this.getDb();
     const now = Date.now();
     const tx = db.transaction('entries', 'readwrite');
@@ -188,6 +192,16 @@ export class JournalRepository {
 
     await tx.done;
     return purgedCount;
+  }
+
+  public async applyRemoteEntry(entry: JournalEntry): Promise<boolean> {
+    const db = await this.getDb();
+    const tx = db.transaction('entries', 'readwrite');
+    const local = await tx.store.get(entry.id);
+    const newer = !local || entry.updatedAt > local.updatedAt || (entry.updatedAt === local.updatedAt && entry.deletedAt !== null && local.deletedAt === null);
+    if (newer) await tx.store.put(entry);
+    await tx.done;
+    return newer;
   }
 
   /**

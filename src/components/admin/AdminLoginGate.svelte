@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { verifyAdminLogin, setAdminToken, DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD } from '../../lib/admin/auth';
+  import { verifyAdminLogin } from '../../lib/admin/auth';
   import { MorphIcon } from 'morphicons/svelte';
   import { ShieldCheck, Lock, User, Eye, EyeOff, ArrowLeft, AlertTriangle } from 'lucide';
 
@@ -24,60 +24,15 @@
     errorMessage = null;
 
     try {
-      const res = await fetch('/api/admin/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({ username, password }),
-      });
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        setAdminToken(data.token);
-        props.onAuthenticated();
-        return;
-      }
-
-      if (data.error) {
-        errorMessage = data.error;
-        return;
-      }
-
-      // Client-side fallback if server unavailable
       const result = await verifyAdminLogin(username, password);
-      if (result.success) {
-        props.onAuthenticated();
-      } else {
-        errorMessage = result.error || 'Xác thực không thành công.';
-      }
-    } catch {
-      // Network failure, attempt client verification fallback
-      try {
-        const result = await verifyAdminLogin(username, password);
-        if (result.success) {
-          props.onAuthenticated();
-        } else {
-          errorMessage = result.error || 'Xác thực không thành công.';
-        }
-      } catch (err: any) {
-        errorMessage = err?.message || 'Lỗi hệ thống khi đăng nhập.';
-      }
+      if (result.success) props.onAuthenticated();
+      else errorMessage = result.error || 'Đăng nhập không thành công.';
+
     } finally {
       isLoading = false;
     }
   }
 
-  function fillDefaultCredentials() {
-    username = DEFAULT_ADMIN_USERNAME;
-    password = DEFAULT_ADMIN_PASSWORD;
-    showHint = true;
-  }
-
-  async function handleQuickAdminLogin() {
-    username = DEFAULT_ADMIN_USERNAME;
-    password = DEFAULT_ADMIN_PASSWORD;
-    await handleLogin();
-  }
 </script>
 
 <div class="min-h-screen w-full flex items-center justify-center p-4 relative overflow-hidden bg-[#090a0d] text-stone-100 font-sans selection:bg-amber-400/30">
@@ -195,25 +150,7 @@
         </button>
       </form>
 
-      <!-- Default Credentials Helper Banner -->
-      <div class="pt-3 border-t border-white/10 space-y-2">
-        <div class="p-3 rounded-2xl bg-white/[0.03] border border-white/10 text-xs text-white/70 space-y-1.5">
-          <div class="flex items-center justify-between text-[11px] text-white/40 pb-1 border-b border-white/5">
-            <span>Tài khoản Quản trị viên</span>
-            <button
-              type="button"
-              onclick={fillDefaultCredentials}
-              class="text-amber-300 hover:text-amber-200 underline cursor-pointer"
-            >
-              Tự động điền
-            </button>
-          </div>
-          <div class="font-mono text-[11px] space-y-0.5">
-            <div>Root Admin: <span class="text-amber-300 font-semibold">{DEFAULT_ADMIN_USERNAME}</span> / <span class="text-amber-300 font-semibold">{DEFAULT_ADMIN_PASSWORD}</span></div>
-            <div class="text-[10px] text-white/40">Hoặc tài khoản cá nhân: <span class="text-cyan-300">danc3vh@gmail.com</span> (đã được cấp quyền Admin)</div>
-          </div>
-        </div>
-      </div>
+
     </div>
   </div>
 </div>
