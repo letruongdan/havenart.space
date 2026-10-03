@@ -97,8 +97,8 @@ function scoreTrack(track: HavenAudioTrack, context: AudioSelectionContext): num
     score += 2;
   }
 
-  // Signature piece affinity: "Quiet Rain" has prime affinity for rainy weather
-  if (track.id === 'haven-piano-original-01' && context.weather === 'rain') {
+  // Signature piece affinity: "Kiss the Rain" has prime affinity for rainy weather
+  if (track.id === 'haven-piano-kiss-the-rain' && context.weather === 'rain') {
     score += 4;
   }
 

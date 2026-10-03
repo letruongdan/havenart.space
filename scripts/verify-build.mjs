@@ -27,7 +27,7 @@ try {
   assert.equal(feedback.status,201);
   const sw=await (await fetch(base+'/sw.js')).text();
   for (const file of fs.readdirSync('dist/client/_astro').filter(name=>name.startsWith('HavenShell') || name.endsWith('.css'))) assert.ok(sw.includes('/_astro/'+file));
-  assert.ok(!sw.includes('/audio/original-piano-01.mp3'));
+  assert.ok(!sw.includes('/audio/kiss-the-rain.mp3'));
   console.log('Production HTTP smoke checks passed: language routes, auth rejection/revocation, guest feedback, release precache.');
 } finally {
   child.kill();
