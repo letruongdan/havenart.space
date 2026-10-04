@@ -150,7 +150,13 @@
         </button>
       </form>
 
-
+      <!-- Helper note -->
+      <div class="pt-3 border-t border-white/10 text-center">
+        <p class="text-[11px] text-white/40 leading-relaxed font-light">
+          Tài khoản quản trị: <span class="text-white/60 font-mono">admin@havenart.space</span> (hoặc <span class="text-white/60 font-mono">admin</span>)<br />
+          Mật khẩu được thiết lập trong biến môi trường <span class="text-amber-300/80 font-mono">HAVEN_ADMIN_PASSWORD</span>.
+        </p>
+      </div>
     </div>
   </div>
 </div>

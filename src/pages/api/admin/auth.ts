@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { authenticateUser, revokeToken, changeServerPassword } from '../../../lib/server/db';
+import { authenticateUser, revokeToken, changeServerPassword, getDatabase } from '../../../lib/server/db';
 import { verifyAdminRequest } from '../../../lib/server/admin-auth';
 import { requestToken, sameOrigin } from '../../../lib/server/request-auth';
 import { extractClientInfo } from '../../../lib/server/client-info';
@@ -21,13 +21,18 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     const clientInfo = extractClientInfo(request, clientAddress);
     const auth = authenticateUser(username, password, clientInfo);
     if (!auth || auth.user.role !== 'admin') {
+      const hasActiveAdmin = !!getDatabase().prepare("SELECT id FROM users WHERE role = 'admin' AND status = 'active' LIMIT 1").get();
+      const errorMessage = !hasActiveAdmin
+        ? 'Chưa có tài khoản quản trị nào đang hoạt động. Vui lòng thiết lập biến môi trường HAVEN_ADMIN_PASSWORD (ít nhất 12 ký tự) trên máy chủ / Render.'
+        : 'Tên đăng nhập hoặc mật khẩu quản trị không chính xác.';
       return new Response(
-        JSON.stringify({ success: false, error: 'Tên đăng nhập hoặc mật khẩu quản trị không chính xác.' }),
+        JSON.stringify({ success: false, error: errorMessage }),
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    const cookieHeader = `haven_admin_token=${encodeURIComponent(auth.token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400${new URL(request.url).protocol === 'https:' ? '; Secure' : ''}`;
+    const isSecure = new URL(request.url).protocol === 'https:' || request.headers.get('x-forwarded-proto') === 'https';
+    const cookieHeader = `haven_admin_token=${encodeURIComponent(auth.token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400${isSecure ? '; Secure' : ''}`;
 
     return new Response(
       JSON.stringify({

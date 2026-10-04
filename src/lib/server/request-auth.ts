@@ -8,5 +8,24 @@ export function requestToken(request: Request, cookieName?: string): string {
 }
 export function sameOrigin(request: Request): boolean {
   const origin = request.headers.get('origin');
-  return (!origin || origin === new URL(request.url).origin) && request.headers.get('sec-fetch-site') !== 'cross-site';
+  if (!origin) return true;
+  if (request.headers.get('sec-fetch-site') === 'cross-site') return false;
+
+  const requestUrl = new URL(request.url);
+  if (origin === requestUrl.origin) return true;
+
+  const proto = request.headers.get('x-forwarded-proto') || requestUrl.protocol.replace(':', '');
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || requestUrl.host;
+  if (origin === `${proto}://${host}`) return true;
+
+  try {
+    const originUrl = new URL(origin);
+    if (originUrl.host === host || originUrl.host === requestUrl.host) {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+
+  return false;
 }
